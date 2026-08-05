@@ -1,7 +1,7 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
 
 export default async function ProjectsListPage({
@@ -13,7 +13,7 @@ export default async function ProjectsListPage({
   setRequestLocale(locale);
   const t = await getTranslations("project");
 
-  const db = createAdminClient();
+  const db = await createClient();
   const { data: scopes, error } = await db
     .from("control_scopes")
     .select("id, code, name_en, name_ar, scope_type_id, control_scope_types(scope_type)")

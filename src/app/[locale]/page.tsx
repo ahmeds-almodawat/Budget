@@ -1,7 +1,7 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/money";
 import { fetchHospitalDashboardAction } from "@/app/actions/budget-actions";
 
@@ -14,7 +14,7 @@ export default async function HomePage({
   setRequestLocale(locale);
   const t = await getTranslations("nav");
 
-  const db = createAdminClient();
+  const db = await createClient();
   const { data: entity } = await db
     .from("legal_entities")
     .select("name_en, name_ar")

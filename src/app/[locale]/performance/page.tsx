@@ -1,6 +1,6 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function EmployeePerformancePage({
   params,
@@ -10,7 +10,7 @@ export default async function EmployeePerformancePage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("dashboard.employee");
-  const db = createAdminClient();
+  const db = await createClient();
 
   const { data: teams } = await db
     .from("teams")

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
 import { fetchHospitalDashboardAction } from "@/app/actions/budget-actions";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
 import { calculateEstimateAtCompletion, calculateOpenCommitment } from "@/domain/financial/calculations";
 
@@ -16,7 +16,7 @@ export default async function ExecutiveDashboardPage({
   setRequestLocale(locale);
   const t = await getTranslations("dashboard.executive");
 
-  const db = createAdminClient();
+  const db = await createClient();
   const hospital = await fetchHospitalDashboardAction().catch(() => null);
 
   const { data: commitments } = await db

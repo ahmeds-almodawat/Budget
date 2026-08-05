@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,8 @@ import {
   approveHospitalBudgetAction,
   requestHospitalBudgetChangeAction,
   approveHospitalBudgetChangeAction,
+  fetchBudgetLineIdAction,
+  fetchLatestHospitalBudgetVersionAction,
 } from "@/app/actions/budget-actions";
 import {
   CONTROL_ACCOUNT_PHARM_INJ,
@@ -19,6 +21,15 @@ import {
   ORG_UNIT_PHARMACY,
 } from "@/types/database";
 import { money } from "@/lib/money";
+
+export interface BudgetWorkflowPermissions {
+  canDraft: boolean;
+  canSubmit: boolean;
+  canReview: boolean;
+  canApprove: boolean;
+  canRequestChange: boolean;
+  canApproveChange: boolean;
+}
 
 function distributeMonthly(total: string): string[] {
   const monthly = money(total).div(12).toDecimalPlaces(4).toFixed(4);
@@ -28,7 +39,7 @@ function distributeMonthly(total: string): string[] {
   return months;
 }
 
-export function HospitalBudgetWorkflow() {
+export function HospitalBudgetWorkflow({ permissions }: { permissions: BudgetWorkflowPermissions }) {
   const t = useTranslations("budget");
   const locale = useLocale();
   const [annualAmount, setAnnualAmount] = useState("1020000");
@@ -40,6 +51,17 @@ export function HospitalBudgetWorkflow() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    void fetchLatestHospitalBudgetVersionAction().then((version) => {
+      if (version?.id) {
+        setBudgetVersionId(version.id);
+        void fetchBudgetLineIdAction(version.id).then((lineId) => {
+          if (lineId) setBudgetLineId(lineId);
+        });
+      }
+    });
+  }, []);
 
   const computed = money(quantity).times(money(unitRate)).toFixed(2);
 
@@ -71,15 +93,15 @@ export function HospitalBudgetWorkflow() {
         <CardContent className="grid gap-4 md:grid-cols-2">
           <label className="space-y-1 text-sm">
             <span>{locale === "ar" ? "الكمية السنوية" : "Annual quantity"}</span>
-            <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+            <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} disabled={!permissions.canDraft} />
           </label>
           <label className="space-y-1 text-sm">
             <span>{locale === "ar" ? "سعر الوحدة" : "Unit rate (SAR)"}</span>
-            <Input value={unitRate} onChange={(e) => setUnitRate(e.target.value)} />
+            <Input value={unitRate} onChange={(e) => setUnitRate(e.target.value)} disabled={!permissions.canDraft} />
           </label>
           <label className="space-y-1 text-sm md:col-span-2">
             <span>{locale === "ar" ? "المبلغ السنوي (محسوب أو مباشر)" : "Annual amount (direct or driver)"}</span>
-            <Input value={annualAmount} onChange={(e) => setAnnualAmount(e.target.value)} />
+            <Input value={annualAmount} onChange={(e) => setAnnualAmount(e.target.value)} disabled={!permissions.canDraft} />
             <span className="text-slate-500">{locale === "ar" ? "محسوب" : "Driver"}: {computed} SAR</span>
           </label>
         </CardContent>
@@ -87,7 +109,7 @@ export function HospitalBudgetWorkflow() {
 
       <div className="flex flex-wrap gap-2">
         <Button
-          disabled={pending}
+          disabled={pending || !permissions.canDraft}
           onClick={() =>
             run(async () => {
               const amount = annualAmount || computed;
@@ -105,15 +127,8 @@ export function HospitalBudgetWorkflow() {
                 },
               ]);
               setBudgetVersionId(version.id);
-              const { createAdminClient } = await import("@/lib/supabase/admin");
-              const db = createAdminClient();
-              const { data } = await db
-                .from("budget_lines")
-                .select("id")
-                .eq("budget_version_id", version.id)
-                .limit(1)
-                .single();
-              if (data) setBudgetLineId(data.id);
+              const lineId = await fetchBudgetLineIdAction(version.id);
+              if (lineId) setBudgetLineId(lineId);
               return version;
             }, locale === "ar" ? "تم حفظ المسودة" : "Draft saved")
           }
@@ -121,7 +136,7 @@ export function HospitalBudgetWorkflow() {
           {t("draft")}
         </Button>
         <Button
-          disabled={pending || !budgetVersionId}
+          disabled={pending || !budgetVersionId || !permissions.canSubmit}
           variant="secondary"
           onClick={() =>
             run(
@@ -133,7 +148,7 @@ export function HospitalBudgetWorkflow() {
           {t("submitted")}
         </Button>
         <Button
-          disabled={pending || !budgetVersionId}
+          disabled={pending || !budgetVersionId || !permissions.canReview}
           variant="secondary"
           onClick={() =>
             run(
@@ -145,10 +160,10 @@ export function HospitalBudgetWorkflow() {
           {locale === "ar" ? "مراجعة مالية" : "Finance review"}
         </Button>
         <Button
-          disabled={pending || !budgetVersionId}
+          disabled={pending || !budgetVersionId || !permissions.canApprove}
           onClick={() =>
             run(
-              () => approveHospitalBudgetAction(budgetVersionId!, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
+              () => approveHospitalBudgetAction(budgetVersionId!),
               locale === "ar" ? "تم الاعتماد والقفل" : "Approved and locked",
             )
           }
@@ -163,23 +178,16 @@ export function HospitalBudgetWorkflow() {
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button
-            disabled={pending || !budgetVersionId}
+            disabled={pending || !budgetVersionId || !permissions.canRequestChange}
             variant="outline"
             onClick={() =>
               run(async () => {
-                const { createAdminClient } = await import("@/lib/supabase/admin");
-                const db = createAdminClient();
-                const { data } = await db
-                  .from("budget_lines")
-                  .select("id")
-                  .eq("budget_version_id", budgetVersionId)
-                  .limit(1)
-                  .single();
-                if (!data) throw new Error("Budget line missing");
-                setBudgetLineId(data.id);
+                const lineId = budgetLineId ?? (await fetchBudgetLineIdAction(budgetVersionId!));
+                if (!lineId) throw new Error("Budget line missing");
+                setBudgetLineId(lineId);
                 const change = await requestHospitalBudgetChangeAction({
                   budgetVersionId: budgetVersionId!,
-                  budgetLineId: data.id,
+                  budgetLineId: lineId,
                   increaseAmount: "50000",
                   reason: "Increased injectable medicine volume",
                 });
@@ -191,7 +199,7 @@ export function HospitalBudgetWorkflow() {
             {locale === "ar" ? "طلب زيادة" : "Request increase"}
           </Button>
           <Button
-            disabled={pending || !changeRequestId || !budgetVersionId || !budgetLineId}
+            disabled={pending || !changeRequestId || !budgetVersionId || !budgetLineId || !permissions.canApproveChange}
             onClick={() =>
               run(
                 () =>
@@ -211,7 +219,7 @@ export function HospitalBudgetWorkflow() {
       </Card>
 
       {message ? <p className="text-green-700">{message}</p> : null}
-      {error ? <p className="text-red-700">{error}</p> : null}
+      {error ? <p className="text-red-700" role="alert">{error}</p> : null}
       {budgetVersionId ? (
         <p className="text-xs text-slate-500">Budget version: {budgetVersionId}</p>
       ) : null}

@@ -1,6 +1,6 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
 
 export default async function RestaurantDashboardPage({
@@ -11,7 +11,7 @@ export default async function RestaurantDashboardPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("dashboard.restaurant");
-  const db = createAdminClient();
+  const db = await createClient();
 
   const { data: scope } = await db
     .from("control_scopes")

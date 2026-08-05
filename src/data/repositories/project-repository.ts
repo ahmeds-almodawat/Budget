@@ -8,7 +8,7 @@ import {
 } from "@/types/database";
 import { money } from "@/lib/money";
 
-export async function ensureKhamisProjectStructure(db: SupabaseClient) {
+export async function ensureKhamisProjectStructure(db: SupabaseClient, projectManagerId: string) {
   const { data: existingProject } = await db
     .from("projects")
     .select("id")
@@ -24,7 +24,7 @@ export async function ensureKhamisProjectStructure(db: SupabaseClient) {
       control_scope_id: CONTROL_SCOPE_KM_HOSPITAL,
       primary_location_id: "33333333-3333-3333-3333-333333333306",
       responsible_department_id: "33333333-3333-3333-3333-333333333306",
-      project_manager_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6",
+      project_manager_id: projectManagerId,
       baseline_start: "2027-01-01",
       baseline_end: "2028-06-30",
       forecast_start: "2027-01-15",
