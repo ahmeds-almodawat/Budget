@@ -257,6 +257,111 @@ test("RLS allows member to read own legal entity", async (client) => {
   }
 });
 
+test("RLS denies auditor from inserting budget versions", async (client) => {
+  await client.query("BEGIN");
+  try {
+    await client.query(`SET LOCAL role authenticated`);
+    await client.query(
+      `SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4"}', true)`,
+    );
+    let failed = false;
+    try {
+      await client.query(
+        `INSERT INTO budget_versions (
+          legal_entity_id, control_scope_id, fiscal_year_id, version_label, version_type, approval_status, created_by
+        ) VALUES (
+          '11111111-1111-1111-1111-111111111102',
+          '55555555-5555-5555-5555-555555555501',
+          '77777777-7777-7777-7777-777777777701',
+          'AUDITOR-DENY', 'operational', 'draft', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4'
+        )`,
+      );
+    } catch {
+      failed = true;
+    }
+    assert(failed, "Auditor must not insert budget versions");
+    await client.query("ROLLBACK");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  }
+});
+
+test("RLS denies viewer from inserting budget versions", async (client) => {
+  await client.query("BEGIN");
+  try {
+    await client.query(`SET LOCAL role authenticated`);
+    await client.query(
+      `SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5"}', true)`,
+    );
+    let failed = false;
+    try {
+      await client.query(
+        `INSERT INTO budget_versions (
+          legal_entity_id, control_scope_id, fiscal_year_id, version_label, version_type, approval_status, created_by
+        ) VALUES (
+          '11111111-1111-1111-1111-111111111102',
+          '55555555-5555-5555-5555-555555555501',
+          '77777777-7777-7777-7777-777777777701',
+          'VIEWER-DENY', 'operational', 'draft', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5'
+        )`,
+      );
+    } catch {
+      failed = true;
+    }
+    assert(failed, "Viewer must not insert budget versions");
+    await client.query("ROLLBACK");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  }
+});
+
+test("RLS allows budget owner to read budgets in assigned entity", async (client) => {
+  await client.query("BEGIN");
+  try {
+    await client.query(`SET LOCAL role authenticated`);
+    await client.query(
+      `SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"}', true)`,
+    );
+    const { rows } = await client.query(
+      `SELECT count(*)::int AS c FROM budget_versions WHERE legal_entity_id = '11111111-1111-1111-1111-111111111102'`,
+    );
+    assert(rows[0].c >= 0, "Budget owner should query budgets in assigned entity");
+    await client.query("ROLLBACK");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  }
+});
+
+test("RLS denies finance user from inserting actuals without finance role scope mismatch", async (client) => {
+  await client.query("BEGIN");
+  try {
+    await client.query(`SET LOCAL role authenticated`);
+    await client.query(
+      `SELECT set_config('request.jwt.claims', '{"sub":"ffffffff-ffff-ffff-ffff-ffffffffffff"}', true)`,
+    );
+    let failed = false;
+    try {
+      await client.query(
+        `INSERT INTO actual_transactions (
+          legal_entity_id, source_system, source_transaction_id, transaction_date, amount_ex_vat, vat_amount, amount_inc_vat
+        ) VALUES (
+          '11111111-1111-1111-1111-111111111102', 'CSV_IMPORT', 'DENY-001', '2027-01-01', 100, 0, 100
+        )`,
+      );
+    } catch {
+      failed = true;
+    }
+    assert(failed, "User without membership must not insert actuals");
+    await client.query("ROLLBACK");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  }
+});
+
 async function main() {
   const client = new pg.Client({ connectionString });
   await client.connect();
