@@ -33,9 +33,14 @@ Password for all users: `Password123!`
 | auditor@modawat.local | auditor | `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4` |
 | viewer@modawat.local | viewer | `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5` |
 | pm@modawat.local | project_manager | `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6` |
+| employee@modawat.local | employee | `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa7` |
 
 **Legal entity:** `11111111-1111-1111-1111-111111111102` (Al Modawat)  
 **Hospital budget scope:** `55555555-5555-5555-5555-555555555501`
+
+### Production boundary
+
+Local users with known passwords are created in migrations `20260805120800` and `20260805121200` only. These must not be applied to production databases. E2E and integration tests authenticate against the local Supabase Auth instance using fixtures in `src/test/fixtures/users.ts` — never mock sessions in E2E.
 
 ## Routes
 

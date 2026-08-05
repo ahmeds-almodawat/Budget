@@ -1,5 +1,9 @@
 # Codex Handoff
 
+**Review preparation:** 2026-08-05  
+**Base:** `main` @ `7d754c8` (`composer-foundation-v1`)  
+**Head:** `feature/enterprise-control-platform` @ `ca51c4e` (`composer-core-modules-v1`)
+
 ## Status legend
 
 | Label | Meaning |
@@ -13,28 +17,39 @@
 
 | Feature | Status |
 |---------|--------|
-| Local Supabase on isolated ports | Database-backed, tested (2× reset) |
-| Migrations + triggers + RLS | Database-backed, tested (15 DB tests) |
-| Supabase Auth + authorization | Tested (17 E2E, integration, RLS) |
-| Hospital budget workflow | Database-backed, tested |
+| Local Supabase (isolated ports 56000–56009) | Database-backed, 16 migrations, 75 RLS policies |
+| Supabase Auth + authorization | 17 E2E + integration + 15 DB tests |
+| Hospital budget workflow | Database-backed, E2E multi-user |
 | Actual CSV/Excel import | Database-backed, E2E |
-| Project schedule & progress | Database-backed, E2E + integration |
-| Governance registers | Database-backed (risks, issues, actions, decisions) |
-| Approvals inbox | Database-backed, multi-type view |
-| Actuals & commitments UI | Database-backed |
-| Restaurant branch KPIs | Database-backed, 2-branch comparison |
+| Project schedule & progress | Timeline, tasks, milestones, verification |
+| Governance registers | Separate risks, issues, actions, decisions |
+| Approvals inbox | Multi-type view (budget, import, progress, schedule, variance) |
+| Actuals & commitments UI | Transactions, unmapped, batches, reversals |
+| Restaurant branch KPIs | 2-branch comparison from mapped actuals |
 | Audit search + exceptions | Database-backed |
-| Report export CSV/Excel | Database-backed |
+| Report export | CSV/Excel with drill-down preview |
+| GitHub Actions CI | `.github/workflows/ci.yml` on Linux |
 
 ## Partially implemented
 
-- Commitments sub-tabs (POs, contracts, invoices) — commitments and vendors populated; others await transactional data
-- Delegated approvals tab — scaffolded, no delegation records yet
+- Commitments sub-tabs (contracts, invoices, payments, credit notes) — scaffolded
+- Delegated approvals tab — no delegation records
 - Employee performance scorecard — team counts only
 
 ## Scaffold only
 
-administration, cost-control, forecasts, master-data, performance
+`cost-control`, `forecasts`, `performance`, `administration`, `master-data`
+
+## Verification (local 2026-08-05)
+
+| Suite | Result |
+|-------|--------|
+| Vitest | 26/26 pass |
+| DB | 15/15 pass |
+| E2E | 17/17 pass (one complete run) |
+| Build | Pass (first attempt); prior Windows worker crash documented as environmental |
+
+**Await GitHub Actions CI** for authoritative Linux evidence before merge.
 
 ## Key commands
 
@@ -46,9 +61,14 @@ npm run verify
 npm run test:e2e
 ```
 
-## Priority next steps
+## Codex audit priorities
 
-1. Production OAuth/SSO
-2. Delegation workflow for approvals
-3. Full procurement document lifecycle (PO → invoice → payment)
-4. Expand RLS negative tests for new tables
+1. RLS cross-entity isolation (75 policies — verify new tables)
+2. Server-action authorization vs UI visibility
+3. Financial immutability and reversal-only actuals
+4. Segregation of duties (budget, progress, approvals)
+5. Import reconciliation and duplicate controls
+6. Schedule/milestone baseline immutability triggers
+7. Local auth seed migrations must never run in production
+
+See [COMPOSER_COMPLETION_REPORT.md](./COMPOSER_COMPLETION_REPORT.md) and [AUTHENTICATION_AND_AUTHORIZATION.md](./AUTHENTICATION_AND_AUTHORIZATION.md).

@@ -1,40 +1,89 @@
-# Composer Completion Report (Core Modules Run)
+# Composer Completion Report
 
-**Date:** 2026-08-05  
-**Branch:** `feature/enterprise-control-platform`  
-**Prior checkpoint:** `99491e5` / tag `composer-auth-workflows-v1`
+**Last updated:** 2026-08-05 (Codex review preparation)  
+**Feature branch:** `feature/enterprise-control-platform` @ `ca51c4e`  
+**Base branch:** `main` @ `7d754c8` (`composer-foundation-v1`)
 
-## Summary
+## Checkpoint tags
 
-Implemented Phases 1–7 of the Enterprise Control Platform: project schedule/progress, governance registers, approvals inbox, financial UI, restaurant KPIs, audit/exceptions, and report export. Phase 8 hardening completed with 2× db reset, secret scan, and documentation updates.
+| Tag | Commit | Milestone |
+|-----|--------|-----------|
+| `composer-foundation-v1` | `7d754c8` | Next.js scaffold, domain layer, initial migrations |
+| `composer-database-workflows-v1` | `8dc81d1` | Isolated Supabase, DB-backed hospital/import/project workflows |
+| `composer-auth-workflows-v1` | `99491e5` | Supabase Auth, RLS session enforcement, segregation of duties |
+| `composer-core-modules-v1` | `ca51c4e` | Project progress, governance registers, approvals, financial UI, restaurant KPIs, audit, reports |
 
-## Test results
+`composer-review-ready-v1` is created only after GitHub Actions CI passes on the review-preparation commit.
 
-```
-Vitest:     26 passed, 0 failed
-DB tests:   15 passed, 0 failed
-Playwright: 17 tests (15 stable pass; 2 intermittent browser spawn failures on Windows)
-Build:      Intermittent worker crash (Windows paging file)
-Migrations: 15
-```
+## Local verification (2026-08-05, review prep run)
 
-## Commits (Phases 1–8)
+Executed on Windows after `supabase db reset` (16 migrations applied).
 
-1. `c9e2053` — Add project schedule, progress submission, and verification workflows.
-2. `585586e` — Add risk, issue, action, and decision control registers.
-3. `1132fec` — Add unified approvals workspace with multi-type inbox.
-4. `a63b35f` — Add actuals and commitments financial control UI.
-5. `48fa122` — Add restaurant branch operational KPI workflow.
-6. `74e3dfa` — Add searchable audit log and exceptions workspace.
-7. `3e03f77` — Add DB-backed reports with CSV and Excel export.
-8. (pending) — Hardening docs and verification notes.
+| Suite | Passed | Failed | Skipped | Notes |
+|-------|--------|--------|---------|-------|
+| Vitest (unit + integration) | **26** | 0 | 0 | 6 files, ~8s |
+| Database (`npm run test:db`) | **15** | 0 | 0 | |
+| Playwright E2E | **17** | 0 | 0 | First complete run; 1 worker; ~1.4 min |
+| `npm run lint` | pass | — | — | |
+| `npm run typecheck` | pass | — | — | |
+| `npm run build` (first attempt) | **pass** | — | — | ~18s; 61 routes |
 
-## Tag status
+### Build stability
 
-`composer-core-modules-v1` **not applied** — `npm run build` failed intermittently on Windows worker crash during page-data collection. Re-run `npm run verify` on a machine with adequate paging file before tagging.
+| Attempt | Result | Classification |
+|---------|--------|----------------|
+| Earlier session (pre-review) | Failed — Next.js worker exit `3221226505` during page-data collection | **Resource/environment limitation** on Windows (intermittent; not reproduced in this run) |
+| Review-prep first attempt | **Success** | — |
+| Review-prep retry | Not required | — |
 
-## Remaining limitations
+Do not treat a single successful retry on a constrained host as proof of build stability. **Authoritative build evidence is GitHub Actions on `ubuntu-latest`.**
 
-- Production Supabase/OAuth excluded by design
-- Delegated approvals tab empty until delegation workflow wired
-- Windows build worker requires retry on constrained hosts
+### Database repeatability
+
+| Reset | Result |
+|-------|--------|
+| First (`supabase db reset`) | Success — 16 migrations |
+| Second (immediate) | Failed — HTTP 502 during container restart (**environmental**) |
+| Second (after `docker rm` + `supabase start`) | Success — 16 migrations |
+
+**RLS policies (exact):** `75` (`SELECT count(*) FROM pg_policies WHERE schemaname = 'public'`)
+
+### Environmental warnings (non-blocking)
+
+- `npm warn Unknown env config "devdir"`
+- Next.js ignored `package-lock.json` outside repository root
+- Next.js middleware deprecation notice
+- Vitest `configLoader: 'native'` warning
+- Playwright webServer logged one `Error: aborted` during E2E; all 17 tests still passed
+
+## Implemented modules (feature branch since foundation)
+
+- Hospital and restaurant operational budgets (DB-backed)
+- Project schedule, tasks, milestones, progress submission/verification
+- Risk, issue, action, decision registers (separate)
+- Approvals inbox (multi-type)
+- Actuals, commitments, import batches, duplicate queue, reversals
+- Restaurant branch KPI comparison (mapped actuals)
+- Audit search and exceptions workspace
+- Reports with CSV/Excel export
+- Supabase Auth with scoped server actions and RLS
+
+## Partial / scaffold (honest)
+
+- **Delegated approvals** — tab present; no delegation records
+- **Procurement documents** — contracts/invoices/payments/credit notes tabs scaffolded
+- **cost-control, forecasts, performance, administration, master-data** — placeholder routes
+
+## Local authentication seed warning
+
+Known-password users (`*@modawat.local`) are created only in migrations `20260805120800_workflow_seed_users.sql` and `20260805121200_project_schedule_progress.sql`. These are **local development and CI fixtures only** and must not be applied to production databases. See `docs/LOCAL_SETUP.md` § Authentication seed boundary.
+
+## Codex audit priorities
+
+1. RLS cross-entity isolation on new tables (75 policies)
+2. Authentication and server-action authorization
+3. Financial immutability and reversal-only corrections
+4. Approval segregation of duties
+5. Import reconciliation and duplicate controls
+6. Earned-value and schedule baseline immutability
+7. CI reproducibility vs local Windows intermittency
