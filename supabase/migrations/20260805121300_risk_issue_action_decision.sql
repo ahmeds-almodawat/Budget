@@ -96,7 +96,7 @@ INSERT INTO risks (
   '55555555-5555-5555-5555-555555555503',
   'Concrete supply disruption', 'اضطراب إمدادات الخرسانة',
   30, 500000, 21,
-  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6',
+  NULL,
   'open', 'medium', 'Qualify alternate suppliers', 'Use contingency budget for expedited delivery',
   'ffffffff-ffff-ffff-ffff-ffffffffff01', 150000, 'project_manager'
 ) ON CONFLICT DO NOTHING;
@@ -110,7 +110,7 @@ INSERT INTO issues (
   '55555555-5555-5555-5555-555555555503',
   'cccccccc-cccc-cccc-cccc-ccccccccccc1',
   'Delayed rebar delivery', 'تأخر تسليم حديد التسليح',
-  'high', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6',
+  'high', NULL,
   '33333333-3333-3333-3333-333333333399', 'open'
 ) ON CONFLICT DO NOTHING;
 

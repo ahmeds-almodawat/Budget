@@ -107,50 +107,10 @@ CREATE TRIGGER trg_tasks_protect_baseline
   BEFORE UPDATE ON tasks
   FOR EACH ROW EXECUTE FUNCTION protect_task_baseline();
 
--- Employee seed user for progress submission tests
+-- Employee role definition. Local employee personas live in the explicit fixture.
 INSERT INTO roles (code, name_en, name_ar, is_read_only)
 VALUES ('employee', 'Employee', 'موظف', false)
 ON CONFLICT (code) DO NOTHING;
-
-DO $$
-DECLARE
-  employee_id UUID := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa7';
-  pm_id UUID := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6';
-  encrypted_pw TEXT := crypt('Password123!', gen_salt('bf'));
-BEGIN
-  INSERT INTO auth.users (
-    id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
-    confirmation_token, recovery_token, email_change_token_new, email_change,
-    raw_app_meta_data, raw_user_meta_data, created_at, updated_at
-  )
-  VALUES (
-    employee_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-    'employee@modawat.local', encrypted_pw, NOW(), '', '', '', '',
-    '{"provider":"email","providers":["email"]}', '{}', NOW(), NOW()
-  )
-  ON CONFLICT (id) DO NOTHING;
-
-  INSERT INTO auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
-  VALUES (
-    employee_id, employee_id, 'employee@modawat.local',
-    jsonb_build_object('sub', employee_id::text, 'email', 'employee@modawat.local'),
-    'email', NOW(), NOW(), NOW()
-  )
-  ON CONFLICT DO NOTHING;
-
-  INSERT INTO profiles (id, email, full_name_en, full_name_ar)
-  VALUES (employee_id, 'employee@modawat.local', 'Employee User', 'موظف')
-  ON CONFLICT (id) DO NOTHING;
-
-  INSERT INTO memberships (user_id, organization_id, legal_entity_id, status)
-  VALUES (employee_id, '11111111-1111-1111-1111-111111111101', '11111111-1111-1111-1111-111111111102', 'active')
-  ON CONFLICT DO NOTHING;
-
-  INSERT INTO role_assignments (user_id, role_id, scope_type, scope_id)
-  SELECT employee_id, r.id, 'legal_entity', '11111111-1111-1111-1111-111111111102'
-  FROM roles r WHERE r.code = 'employee'
-  ON CONFLICT DO NOTHING;
-END $$;
 
 -- Khamis Mushait project seed (tasks and milestone steps)
 INSERT INTO projects (
@@ -162,7 +122,7 @@ INSERT INTO projects (
   '55555555-5555-5555-5555-555555555503',
   '33333333-3333-3333-3333-333333333306',
   '33333333-3333-3333-3333-333333333306',
-  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6',
+  NULL,
   '2027-01-01', '2028-06-30', '2027-01-15', '2028-09-30',
   'Khamis Mushait New Hospital Building'
 ) ON CONFLICT (id) DO NOTHING;
@@ -209,9 +169,9 @@ ON CONFLICT DO NOTHING;
 
 INSERT INTO tasks (id, work_package_id, code, name_en, name_ar, assigned_to, baseline_start, baseline_end, progress_percent, status)
 VALUES
-  ('22222222-2222-2222-2222-222222222201', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', 'EXCAV', 'Site Excavation', 'حفر الموقع', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa7', '2027-04-01', '2027-05-15', 100, 'completed'),
-  ('22222222-2222-2222-2222-222222222202', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', 'REBAR', 'Rebar Installation', 'تركيب الحديد', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa7', '2027-05-16', '2027-07-01', 80, 'in_progress'),
-  ('22222222-2222-2222-2222-222222222203', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', 'POUR', 'Concrete Pour', 'صب الخرسانة', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa7', '2027-07-02', '2027-08-15', 0, 'not_started')
+  ('22222222-2222-2222-2222-222222222201', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', 'EXCAV', 'Site Excavation', 'حفر الموقع', NULL, '2027-04-01', '2027-05-15', 100, 'completed'),
+  ('22222222-2222-2222-2222-222222222202', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', 'REBAR', 'Rebar Installation', 'تركيب الحديد', NULL, '2027-05-16', '2027-07-01', 80, 'in_progress'),
+  ('22222222-2222-2222-2222-222222222203', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', 'POUR', 'Concrete Pour', 'صب الخرسانة', NULL, '2027-07-02', '2027-08-15', 0, 'not_started')
 ON CONFLICT (work_package_id, code) DO NOTHING;
 
 -- RLS for progress tables
