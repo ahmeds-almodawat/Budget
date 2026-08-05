@@ -1,6 +1,6 @@
 /**
  * Deterministic local seed user IDs — for automated tests only.
- * See supabase/migrations/20260805120800_workflow_seed_users.sql
+ * See supabase/fixtures/local_personas.sql (explicit local invocation only).
  */
 export const TEST_USER_IDS = {
   budgetOwner: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
@@ -10,7 +10,13 @@ export const TEST_USER_IDS = {
   viewer: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5",
   projectManager: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6",
   employee: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa7",
-  noMembership: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+  groupAdmin: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
+  inactiveFinance: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2",
+  futureFinance: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3",
+  expiredFinance: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4",
+  noMembership: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5",
+  otherFinance: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6",
+  projectManagerScoped: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa7",
 } as const;
 
 export const TEST_USER_CREDENTIALS = {

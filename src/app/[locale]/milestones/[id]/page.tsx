@@ -19,11 +19,16 @@ export default async function MilestoneDetailPage({
 
   const ctx = await getAuthContext();
   const roleAssignments: RoleAssignment[] = ctx?.roleAssignments ?? [];
+  const projectScope = {
+    legalEntityId: LEGAL_ENTITY_MODAWAT,
+    scopeType: "project" as const,
+    scopeId: detail.milestone.project_id,
+  };
 
   const permissions = {
-    canSubmit: hasPermission(roleAssignments, "milestone", "update", LEGAL_ENTITY_MODAWAT),
-    canVerify: hasPermission(roleAssignments, "milestone", "approve", LEGAL_ENTITY_MODAWAT),
-    canAccept: hasPermission(roleAssignments, "milestone", "approve", LEGAL_ENTITY_MODAWAT),
+    canSubmit: hasPermission(roleAssignments, "milestone", "update", projectScope),
+    canVerify: hasPermission(roleAssignments, "milestone", "approve", projectScope),
+    canAccept: hasPermission(roleAssignments, "milestone", "approve", projectScope),
   };
 
   return (

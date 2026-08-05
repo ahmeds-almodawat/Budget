@@ -164,18 +164,46 @@ export interface RoleAssignment {
   roleCode: RoleCode;
   scopeType: "group" | "legal_entity" | "organization_unit" | "control_scope" | "project" | "control_account";
   scopeId: string;
+  effectiveStart?: string;
+  effectiveEnd?: string | null;
+  /** Legal entities derived from an active membership, never from the role alone. */
+  legalEntityIds?: string[];
+}
+
+export interface AuthorizationScope {
+  legalEntityId: string;
+  organizationId?: string;
+  scopeType?: Exclude<RoleAssignment["scopeType"], "group" | "legal_entity">;
+  scopeId?: string;
+}
+
+function assignmentMatchesScope(
+  assignment: RoleAssignment,
+  target: AuthorizationScope,
+): boolean {
+  if (assignment.scopeType === "group") {
+    return (
+      assignment.scopeId === target.organizationId ||
+      assignment.legalEntityIds?.includes(target.legalEntityId) === true
+    );
+  }
+  if (assignment.scopeType === "legal_entity") {
+    return assignment.scopeId === target.legalEntityId;
+  }
+  return assignment.scopeType === target.scopeType && assignment.scopeId === target.scopeId;
 }
 
 export function hasPermission(
   assignments: RoleAssignment[],
   resource: PermissionResource,
   action: PermissionAction,
-  scopeId?: string,
+  scope?: string | AuthorizationScope,
 ): boolean {
+  const target = typeof scope === "string" ? { legalEntityId: scope } : scope;
   for (const assignment of assignments) {
     const perms = ROLE_PERMISSIONS[assignment.roleCode]?.[resource];
     if (!perms?.includes(action)) continue;
-    if (scopeId && assignment.scopeId !== scopeId && assignment.scopeType !== "group") {
+    if (target && !assignmentMatchesScope(assignment, target)) {
       continue;
     }
     return true;
