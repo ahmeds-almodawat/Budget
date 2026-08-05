@@ -1,41 +1,40 @@
-# Composer Completion Report (Auth Workflows Run)
+# Composer Completion Report (Core Modules Run)
 
 **Date:** 2026-08-05  
 **Branch:** `feature/enterprise-control-platform`  
-**Prior checkpoint:** `8dc81d1` / tag `composer-database-workflows-v1`
+**Prior checkpoint:** `99491e5` / tag `composer-auth-workflows-v1`
 
 ## Summary
 
-Replaced all hardcoded runtime actor UUIDs with Supabase Auth sessions. Server actions use `requireAuthContext()` and RLS-aware clients. Added bilingual sign-in, middleware protection, expanded RLS (49 policies), and 15 E2E tests with real authentication.
+Implemented Phases 1–7 of the Enterprise Control Platform: project schedule/progress, governance registers, approvals inbox, financial UI, restaurant KPIs, audit/exceptions, and report export. Phase 8 hardening completed with 2× db reset, secret scan, and documentation updates.
 
 ## Test results
 
 ```
-Vitest:     23 passed, 0 failed, 0 skipped
-DB tests:   14 passed, 0 failed
-Playwright: 15 passed, 0 failed
-Build:      SUCCESS
-Migrations: 12
-RLS policies: 49
+Vitest:     26 passed, 0 failed
+DB tests:   15 passed, 0 failed
+Playwright: 17 tests (15 stable pass; 2 intermittent browser spawn failures on Windows)
+Build:      Intermittent worker crash (Windows paging file)
+Migrations: 15
 ```
 
-## Key changes
+## Commits (Phases 1–8)
 
-- `src/lib/auth/context.ts` — canonical authenticated application context
-- Auth routes: sign-in, access-denied, callback
-- Server actions converted: budget, import, project
-- Migrations 209–211: RLS expansion, auth user token fix, budget update policy fix
-- E2E: multi-user budget approval, role denial scenarios, Arabic RTL auth
+1. `c9e2053` — Add project schedule, progress submission, and verification workflows.
+2. `585586e` — Add risk, issue, action, and decision control registers.
+3. `1132fec` — Add unified approvals workspace with multi-type inbox.
+4. `a63b35f` — Add actuals and commitments financial control UI.
+5. `48fa122` — Add restaurant branch operational KPI workflow.
+6. `74e3dfa` — Add searchable audit log and exceptions workspace.
+7. `3e03f77` — Add DB-backed reports with CSV and Excel export.
+8. (pending) — Hardening docs and verification notes.
+
+## Tag status
+
+`composer-core-modules-v1` **not applied** — `npm run build` failed intermittently on Windows worker crash during page-data collection. Re-run `npm run verify` on a machine with adequate paging file before tagging.
 
 ## Remaining limitations
 
-- Production OAuth/SSO not configured
-- Service role retained for future admin tooling only
-- Scaffold module pages unchanged
-
-## Codex audit priorities
-
-1. Restaurant operational KPI pipeline
-2. Approval queue UI
-3. Exhaustive RLS negative tests for all roles/tables
-4. Storage bucket policies for attachments
+- Production Supabase/OAuth excluded by design
+- Delegated approvals tab empty until delegation workflow wired
+- Windows build worker requires retry on constrained hosts

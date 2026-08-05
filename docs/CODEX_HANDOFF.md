@@ -8,37 +8,33 @@
 | **Tested** | Automated test executed and passed |
 | **Partial** | Core path works; gaps documented |
 | **Scaffold** | Route exists; no business workflow |
-| **Fixture only** | TypeScript seed for tests, not runtime UI |
 
 ## Fully implemented + tested
 
 | Feature | Status |
 |---------|--------|
 | Local Supabase on isolated ports | Database-backed, tested (2× reset) |
-| Migrations + triggers + RLS | Database-backed, tested (14 DB tests, 49 policies) |
-| **Supabase Auth + authorization** | **Tested (15 E2E, integration, RLS)** |
-| Hospital budget workflow | Database-backed, tested (integration + E2E) |
+| Migrations + triggers + RLS | Database-backed, tested (15 DB tests) |
+| Supabase Auth + authorization | Tested (17 E2E, integration, RLS) |
+| Hospital budget workflow | Database-backed, tested |
 | Actual CSV/Excel import | Database-backed, E2E |
-| Khamis Mushait project dashboard | Database-backed, partial |
-| Executive / home / hospital dashboards | Database-backed |
-| Financial domain formulas | Tested (21 unit tests) |
+| Project schedule & progress | Database-backed, E2E + integration |
+| Governance registers | Database-backed (risks, issues, actions, decisions) |
+| Approvals inbox | Database-backed, multi-type view |
+| Actuals & commitments UI | Database-backed |
+| Restaurant branch KPIs | Database-backed, 2-branch comparison |
+| Audit search + exceptions | Database-backed |
+| Report export CSV/Excel | Database-backed |
 
 ## Partially implemented
 
-- Budget change approval (DB + UI buttons; no full approval queue screen)
-- Variance explanations (auto-created on threshold; no review UI)
-- Project EV metrics (uses approved milestone progress; actuals from allocations when present)
-- Employee performance (team/milestone counts from DB; not full KPI scorecard)
+- Commitments sub-tabs (POs, contracts, invoices) — commitments and vendors populated; others await transactional data
+- Delegated approvals tab — scaffolded, no delegation records yet
+- Employee performance scorecard — team counts only
 
-## Scaffold only (no mock data)
+## Scaffold only
 
-actuals, approvals, audit, changes, commitments, cost-control, forecasts, master-data, milestones, reports, risks, tasks, administration
-
-## Blocked / not done
-
-- Production Supabase connection (intentionally excluded)
-- Email alerts
-- Excel export on reports (CSV template download only for import)
+administration, cost-control, forecasts, master-data, performance
 
 ## Key commands
 
@@ -52,10 +48,7 @@ npm run test:e2e
 
 ## Priority next steps
 
-1. Restaurant branch KPI workflow (revenue + food/labor % from mapped actuals)
-2. Approval queue UI
-3. Report export (CSV/Excel)
-4. Complete RLS for remaining tables + expand DB negative tests
-5. Production OAuth/SSO
-
-See [AUTHENTICATION_AND_AUTHORIZATION.md](./AUTHENTICATION_AND_AUTHORIZATION.md) and [COMPOSER_COMPLETION_REPORT.md](./COMPOSER_COMPLETION_REPORT.md).
+1. Production OAuth/SSO
+2. Delegation workflow for approvals
+3. Full procurement document lifecycle (PO → invoice → payment)
+4. Expand RLS negative tests for new tables

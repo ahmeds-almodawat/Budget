@@ -112,7 +112,11 @@
     "phases": "المراحل",
     "workPackages": "حزم العمل",
     "baseline": "خط الأساس الأصلي",
-    "forecast": "التوقع الحالي"
+    "forecast": "التوقع الحالي",
+    "timeline": "الجدول الزمني",
+    "submitProgress": "تقديم التقدم",
+    "verifyProgress": "التحقق من التقدم",
+    "scheduleExtension": "تمديد الجدول"
   },
   "financial": {
     "budgetVsActual": "الميزانية مقابل الفعلي",
