@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22+ (see `.nvmrc`)
 - npm 11+
 - Docker Desktop
 - Supabase CLI 2.x
