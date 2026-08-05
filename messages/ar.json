@@ -69,7 +69,8 @@
       "mtd": "من بداية الشهر",
       "ytd": "من بداية السنة",
       "fullYearForecast": "توقع نهاية السنة",
-      "unmappedActuals": "معاملات فعلية غير مربوطة"
+      "unmappedActuals": "معاملات فعلية غير مربوطة",
+      "varianceExplanationRequired": "مطلوب تفسير للانحراف"
     },
     "restaurant": {
       "title": "لوحة التشغيل — المطاعم",

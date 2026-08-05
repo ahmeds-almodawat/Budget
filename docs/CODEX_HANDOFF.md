@@ -1,60 +1,60 @@
 # Codex Handoff
 
-## Repository
+## Status legend
 
-- **Path:** `enterprise-control-platform`
-- **Branch:** `feature/enterprise-control-platform`
-- **Stack:** Next.js 16, TypeScript, Supabase (migrations only until local stack running), next-intl, Vitest, Playwright
+| Label | Meaning |
+|-------|---------|
+| **Database-backed** | Reads/writes local Supabase |
+| **Tested** | Automated test executed and passed |
+| **Partial** | Core path works; gaps documented |
+| **Scaffold** | Route exists; no business workflow |
+| **Fixture only** | TypeScript seed for tests, not runtime UI |
 
-## What works today
+## Fully implemented + tested
 
-1. Bilingual app shell (AR RTL / EN LTR) with full primary navigation
-2. Seed-backed dashboards: executive, hospital, restaurant, project EV, employee performance
-3. Domain services: financial formulas, permissions, money utilities — **21 unit tests passing**
-4. PostgreSQL migrations (6 files) with RLS foundation
-5. Production build passing
+| Feature | Status |
+|---------|--------|
+| Local Supabase on isolated ports | Database-backed, tested (3× reset) |
+| Migrations + triggers + RLS foundation | Database-backed, tested (10 DB tests) |
+| Hospital budget workflow | Database-backed, tested (integration + E2E) |
+| Actual CSV/Excel import | Database-backed, partial E2E (UI load) |
+| Khamis Mushait project dashboard | Database-backed, partial |
+| Executive / home / hospital dashboards | Database-backed |
+| Financial domain formulas | Tested (21 unit tests) |
 
-## Priority takeover tasks
+## Partially implemented
 
-### P0 — Database live
+- Budget change approval (DB + UI buttons; no full approval queue screen)
+- Variance explanations (auto-created on threshold; no review UI)
+- Project EV metrics (uses approved milestone progress; actuals from allocations when present)
+- Employee performance (team/milestone counts from DB; not full KPI scorecard)
 
-1. `supabase start` + `supabase db reset`
-2. Add seed migration (`20260805120600_seed_data.sql`) with Al Modawat sample data
-3. Replace `development-seed.ts` dashboard queries with Supabase server queries + RLS tests
+## Scaffold only (no mock data)
 
-### P1 — Core workflows
+actuals, approvals, audit, changes, commitments, cost-control, forecasts, master-data, milestones, reports, risks, tasks, administration
 
-1. Budget version CRUD + approval workflow UI
-2. Actual import (CSV) with batch reconciliation UI
-3. Auth login page wired to Supabase Auth
-4. Complete RLS policies for all tables in migrations
+## Blocked / not done
 
-### P2 — Acceptance scenarios
+- Production Supabase connection (intentionally excluded)
+- Full auth login UI
+- Email alerts
+- Excel export on reports (CSV template download only for import)
 
-Implement end-to-end flows for hospital budget, restaurant branch comparison, building project EV, security negative tests, financial integrity, bilingual navigation (partially covered by Playwright).
-
-## Key files
-
-| Area | Path |
-|------|------|
-| Financial domain | `src/domain/financial/calculations.ts` |
-| Permissions | `src/domain/auth/permissions.ts` |
-| Branding config | `src/config/product.ts` |
-| Migrations | `supabase/migrations/` |
-| i18n | `messages/en.json`, `messages/ar.json` |
-| Seed ( interim ) | `src/data/seed/development-seed.ts` |
-
-## Commands
+## Key commands
 
 ```bash
-npm run verify    # lint + typecheck + test + build
-npm run test:e2e  # requires dev server
+supabase start
+supabase db reset
+node scripts/sync-local-env.cjs
+npm run verify
 ```
 
-## Do not
+## Priority next steps
 
-- Deploy to Vercel or connect production Supabase
-- Force-push or apply destructive migrations without review
-- Commit secrets
+1. Session-based auth replacing hardcoded actor IDs in `src/app/actions/*`
+2. Complete RLS for all tables + expand DB negative tests
+3. Restaurant branch KPI workflow (revenue + food/labor % from mapped actuals)
+4. Approval queue UI
+5. Report export (CSV/Excel)
 
-See [COMPOSER_COMPLETION_REPORT.md](./COMPOSER_COMPLETION_REPORT.md) for exact test/build results.
+See [COMPOSER_COMPLETION_REPORT.md](./COMPOSER_COMPLETION_REPORT.md) and [DATABASE_EXECUTION_REPORT.md](./DATABASE_EXECUTION_REPORT.md).

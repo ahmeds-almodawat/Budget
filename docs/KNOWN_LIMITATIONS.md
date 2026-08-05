@@ -1,8 +1,9 @@
 # Known Limitations
 
-1. **Local Supabase not verified** — migrations exist; apply manually with `supabase db reset`.
-2. **Module CRUD pages** — scaffold placeholders; dashboards use seed data.
-3. **Auth UI** — Supabase Auth integration prepared; login page not fully wired without env keys.
-4. **Excel import** — specified; CSV/Excel parsers not fully implemented in UI.
-5. **Email alerts** — in-app notifications schema only; no external email.
-6. **Advanced Phase 6 features** — partial schema (risks, notifications); full workflows incomplete.
+1. **Auth UI** — Server actions use seeded local actor UUIDs; Supabase Auth login page not wired.
+2. **Scaffold modules** — Several nav routes are descriptive placeholders without workflows.
+3. **Restaurant KPIs** — Branch list is database-backed; food/labor percentages require mapped revenue/cost actuals.
+4. **RLS coverage** — Foundation policies exist; not every table/role combination is tested.
+5. **Approval queues** — Budget/import approvals execute in DB but lack dedicated queue UI.
+6. **Report export** — Import CSV template only; operational report Excel export not implemented.
+7. **pgTAP** — SQL test placeholder remains; executable tests use `scripts/run-db-tests.mjs`.

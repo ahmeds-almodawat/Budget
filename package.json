@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.database.config.ts",
     "test:e2e": "playwright test",
-    "verify": "npm run lint && npm run typecheck && npm run test && npm run build"
+    "test:db": "node scripts/run-db-tests.mjs",
+    "env:sync": "node scripts/sync-local-env.cjs",
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run test:db && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.7.1",
@@ -37,11 +39,14 @@
     "lucide-react": "^1.28.0",
     "next": "16.3.0",
     "next-intl": "^4.13.5",
+    "papaparse": "^5.5.4",
+    "pg": "^8.22.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-hook-form": "^7.84.0",
     "recharts": "^3.10.1",
     "tailwind-merge": "^3.6.0",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -52,6 +57,8 @@
     "@testing-library/user-event": "^14.6.3",
     "@types/jsdom": "^28.0.3",
     "@types/node": "^20",
+    "@types/papaparse": "^5.5.2",
+    "@types/pg": "^8.20.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.5",

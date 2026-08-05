@@ -1,30 +1,32 @@
 # Implementation Status
 
-**Last updated:** 2026-08-05  
-**Branch:** `feature/enterprise-control-platform`
+**Last updated:** 2026-08-05 (database workflows run)
 
-## Phase summary
+| Phase | Status | Evidence |
+|-------|--------|----------|
+| 1 — Supabase isolation | ✅ Complete | Ports 56000–56009, `supabase start` OK |
+| 2 — Migrations | ✅ Complete | 9 migrations, 3× clean reset |
+| 3 — DB integrity tests | ✅ Complete | 10/10 passed |
+| 4 — Repository layer | ✅ Complete | `src/data/repositories/*`, seed removed from pages |
+| 5 — Hospital budget slice | ✅ Complete | Budgets UI + hospital dashboard + integration test |
+| 6 — Actual import | ✅ Complete | CSV/XLSX pipeline + post batch |
+| 7 — Project slice | 🟡 Partial | Khamis project bootstrap + EV dashboard |
+| 8 — UI bilingual | ✅ Complete | EN/AR, RTL, localized strings |
+| 9 — Testing | ✅ Complete | 22 unit/integration, 10 DB, 5 E2E |
+| 10 — Verification | ✅ Complete | lint, typecheck, build pass |
+| 11 — Docs + checkpoint | ✅ Complete | Updated docs; tag pending commit |
 
-| Phase | Status | Notes |
-|-------|--------|-------|
-| 0 — Repository & design | ✅ Complete | Scaffold, docs, migrations planned |
-| 1 — Foundation & security | 🟡 Partial | Profiles/RLS SQL, permissions domain, seed data |
-| 2 — Control scopes & schedule | 🟡 Partial | Schema + project dashboard; UI modules scaffolded |
-| 3 — Cost & budgets | 🟡 Partial | Schema + domain formulas; budget screens scaffolded |
-| 4 — Actuals & forecasts | 🟡 Partial | Schema + import model; UI scaffolded |
-| 5 — Performance & dashboards | 🟡 Partial | Executive, hospital, restaurant, project, employee dashboards |
-| 6 — Governance & advanced | 🟡 Partial | Risk/notification schema; registers scaffolded |
-| 7 — Hardening | 🟡 In progress | Tests, verify pipeline, completion report |
+## Verification snapshot
 
-## Verified locally
-
-Run `npm run verify` for current lint, typecheck, unit test, and build results.
-
-## Blockers
-
-- Local Supabase/Docker not confirmed — migrations created but not applied automatically
-- Full CRUD UI for all modules not yet implemented — dashboards use development seed
+| Command | Result |
+|---------|--------|
+| `npm run lint` | Pass |
+| `npm run typecheck` | Pass |
+| `npm run test` | 22/22 pass |
+| `npm run test:db` | 10/10 pass |
+| `npm run test:e2e` | 5/5 pass |
+| `npm run build` | Success |
 
 ## Remaining risks
 
-See [KNOWN_LIMITATIONS.md](./KNOWN_LIMITATIONS.md) and [COMPOSER_COMPLETION_REPORT.md](./COMPOSER_COMPLETION_REPORT.md).
+See [KNOWN_LIMITATIONS.md](./KNOWN_LIMITATIONS.md) and [SECURITY_REVIEW.md](./SECURITY_REVIEW.md).

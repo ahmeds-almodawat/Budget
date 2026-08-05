@@ -69,7 +69,8 @@
       "mtd": "Month to Date",
       "ytd": "Year to Date",
       "fullYearForecast": "Full Year Forecast",
-      "unmappedActuals": "Unmapped Actual Transactions"
+      "unmappedActuals": "Unmapped Actual Transactions",
+      "varianceExplanationRequired": "Variance explanation required"
     },
     "restaurant": {
       "title": "Restaurant Operational Dashboard",

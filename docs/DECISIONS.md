@@ -8,4 +8,4 @@
 | D-004 | next-intl with `[locale]` segment | Structured bilingual routing |
 | D-005 | Immutable posted actuals | ERP integration integrity |
 | D-006 | npm (not pnpm) | pnpm not installed in environment |
-| D-007 | Feature branch `feature/enterprise-control-platform` | Safe parallel development |
+| D-008 | Isolated Supabase ports 56000–56009 | Avoid grc-control-center conflict and Windows excluded ranges |
