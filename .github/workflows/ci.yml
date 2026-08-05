@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feature/enterprise-control-platform]
   push:
     branches: [feature/enterprise-control-platform]
   workflow_dispatch:
@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.18.0"
           cache: npm
 
       - name: Install dependencies
@@ -32,13 +32,27 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.111.0
 
       - name: Start Supabase
         run: supabase start
 
-      - name: Reset database
-        run: supabase db reset
+      - name: Wait for local services
+        run: npm run db:wait-local
+
+      - name: Replay production migrations without fixtures
+        run: supabase db reset --no-seed
+
+      - name: Wait for reset services
+        run: npm run db:wait-local
+
+      - name: Verify production migration safety
+        run: node scripts/assert-production-migrations-safe.mjs
+
+      - name: Load explicit local personas
+        run: npm run db:fixtures:local
+        env:
+          ALLOW_LOCAL_FIXTURES: "true"
 
       - name: Sync local environment
         run: node scripts/sync-local-env.cjs
@@ -73,6 +87,15 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+      - name: Upload authorization evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: authorization-matrix
+          path: artifacts/authorization/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Stop Supabase
         if: always()

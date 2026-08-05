@@ -37,8 +37,12 @@ npm run dev
 Apply/reset database:
 
 ```bash
-supabase db reset
+npx supabase db reset --no-seed
+npm run db:wait-local
+node scripts/assert-production-migrations-safe.mjs
 node scripts/sync-local-env.cjs     # refresh keys if needed
+$env:ALLOW_LOCAL_FIXTURES='true'     # PowerShell; use export on POSIX
+npm run db:fixtures:local
 ```
 
 Open:
@@ -51,7 +55,8 @@ Open:
 
 **Local development and CI only.** Do not reuse these credentials or seed migrations in production.
 
-Password for all local seeded users: `Password123!` (defined in seed migrations, not in application runtime code)
+Password for all explicitly loaded local users: `Password123!` (defined only in
+the guarded local fixture, never in production migrations)
 
 | Email | Role |
 |-------|------|
@@ -63,17 +68,13 @@ Password for all local seeded users: `Password123!` (defined in seed migrations,
 | pm@modawat.local | project_manager |
 | employee@modawat.local | employee |
 
-## Authentication seed boundary
+## Authentication fixture boundary
 
-Known-password `auth.users` rows are inserted **only** in these migrations:
-
-- `20260805120800_workflow_seed_users.sql`
-- `20260805121200_project_schedule_progress.sql`
-
-These migrations are intended for **local Supabase** and **GitHub Actions CI** (deterministic test identities). Production deployment procedures must:
-
-1. Apply schema migrations without re-running local-only seed blocks, **or**
-2. Use a production-specific seed process with unique credentials and no shared development password.
+`supabase db reset --no-seed` replays the production-safe migration chain and
+must leave `auth.users` empty on a fresh database. Local and CI personas are
+loaded afterward from `supabase/fixtures/local_personas.sql`. The fixture loader
+requires an explicit environment flag and verifies the exact loopback database;
+it cannot be pointed at a remote database.
 
 Passwords must not appear in runtime UI, server logs, CI stdout, or build artifacts. Test fixtures may reference the shared local password in `src/test/fixtures/users.ts` and `e2e/*.spec.ts` only.
 
@@ -82,12 +83,12 @@ Passwords must not appear in runtime UI, server logs, CI stdout, or build artifa
 ```bash
 npm run lint
 npm run typecheck
-npm run test          # 26 unit/integration tests
-npm run test:db       # 15 database integrity tests
+npm run test          # 29 unit/integration tests
+npm run test:db       # 22 database/integrity/authorization tests
 npm run test:e2e      # 17 Playwright tests
 npm run build
 supabase status
-node scripts/count-rls-policies.cjs   # optional: exact RLS count
+node scripts/assert-production-migrations-safe.mjs
 ```
 
 ## Security notes

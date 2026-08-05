@@ -15,10 +15,15 @@ Production-oriented bilingual (Arabic/English) enterprise platform for project m
 
 ```bash
 cp .env.example .env.local
-npm install
-supabase start
+npm ci
+npx supabase start
+npm run db:wait-local
+npx supabase db reset --no-seed
+node scripts/assert-production-migrations-safe.mjs
 node scripts/sync-local-env.cjs
-supabase db reset
+# PowerShell: $env:ALLOW_LOCAL_FIXTURES='true'
+# POSIX:      export ALLOW_LOCAL_FIXTURES=true
+npm run db:fixtures:local
 npm run dev
 ```
 
@@ -26,11 +31,14 @@ Open [http://localhost:3000/en/auth/sign-in](http://localhost:3000/en/auth/sign-
 
 ### Local Supabase (optional)
 
+Local personas are never part of the production migration replay. They require
+the explicit, loopback-guarded fixture command shown above.
+
 When Docker and Supabase CLI are available:
 
 ```bash
-supabase start
-supabase db reset
+npx supabase start
+npx supabase db reset --no-seed
 ```
 
 Copy anon/service keys from `supabase status` into `.env.local`. **Never use production credentials.**

@@ -14,7 +14,7 @@ The platform uses **Supabase Auth** with cookie-based sessions (`@supabase/ssr`)
 | Middleware | Session refresh, redirect unauthenticated users to `/[locale]/auth/sign-in` |
 | `src/lib/auth/context.ts` | `getAuthContext()`, `requireAuthContext()`, `requirePermission()`, `assertLegalEntityAccess()` |
 | Server actions | Permission checks + RLS-aware Supabase server client |
-| RLS (PostgreSQL) | Entity isolation via `user_legal_entity_ids()`, role checks via `user_has_role()` |
+| RLS (PostgreSQL) | Forced RLS on all public tables; canonical helpers in the non-exposed `private` schema |
 | UI | Role-aware button states, auth user bar, bilingual sign-in |
 
 ## Service role usage
@@ -40,7 +40,12 @@ Password for all users: `Password123!`
 
 ### Production boundary
 
-Local users with known passwords are created in migrations `20260805120800` and `20260805121200` only. These must not be applied to production databases. E2E and integration tests authenticate against the local Supabase Auth instance using fixtures in `src/test/fixtures/users.ts` — never mock sessions in E2E.
+Local users are created only by `supabase/fixtures/local_personas.sql`, through
+`npm run db:fixtures:local`. The loader refuses unless `ALLOW_LOCAL_FIXTURES=true`,
+`--confirm-local` is present, and `DATABASE_URL` exactly matches the loopback
+database reported by the repository's running Supabase stack. Production
+migrations contain no known password, development email, Auth insert, identity
+insert, profile fixture, membership fixture, or role fixture.
 
 ## Routes
 
@@ -61,13 +66,22 @@ Local users with known passwords are created in migrations `20260805120800` and 
 
 | Function | `search_path` | Execute grant |
 |----------|---------------|---------------|
-| `user_legal_entity_ids()` | `public` | `authenticated` only |
-| `user_has_role(text, uuid)` | `public` | `authenticated` only |
+| `private.current_user_is_active()` | empty | `authenticated` only; schema not exposed |
+| `private.current_user_has_active_membership()` | empty | `authenticated` only; schema not exposed |
+| `private.user_can_access_legal_entity(uuid)` | empty | `authenticated` only; schema not exposed |
+| `private.user_has_any_role(...)` | empty | `authenticated` only; schema not exposed |
+| `private.user_has_role(...)` | empty | `authenticated` only; schema not exposed |
+
+All ten trigger-only functions are also in `private`, use an empty
+`search_path`, are invoker functions, and have no client execute grant. No
+application or extension function remains in `public`.
 
 ## Verification
 
 ```bash
-supabase db reset
+npx supabase db reset --no-seed
+node scripts/assert-production-migrations-safe.mjs
+npm run db:fixtures:local # only with the explicit local guard enabled
 npm run verify
 npm run test:e2e
 ```
