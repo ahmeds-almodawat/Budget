@@ -59,14 +59,18 @@ DECLARE
   pm_id UUID := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6';
   encrypted_pw TEXT := crypt('Password123!', gen_salt('bf'));
 BEGIN
-  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+  INSERT INTO auth.users (
+    id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+    confirmation_token, recovery_token, email_change_token_new, email_change,
+    raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+  )
   VALUES
-    (budget_owner_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'budget.owner@modawat.local', encrypted_pw, NOW(), '{"provider":"email","providers":["email"]}', '{}', NOW(), NOW()),
-    (approver_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'approver@modawat.local', encrypted_pw, NOW(), '{"provider":"email","providers":["email"]}', '{}', NOW(), NOW()),
-    (finance_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'finance@modawat.local', encrypted_pw, NOW(), '{"provider":"email","providers":["email"]}', '{}', NOW(), NOW()),
-    (auditor_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'auditor@modawat.local', encrypted_pw, NOW(), '{"provider":"email","providers":["email"]}', '{}', NOW(), NOW()),
-    (viewer_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'viewer@modawat.local', encrypted_pw, NOW(), '{"provider":"email","providers":["email"]}', '{}', NOW(), NOW()),
-    (pm_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'pm@modawat.local', encrypted_pw, NOW(), '{"provider":"email","providers":["email"]}', '{}', NOW(), NOW())
+    (budget_owner_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'budget.owner@modawat.local', encrypted_pw, NOW(), '', '', '', '', '{"provider":"email","providers":["email"]}', '{}', NOW(), NOW()),
+    (approver_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'approver@modawat.local', encrypted_pw, NOW(), '', '', '', '', '{"provider":"email","providers":["email"]}', '{}', NOW(), NOW()),
+    (finance_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'finance@modawat.local', encrypted_pw, NOW(), '', '', '', '', '{"provider":"email","providers":["email"]}', '{}', NOW(), NOW()),
+    (auditor_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'auditor@modawat.local', encrypted_pw, NOW(), '', '', '', '', '{"provider":"email","providers":["email"]}', '{}', NOW(), NOW()),
+    (viewer_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'viewer@modawat.local', encrypted_pw, NOW(), '', '', '', '', '{"provider":"email","providers":["email"]}', '{}', NOW(), NOW()),
+    (pm_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'pm@modawat.local', encrypted_pw, NOW(), '', '', '', '', '{"provider":"email","providers":["email"]}', '{}', NOW(), NOW())
   ON CONFLICT (id) DO NOTHING;
 
   INSERT INTO auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
