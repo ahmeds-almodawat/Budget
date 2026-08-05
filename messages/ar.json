@@ -89,7 +89,15 @@
     "signIn": "تسجيل الدخول",
     "signOut": "تسجيل الخروج",
     "email": "البريد الإلكتروني",
-    "password": "كلمة المرور"
+    "password": "كلمة المرور",
+    "signInSubtitle": "سجّل الدخول بحساب المؤسسة",
+    "signingIn": "جاري تسجيل الدخول...",
+    "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+    "notConfigured": "المصادقة غير مهيأة.",
+    "accessDeniedTitle": "تم رفض الوصول",
+    "accessDeniedMessage": "ليس لديك صلاحية للوصول إلى هذا المورد.",
+    "returnHome": "العودة للرئيسية",
+    "sessionExpired": "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى."
   },
   "budget": {
     "title": "الميزانيات",

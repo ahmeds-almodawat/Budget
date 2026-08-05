@@ -3,6 +3,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing, type AppLocale } from "@/i18n/routing";
 import { AppShell } from "@/components/layout/app-shell";
+import { getCurrentUserSummary } from "@/app/actions/auth-actions";
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -24,12 +25,13 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
   const messages = await getMessages();
   const dir = locale === "ar" ? "rtl" : "ltr";
+  const user = await getCurrentUserSummary();
 
   return (
     <html lang={locale} dir={dir} className="h-full">
       <body className="min-h-full bg-slate-50 text-slate-900 antialiased">
         <NextIntlClientProvider messages={messages}>
-          <AppShell>{children}</AppShell>
+          <AppShell user={user}>{children}</AppShell>
         </NextIntlClientProvider>
       </body>
     </html>

@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { productConfig } from "@/config/product";
+import type { UserSummary } from "@/components/layout/app-shell";
+import { hasPermission, type RoleAssignment, type RoleCode } from "@/domain/auth/permissions";
 
 const navItems = [
   { key: "home", href: "", icon: Home },
@@ -50,13 +52,24 @@ const navItems = [
   { key: "auditLog", href: "audit", icon: ScrollText },
 ] as const;
 
-export function AppSidebar() {
+export function AppSidebar({ user }: { user: UserSummary | null }) {
   const t = useTranslations("nav");
   const locale = useLocale();
   const pathname = usePathname();
   const productName =
     locale === "ar" ? productConfig.workingName.ar : productConfig.workingName.en;
   const otherLocale = locale === "ar" ? "en" : "ar";
+
+  const roleAssignments: RoleAssignment[] = (user?.roleCodes ?? []).map((roleCode) => ({
+    roleCode: roleCode as RoleCode,
+    scopeType: "legal_entity",
+    scopeId: user?.primaryLegalEntityId ?? "",
+  }));
+
+  function canRead(resource: Parameters<typeof hasPermission>[1]) {
+    if (!user) return false;
+    return hasPermission(roleAssignments, resource, "read", user.primaryLegalEntityId ?? undefined);
+  }
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-e border-slate-200 bg-slate-950 text-slate-100">
@@ -69,6 +82,8 @@ export function AppSidebar() {
       <nav className="flex-1 overflow-y-auto p-2" aria-label="Main navigation">
         <ul className="space-y-1">
           {navItems.map(({ key, href, icon: Icon }) => {
+            if (key === "auditLog" && !canRead("audit")) return null;
+            if (key === "imports" && !canRead("actual")) return null;
             const url = `/${locale}${href ? `/${href}` : ""}`;
             const active = pathname === url || (href && pathname.startsWith(`${url}/`));
             return (

@@ -89,7 +89,15 @@
     "signIn": "Sign In",
     "signOut": "Sign Out",
     "email": "Email",
-    "password": "Password"
+    "password": "Password",
+    "signInSubtitle": "Sign in with your organization account",
+    "signingIn": "Signing in...",
+    "invalidCredentials": "Invalid email or password.",
+    "notConfigured": "Authentication is not configured.",
+    "accessDeniedTitle": "Access denied",
+    "accessDeniedMessage": "You do not have permission to access this resource.",
+    "returnHome": "Return to home",
+    "sessionExpired": "Your session has expired. Please sign in again."
   },
   "budget": {
     "title": "Budgets",
