@@ -8,38 +8,45 @@
 | Database | Node/pg scripts | `scripts/run-db-tests.mjs` |
 | CI | GitHub Actions | `.github/workflows/ci.yml` |
 
-## Current counts (feature branch @ `ca51c4e`)
+## Current remediation evidence (final local clean run)
 
 | Suite | Files / tests | Last local run (2026-08-05) |
 |-------|---------------|------------------------------|
-| Vitest | 6 files, **26 tests** | 26 pass, 0 fail, 0 skip |
-| Database | **15 tests** | 15 pass |
-| Playwright E2E | **17 tests** (`auth-workflows` 10, `bilingual-navigation` 5, `project-workflows` 2) | 17 pass (single complete execution) |
+| Vitest | 6 files, **29 tests** | 29 pass, 0 fail, 0 skip |
+| Database | **22 tests** | 22 pass; emits privilege/policy artifact |
+| Playwright E2E | **17 tests** | 17 pass on first attempt; retries disabled |
 
 ## Auth test coverage
 
 - **E2E:** sign-in redirect, budget workflow, self-approval denial, finance imports, auditor read-only, Arabic RTL, sign-out, project progress paths
 - **Integration:** authenticated budget workflow; viewer write denial; project progress (where present)
-- **DB:** integrity triggers, baseline immutability, self-verify denial, RLS role matrix
+- **DB:** all 54 table classifications; all three views; exact grants for anon/authenticated/service-role; all 84 policies; function ACL/search-path/security mode; tenant isolation; inactive/future/expired/no-membership/group/entity/project personas; representative allowed/denied writes
 
 ## CI workflow
 
-Runs on `pull_request` → `main`, `push` to `feature/enterprise-control-platform`, and `workflow_dispatch`:
+Runs on pull requests to `main` or `feature/enterprise-control-platform`, pushes
+to `feature/enterprise-control-platform`, and manual dispatch:
 
-1. `npm ci` (Node 20)
-2. `supabase start` + `supabase db reset`
-3. `node scripts/sync-local-env.cjs` (secrets written to `.env.local` only, not logged)
-4. `npm run lint`, `typecheck`, `test`, `test:db`, `test:e2e`, `build`
-5. Playwright report artifact on failure
+1. `npm ci` (Node `22.18.0`) and Supabase CLI `2.111.0`
+2. start and readiness gate
+3. `supabase db reset --no-seed`, readiness gate, migration-safety scan, and zero-Auth-user assertion
+4. explicit guarded local persona fixture
+5. lint, typecheck, unit/integration, DB, E2E, and build—once, with no retries
+6. authorization matrix always; Playwright report on failure
 
-Local test password is created deterministically in seed migrations — not stored as a GitHub secret.
+The local password exists only in the guarded fixture and test fixture files; it
+is not a GitHub secret and is never installed by production migrations.
 
 ## Commands
 
 ```bash
 supabase start
-supabase db reset
+npx supabase db reset --no-seed
+npm run db:wait-local
+node scripts/assert-production-migrations-safe.mjs
 node scripts/sync-local-env.cjs
+$env:ALLOW_LOCAL_FIXTURES='true'
+npm run db:fixtures:local
 npm run test
 npm run test:db
 npm run test:e2e

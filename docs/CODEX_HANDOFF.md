@@ -1,5 +1,9 @@
 # Codex Handoff
 
+> **Superseded historical handoff.** Its completion counts and readiness claims
+> describe an earlier SHA. Use `CODEX_AUDIT_REPORT.md` and
+> `REMEDIATION_EVIDENCE.md` for current disposition.
+
 **Review preparation:** 2026-08-05  
 **Base:** `main` @ `7d754c8` (`composer-foundation-v1`)  
 **Head:** `feature/enterprise-control-platform` @ `ca51c4e` (`composer-core-modules-v1`)

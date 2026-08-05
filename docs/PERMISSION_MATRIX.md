@@ -13,6 +13,9 @@ Roles defined in `src/domain/auth/permissions.ts`:
 | Project Manager | Project | Project/WBS | No budget approval |
 | Employee | Task | Own tasks | Cannot approve own progress |
 
-Database RLS enforces legal-entity isolation via `memberships` and `user_legal_entity_ids()`.
+Database RLS enforces active membership, legal-entity isolation, effective role
+dates, and group/entity/subordinate scope through canonical helpers in the
+non-exposed `private` schema. `npm run test:db` generates the exact object and
+policy matrix.
 
 See [PERMISSION_MATRIX.md](./PERMISSION_MATRIX.md) for full matrix.

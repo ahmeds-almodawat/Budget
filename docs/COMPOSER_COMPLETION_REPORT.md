@@ -1,5 +1,10 @@
 # Composer Completion Report
 
+> **Historical, non-authoritative evidence.** The independent audit reproduced
+> failures at audited SHA `97049df`; do not use the completion claims below for
+> merge or production decisions. Current authorization evidence is in
+> `REMEDIATION_EVIDENCE.md`, and all other audit findings remain controlling.
+
 **Last updated:** 2026-08-05 (Codex review preparation)  
 **Feature branch:** `feature/enterprise-control-platform` @ `ca51c4e`  
 **Base branch:** `main` @ `7d754c8` (`composer-foundation-v1`)
@@ -76,7 +81,8 @@ Do not treat a single successful retry on a constrained host as proof of build s
 
 ## Local authentication seed warning
 
-Known-password users (`*@modawat.local`) are created only in migrations `20260805120800_workflow_seed_users.sql` and `20260805121200_project_schedule_progress.sql`. These are **local development and CI fixtures only** and must not be applied to production databases. See `docs/LOCAL_SETUP.md` § Authentication seed boundary.
+Known-password users are no longer created by any migration. They exist only in
+the explicit loopback-guarded local fixture. See `docs/LOCAL_SETUP.md`.
 
 ## Codex audit priorities
 

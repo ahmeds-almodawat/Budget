@@ -4,6 +4,9 @@
  * Run: npm run test:db
  */
 import pg from "pg";
+import { mkdir, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 
 const connectionString =
   process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:56002/postgres";
@@ -15,6 +18,60 @@ function test(name, fn) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+const EXPOSED_TABLES = [
+  "actual_transaction_allocations", "actual_transactions", "approval_requests",
+  "budget_change_lines", "budget_change_requests", "budget_lines",
+  "budget_monthly_allocations", "budget_versions", "commitments", "control_accounts",
+  "control_scope_types", "control_scopes", "cost_nodes", "decisions",
+  "duplicate_review_queue", "fiscal_periods", "fiscal_years", "import_batches",
+  "imported_source_rows", "issues", "legal_entities", "memberships",
+  "milestone_progress_updates", "milestone_steps", "milestones", "notifications",
+  "organization_unit_types", "organization_units", "organizations", "profiles",
+  "progress_evidence", "project_phases", "projects", "register_actions",
+  "register_dependencies", "risks", "role_assignments", "roles",
+  "schedule_change_requests", "tasks", "teams", "unmapped_transaction_queue",
+  "variance_explanations", "vendors", "work_packages",
+];
+const EXPOSED_VIEWS = [
+  "v_approval_inbox", "v_budget_vs_actual", "v_restaurant_branch_performance",
+];
+const SERVER_ONLY_TABLES = [
+  "audit_events", "forecast_lines", "forecast_versions", "gl_accounts",
+  "gl_cost_mappings", "permissions", "role_permissions", "task_dependencies", "team_members",
+];
+const INSERT_TABLES = [
+  "actual_transaction_allocations", "actual_transactions", "approval_requests",
+  "budget_change_lines", "budget_change_requests", "budget_lines",
+  "budget_monthly_allocations", "budget_versions", "commitments", "control_accounts",
+  "decisions", "duplicate_review_queue", "import_batches", "imported_source_rows",
+  "issues", "milestone_progress_updates", "milestones", "progress_evidence", "projects",
+  "register_actions", "register_dependencies", "risks", "schedule_change_requests",
+  "unmapped_transaction_queue", "variance_explanations",
+];
+const UPDATE_TABLES = [
+  "actual_transactions", "approval_requests", "budget_change_requests", "budget_lines",
+  "budget_versions", "commitments", "import_batches", "milestone_progress_updates",
+  "milestones", "projects", "risks", "schedule_change_requests", "variance_explanations",
+];
+
+async function asRole(client, role, userId, fn) {
+  await client.query("BEGIN");
+  try {
+    await client.query(`SET LOCAL role ${role}`);
+    if (userId) {
+      await client.query("SELECT set_config('request.jwt.claims', $1, true)", [
+        JSON.stringify({ sub: userId, role }),
+      ]);
+    }
+    const result = await fn();
+    await client.query("ROLLBACK");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  }
 }
 
 test("organization unit cannot be its own parent", async (client) => {
@@ -408,7 +465,291 @@ test("RLS denies finance user from inserting actuals without finance role scope 
   }
 });
 
+test("authorization catalog is complete and emits a machine-readable matrix", async (client) => {
+  const { rows: objects } = await client.query(`
+    SELECT c.relname AS object_name, c.relkind, c.relrowsecurity, c.relforcerowsecurity,
+      c.reloptions, pg_catalog.obj_description(c.oid, 'pg_class') AS classification
+    FROM pg_catalog.pg_class AS c
+    JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind IN ('r','v')
+    ORDER BY c.relname
+  `);
+  const tables = objects.filter((row) => row.relkind === "r");
+  const views = objects.filter((row) => row.relkind === "v");
+  assert(tables.length === 54, `Expected 54 public tables, found ${tables.length}`);
+  assert(views.length === 3, `Expected 3 public views, found ${views.length}`);
+  assert(tables.every((row) => row.relrowsecurity && row.relforcerowsecurity), "Every table must enable and force RLS");
+  assert(objects.every((row) => row.classification?.startsWith("@classification ")), "Every public table/view needs a classification");
+  assert(views.every((row) => row.reloptions?.includes("security_invoker=true")), "Every public view must use security_invoker");
+
+  const { rows: policies } = await client.query(`
+    SELECT tablename, policyname, cmd, roles, qual, with_check
+    FROM pg_catalog.pg_policies
+    WHERE schemaname = 'public'
+    ORDER BY tablename, policyname
+  `);
+  assert(policies.length === 84, `Expected 84 reviewed policies, found ${policies.length}`);
+  assert(
+    policies.every((policy) => String(policy.roles) === "{authenticated}"),
+    "Every policy must explicitly target authenticated",
+  );
+
+  const privilegeRows = {};
+  for (const grantee of ["anon", "authenticated", "service_role", "PUBLIC"]) {
+    const { rows } = await client.query(`
+      SELECT table_name, privilege_type
+      FROM information_schema.table_privileges
+      WHERE table_schema = 'public' AND grantee = $1
+      ORDER BY table_name, privilege_type
+    `, [grantee]);
+    privilegeRows[grantee] = rows;
+  }
+  assert(privilegeRows.anon.length === 0, "anon must have no public object privileges");
+  assert(privilegeRows.service_role.length === 0, "service_role must have no implicit business-object privileges");
+  assert(privilegeRows.PUBLIC.length === 0, "PUBLIC must have no public object privileges");
+
+  const actual = new Map();
+  for (const row of privilegeRows.authenticated) {
+    if (!actual.has(row.table_name)) actual.set(row.table_name, new Set());
+    actual.get(row.table_name).add(row.privilege_type);
+  }
+  const expected = new Map();
+  for (const name of [...EXPOSED_TABLES, ...EXPOSED_VIEWS]) expected.set(name, new Set(["SELECT"]));
+  for (const name of INSERT_TABLES) expected.get(name).add("INSERT");
+  for (const name of UPDATE_TABLES) expected.get(name).add("UPDATE");
+  assert(actual.size === expected.size, `Unexpected authenticated privilege object count: ${actual.size}`);
+  for (const [name, operations] of expected) {
+    const actualOperations = actual.get(name);
+    assert(actualOperations, `Missing authenticated privileges for ${name}`);
+    assert(
+      [...actualOperations].sort().join(",") === [...operations].sort().join(","),
+      `${name} privileges were ${[...actualOperations]}, expected ${[...operations]}`,
+    );
+  }
+  for (const name of SERVER_ONLY_TABLES) {
+    assert(!actual.has(name), `${name} is server-only but has authenticated privileges`);
+  }
+
+  const ownerOperations = new Map();
+  for (const object of objects) {
+    const operations = [];
+    for (const operation of ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]) {
+      const { rows } = await client.query(
+        "SELECT pg_catalog.has_table_privilege('postgres', $1, $2) AS allowed",
+        [`public.${object.object_name}`, operation],
+      );
+      if (rows[0].allowed) operations.push(operation);
+    }
+    ownerOperations.set(object.object_name, operations);
+    assert(operations.length === 7, `Database owner privilege set is incomplete for ${object.object_name}`);
+  }
+
+  const { rows: profileColumns } = await client.query(`
+    SELECT column_name, privilege_type
+    FROM information_schema.column_privileges
+    WHERE table_schema = 'public' AND table_name = 'profiles'
+      AND grantee = 'authenticated' AND privilege_type = 'UPDATE'
+    ORDER BY column_name
+  `);
+  assert(
+    profileColumns.map((row) => row.column_name).join(",") ===
+      "full_name_ar,full_name_en,preferred_locale,preferred_timezone,updated_at",
+    "Profile UPDATE must be limited to the five self-service columns",
+  );
+
+  const matrix = objects.map((object) => ({
+    object: object.object_name,
+    kind: object.relkind === "r" ? "table" : "view",
+    classification: object.classification,
+    rlsEnabled: object.relkind === "r" ? object.relrowsecurity : null,
+    rlsForced: object.relkind === "r" ? object.relforcerowsecurity : null,
+    securityInvoker: object.relkind === "v" ? object.reloptions?.includes("security_invoker=true") : null,
+    authenticatedOperations: [...(actual.get(object.object_name) ?? [])].sort(),
+    anonOperations: [],
+    serviceRoleOperations: [],
+    databaseOwnerOperations: ownerOperations.get(object.object_name),
+  }));
+  const artifactDir = fileURLToPath(new URL("../artifacts/authorization/", import.meta.url));
+  await mkdir(artifactDir, { recursive: true });
+  await writeFile(
+    `${artifactDir}/privilege-and-policy-matrix.json`,
+    `${JSON.stringify({ generatedAt: new Date().toISOString(), objects: matrix, policies }, null, 2)}\n`,
+  );
+});
+
+test("local persona loader fails closed without explicit authorization", async () => {
+  const env = { ...process.env };
+  delete env.ALLOW_LOCAL_FIXTURES;
+  const result = spawnSync(
+    process.execPath,
+    [fileURLToPath(new URL("./seed-local-fixtures.mjs", import.meta.url)), "--confirm-local"],
+    { cwd: fileURLToPath(new URL("..", import.meta.url)), env, encoding: "utf8" },
+  );
+  assert(result.status !== 0, "Fixture loader ran without ALLOW_LOCAL_FIXTURES=true");
+  assert(result.stderr.includes("Local fixture guard refused"), "Fixture loader did not fail through its guard");
+});
+
+test("functions have hardened schemas, paths, security modes, and ACLs", async (client) => {
+  const { rows: publicFunctions } = await client.query(`
+    SELECT p.proname FROM pg_catalog.pg_proc AS p
+    JOIN pg_catalog.pg_namespace AS n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+  `);
+  assert(publicFunctions.length === 0, `Expected no public functions, found ${publicFunctions.length}`);
+
+  const { rows: functions } = await client.query(`
+    SELECT p.oid, p.proname, p.prosecdef, p.proconfig,
+      pg_catalog.has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth_execute,
+      pg_catalog.has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_execute,
+      pg_catalog.has_function_privilege('service_role', p.oid, 'EXECUTE') AS service_execute,
+      EXISTS (
+        SELECT 1 FROM pg_catalog.aclexplode(
+          COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+        ) AS acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+      ) AS public_execute
+    FROM pg_catalog.pg_proc AS p
+    JOIN pg_catalog.pg_namespace AS n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'private'
+    ORDER BY p.proname
+  `);
+  const helpers = new Set([
+    "current_user_has_active_membership", "current_user_is_active",
+    "user_can_access_legal_entity", "user_has_any_role", "user_has_role",
+  ]);
+  assert(functions.length === 15, `Expected 15 private functions, found ${functions.length}`);
+  for (const fn of functions) {
+    assert(fn.proconfig?.includes('search_path=""'), `${fn.proname} must set an empty search_path`);
+    assert(fn.prosecdef === helpers.has(fn.proname), `${fn.proname} has the wrong security mode`);
+    assert(fn.auth_execute === helpers.has(fn.proname), `${fn.proname} authenticated EXECUTE mismatch`);
+    assert(!fn.anon_execute && !fn.service_execute && !fn.public_execute, `${fn.proname} has an unintended execute grant`);
+  }
+});
+
+test("all exposed objects are executable for an active member and tenant aggregates deny no-membership", async (client) => {
+  await asRole(client, "authenticated", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3", async () => {
+    for (const object of [...EXPOSED_TABLES, ...EXPOSED_VIEWS]) {
+      await client.query(`SELECT count(*) FROM public.${object}`);
+    }
+  });
+
+  await asRole(client, "authenticated", "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5", async () => {
+    for (const object of [...EXPOSED_TABLES.filter((name) => name !== "profiles"), ...EXPOSED_VIEWS]) {
+      const { rows } = await client.query(`SELECT count(*)::int AS count FROM public.${object}`);
+      assert(rows[0].count === 0, `No-membership persona saw rows from ${object}`);
+    }
+  });
+});
+
+test("inactive, future, expired, no-membership, group, entity, and project scopes are enforced", async (client) => {
+  const roleCases = [
+    ["baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2", false, "inactive profile"],
+    ["baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3", false, "future role"],
+    ["baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4", false, "expired role"],
+    ["baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5", false, "no membership"],
+    ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3", true, "active finance role"],
+  ];
+  for (const [userId, expected, label] of roleCases) {
+    await asRole(client, "authenticated", userId, async () => {
+      const { rows } = await client.query(`
+        SELECT private.user_has_role(
+          'finance_user', '11111111-1111-1111-1111-111111111102'
+        ) AS allowed
+      `);
+      assert(rows[0].allowed === expected, `${label} returned ${rows[0].allowed}`);
+    });
+  }
+
+  await asRole(client, "authenticated", "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", async () => {
+    const { rows } = await client.query("SELECT id FROM public.legal_entities ORDER BY id");
+    assert(rows.length === 2, `Group admin should see two in-group entities, saw ${rows.length}`);
+    assert(!rows.some((row) => row.id === "12111111-1111-1111-1111-111111111102"), "Group admin crossed organizations");
+    const { rows: role } = await client.query(`
+      SELECT private.user_has_role(
+        'system_administrator', '11111111-1111-1111-1111-111111111103'
+      ) AS allowed
+    `);
+    assert(role[0].allowed, "Group role should authorize a descendant legal entity");
+  });
+
+  await asRole(client, "authenticated", "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6", async () => {
+    const { rows } = await client.query("SELECT id FROM public.legal_entities");
+    assert(rows.length === 1 && rows[0].id === "12111111-1111-1111-1111-111111111102", "Entity-B user leaked tenant A");
+    const { rows: wrongEntity } = await client.query(`
+      SELECT private.user_has_role(
+        'finance_user', '11111111-1111-1111-1111-111111111102'
+      ) AS allowed
+    `);
+    assert(!wrongEntity[0].allowed, "Entity-B role authorized entity A");
+  });
+
+  await asRole(client, "authenticated", "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa7", async () => {
+    const { rows } = await client.query(`
+      SELECT
+        private.user_has_role('project_manager','11111111-1111-1111-1111-111111111102','project','cccccccc-cccc-cccc-cccc-ccccccccccc1') AS own_project,
+        private.user_has_role('project_manager','11111111-1111-1111-1111-111111111102','project','cccccccc-cccc-cccc-cccc-ccccccccccc2') AS sibling_project,
+        private.user_has_role('project_manager','11111111-1111-1111-1111-111111111102') AS entity_wide
+    `);
+    assert(rows[0].own_project, "Project-scoped role did not authorize its own project");
+    assert(!rows[0].sibling_project && !rows[0].entity_wide, "Project-scoped role widened beyond its project");
+    const own = await client.query("UPDATE public.projects SET priority = 4 WHERE id = 'cccccccc-cccc-cccc-cccc-ccccccccccc1'");
+    const sibling = await client.query("UPDATE public.projects SET priority = 4 WHERE id = 'cccccccc-cccc-cccc-cccc-ccccccccccc2'");
+    assert(own.rowCount === 1 && sibling.rowCount === 0, "Project update RLS did not preserve exact scope");
+  });
+});
+
+test("tenant views isolate both tenants and restaurant totals exclude unposted actuals", async (client) => {
+  await asRole(client, "authenticated", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3", async () => {
+    const { rows } = await client.query(`
+      SELECT branch_code, revenue::numeric FROM public.v_restaurant_branch_performance ORDER BY branch_code
+    `);
+    assert(!rows.some((row) => row.branch_code === "REST-OTHER"), "Primary tenant saw other-tenant aggregate");
+    const branch = rows.find((row) => row.branch_code === "REST-B1");
+    assert(branch && Number(branch.revenue) === 85000, `Unposted revenue leaked into aggregate: ${branch?.revenue}`);
+    for (const view of EXPOSED_VIEWS.filter((name) => name !== "v_restaurant_branch_performance")) {
+      const { rows: leaked } = await client.query(`
+        SELECT count(*)::int AS count FROM public.${view}
+        WHERE legal_entity_id = '12111111-1111-1111-1111-111111111102'
+      `);
+      assert(leaked[0].count === 0, `${view} leaked other-tenant rows`);
+    }
+  });
+
+  await asRole(client, "authenticated", "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6", async () => {
+    const { rows } = await client.query("SELECT branch_code, revenue::numeric FROM public.v_restaurant_branch_performance");
+    assert(rows.length === 1 && rows[0].branch_code === "REST-OTHER" && Number(rows[0].revenue) === 12345,
+      "Other tenant aggregate was missing or contaminated");
+  });
+});
+
+test("write RLS allows the right tenant and denies cross-tenant submissions", async (client) => {
+  await asRole(client, "authenticated", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3", async () => {
+    const allowed = await client.query(`
+      INSERT INTO public.actual_transactions (
+        legal_entity_id, source_system, source_transaction_id, transaction_date, amount_ex_vat, amount_inc_vat
+      ) VALUES ('11111111-1111-1111-1111-111111111102','AUTH-TEST','PRIMARY-ALLOWED','2027-03-01',1,1)
+    `);
+    assert(allowed.rowCount === 1, "Finance role could not insert in its entity");
+  });
+
+  let denied = false;
+  try {
+    await asRole(client, "authenticated", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3", async () => {
+      await client.query(`
+        INSERT INTO public.actual_transactions (
+          legal_entity_id, source_system, source_transaction_id, transaction_date, amount_ex_vat, amount_inc_vat
+        ) VALUES ('12111111-1111-1111-1111-111111111102','AUTH-TEST','OTHER-DENIED','2027-03-01',1,1)
+      `);
+    });
+  } catch {
+    denied = true;
+  }
+  assert(denied, "Finance role inserted into another tenant");
+});
+
 async function main() {
+  if (tests.length === 0) {
+    throw new Error("Zero database tests were discovered");
+  }
   const client = new pg.Client({ connectionString });
   await client.connect();
   let passed = 0;
