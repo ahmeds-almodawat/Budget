@@ -57,4 +57,14 @@ reports.
 No test command in the final clean sequence was retried. GitHub Actions at the
 exact PR head remains pending and is not replaced by local evidence.
 
+## CI evidence protocol
+
+PR run `31049895766` passed every required stage on head
+`36d6bfaefc5c82e88364df5a673ccb6f7ffaa2bd` in one run and uploaded the
+authorization matrix. Its deprecation annotation led to pinning current official
+action releases by immutable commit SHA. Because that pin changes the PR head,
+the required closing evidence is the subsequent exact-head check linked on PR
+`#2`; it must pass without rerun. The PR check, not a self-referential document
+commit, is the authoritative final run record.
+
 The original audit remains the source of truth for all out-of-scope findings.
