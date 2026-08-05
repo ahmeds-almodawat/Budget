@@ -112,7 +112,11 @@
     "phases": "Phases",
     "workPackages": "Work Packages",
     "baseline": "Original Baseline",
-    "forecast": "Current Forecast"
+    "forecast": "Current Forecast",
+    "timeline": "Project timeline",
+    "submitProgress": "Submit progress",
+    "verifyProgress": "Verify progress",
+    "scheduleExtension": "Schedule extension"
   },
   "financial": {
     "budgetVsActual": "Budget vs Actual",

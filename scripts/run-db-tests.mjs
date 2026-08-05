@@ -165,14 +165,16 @@ test("duplicate source transaction id is rejected", async (client) => {
 test("project baseline dates cannot be overwritten", async (client) => {
   await client.query("BEGIN");
   try {
+    const { rows: cs } = await client.query(
+      `INSERT INTO control_scopes (id, legal_entity_id, scope_type_id, code, name_en, name_ar, approval_status)
+       VALUES ('55555555-5555-5555-5555-555555555599', '11111111-1111-1111-1111-111111111102',
+         '44444444-4444-4444-4444-444444444402', 'TEST-PROJ-BL', 'Test', 'اختبار', 'approved')
+       RETURNING id`,
+    );
     const { rows } = await client.query(
-      `INSERT INTO projects (
-        id, control_scope_id, baseline_start, baseline_end
-      ) VALUES (
-        'cccccccc-cccc-cccc-cccc-ccccccccccc1',
-        '55555555-5555-5555-5555-555555555503',
-        '2027-01-01', '2028-06-30'
-      ) RETURNING id`,
+      `INSERT INTO projects (id, control_scope_id, baseline_start, baseline_end)
+       VALUES ('cccccccc-cccc-cccc-cccc-cccccccccc99', $1, '2027-01-01', '2028-06-30') RETURNING id`,
+      [cs[0].id],
     );
     let failed = false;
     try {
@@ -194,10 +196,17 @@ test("project baseline dates cannot be overwritten", async (client) => {
 test("milestone reporter cannot verify own progress", async (client) => {
   await client.query("BEGIN");
   try {
+    const { rows: cs } = await client.query(
+      `INSERT INTO control_scopes (id, legal_entity_id, scope_type_id, code, name_en, name_ar, approval_status)
+       VALUES ('55555555-5555-5555-5555-555555555598', '11111111-1111-1111-1111-111111111102',
+         '44444444-4444-4444-4444-444444444402', 'TEST-MS-SELF', 'Test', 'اختبار', 'approved')
+       RETURNING id`,
+    );
     const { rows } = await client.query(
       `INSERT INTO projects (id, control_scope_id) VALUES (
-        'cccccccc-cccc-cccc-cccc-ccccccccccc2', '55555555-5555-5555-5555-555555555503'
+        'cccccccc-cccc-cccc-cccc-cccccccccc98', $1
       ) RETURNING id`,
+      [cs[0].id],
     );
     const { rows: ms } = await client.query(
       `INSERT INTO milestones (project_id, code, name_en, name_ar)
@@ -328,6 +337,43 @@ test("RLS allows budget owner to read budgets in assigned entity", async (client
       `SELECT count(*)::int AS c FROM budget_versions WHERE legal_entity_id = '11111111-1111-1111-1111-111111111102'`,
     );
     assert(rows[0].c >= 0, "Budget owner should query budgets in assigned entity");
+    await client.query("ROLLBACK");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  }
+});
+
+test("milestone baseline date cannot be overwritten", async (client) => {
+  await client.query("BEGIN");
+  try {
+    const { rows: cs } = await client.query(
+      `INSERT INTO control_scopes (id, legal_entity_id, scope_type_id, code, name_en, name_ar, approval_status)
+       VALUES ('55555555-5555-5555-5555-555555555597', '11111111-1111-1111-1111-111111111102',
+         '44444444-4444-4444-4444-444444444402', 'TEST-MS-BL', 'Test', 'اختبار', 'approved')
+       RETURNING id`,
+    );
+    const { rows } = await client.query(
+      `INSERT INTO projects (id, control_scope_id) VALUES (
+        'cccccccc-cccc-cccc-cccc-cccccccccc97', $1
+      ) RETURNING id`,
+      [cs[0].id],
+    );
+    const { rows: ms } = await client.query(
+      `INSERT INTO milestones (project_id, code, name_en, name_ar, baseline_date)
+       VALUES ($1, 'MS-BL-TEST', 'Baseline Test', 'اختبار', '2027-06-01') RETURNING id`,
+      [rows[0].id],
+    );
+    let failed = false;
+    try {
+      await client.query(
+        `UPDATE milestones SET baseline_date = '2027-07-01' WHERE id = $1`,
+        [ms[0].id],
+      );
+    } catch {
+      failed = true;
+    }
+    assert(failed, "Milestone baseline date must be immutable");
     await client.query("ROLLBACK");
   } catch (e) {
     await client.query("ROLLBACK");

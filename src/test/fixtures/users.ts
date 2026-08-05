@@ -9,6 +9,7 @@ export const TEST_USER_IDS = {
   auditor: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4",
   viewer: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5",
   projectManager: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6",
+  employee: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa7",
   noMembership: "ffffffff-ffff-ffff-ffff-ffffffffffff",
 } as const;
 
@@ -20,6 +21,7 @@ export const TEST_USER_CREDENTIALS = {
   auditor: { email: "auditor@modawat.local", id: TEST_USER_IDS.auditor },
   viewer: { email: "viewer@modawat.local", id: TEST_USER_IDS.viewer },
   projectManager: { email: "pm@modawat.local", id: TEST_USER_IDS.projectManager },
+  employee: { email: "employee@modawat.local", id: TEST_USER_IDS.employee },
 } as const;
 
 export const TEST_LEGAL_ENTITY_MODAWAT = "11111111-1111-1111-1111-111111111102";
