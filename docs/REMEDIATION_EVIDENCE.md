@@ -4,6 +4,20 @@
 **Branch:** `fix/audit-p0-authorization`
 **Target:** `feature/enterprise-control-platform`
 
+## Implementation commits
+
+| Commit | Scope |
+|---|---|
+| `c159ae316582d442f58a8223ecc79eb357c153c2` | Removes deterministic users from production migrations; adds guarded local fixtures and fresh-replay safety assertion |
+| `9e7fa663ff1f4eff9c89321e8ea06aea6a948fc1` | Adds the forward authorization migration, exact grants/RLS/views/functions, scope parity, and regression matrix |
+| `089421438faff45bc2335aa056f562090d56c161` | Pins and sequences CI, disables retries, adds readiness handling, and updates audit/operating documentation |
+
+Material files are the seven modified legacy migrations/fixture safety files,
+`20260805205823_authorization_boundary.sql`, authentication context and permission
+domain, project-scope server/UI checks, `run-db-tests.mjs`, the CI and Playwright
+configurations, and the remediation/runbook documents. The PR diff is the
+authoritative complete file inventory.
+
 ## Historical first-attempt baseline
 
 No baseline command was retried or represented as stable: install, local start,
