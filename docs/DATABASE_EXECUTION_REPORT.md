@@ -2,78 +2,51 @@
 
 **Date:** 2026-08-05  
 **Project:** `enterprise-control-platform`  
-**Local Supabase:** running on isolated ports (see LOCAL_SETUP.md)
+**Milestone:** `composer-auth-workflows-v1`
 
 ## Migration execution
 
 | Item | Result |
 |------|--------|
-| Migrations designed | 9 files (`20260805120000` – `20260805120800`) |
-| Migrations applied locally | **9/9 success** |
+| Migrations designed | 12 files (`20260805120000` – `20260805121100`) |
+| Migrations applied locally | **12/12 success** |
 | Clean `supabase db reset` (run 1) | **Success** |
 | Clean `supabase db reset` (run 2) | **Success** |
-| Clean `supabase db reset` (run 3) | **Success** (after transient 502 retry) |
 
-## Objects actually created locally (verified via PostgreSQL)
+## Objects created locally
 
-| Object type | Designed | Created locally |
-|-------------|----------|-----------------|
-| Tables (public) | ~48 | **48** |
-| Views | 1 (`v_budget_vs_actual`) | **1** (security invoker) |
-| Functions | 8+ | **8** (`user_legal_entity_ids`, `user_has_role`, cycle guards, immutability, allocation validation, etc.) |
-| Triggers | 15+ | **15** |
-| RLS enabled tables | 20+ | **20** |
-| RLS policies | 26 designed in migrations 205+207 | **26** applied |
+| Object type | Count |
+|-------------|-------|
+| Tables (public) | 48 |
+| Views | 1 (`v_budget_vs_actual`, security invoker) |
+| RLS policies | **49** |
+| Functions (SECURITY DEFINER) | 8+ |
+| Triggers | 15+ |
 
-## Seed records (migration 206 + 208)
+## Role scenarios tested (DB + integration)
 
-- Al Modawat organization, legal entity, org units, control scopes, cost nodes
-- FY2027 + 12 deterministic fiscal periods
-- 9 roles (expanded set)
-- 6 local auth users (`*@modawat.local`, password `Password123!`)
-- Memberships and role assignments
-- Hospital control account for pharmacy injectables
+| Role | Tested |
+|------|--------|
+| budget_owner | Integration create/submit; E2E draft/submit |
+| approver | Integration approve/lock; E2E approve |
+| finance_user | Integration review; E2E imports |
+| auditor | DB insert deny; E2E read-only UI |
+| viewer | DB insert deny; integration write deny |
+| no-membership user | DB cross-entity deny |
+| cross-entity isolation | DB anonymous + no-membership |
 
-## Policies tested vs designed
-
-| Policy area | Designed | Executed in DB tests |
-|-------------|----------|----------------------|
-| Cross-entity isolation | Yes | **Yes** (anonymous user sees 0 entities) |
-| Member read | Yes | **Yes** (finance user reads assigned entity) |
-| Auditor write deny | Partial (app layer) | **Not fully tested at DB layer** |
-| Viewer insert deny | Partial | **Not fully tested at DB layer** |
-| Actual immutability | Yes | **Yes** (UPDATE policy false + tests) |
-| Budget immutability when locked | Yes | **Yes** (trigger test) |
-
-## Database tests executed
-
-Command: `npm run test:db`
-
-| Result | Count |
-|--------|-------|
-| Passed | **10** |
-| Failed | **0** |
-| Skipped | **0** |
-
-Tests cover: org cycle, cost leaf posting, locked budget immutability, allocation reconciliation, duplicate transactions, baseline preservation, progress segregation, RLS isolation/membership.
-
-## Application integration test
-
-Command: `npm run test` (Vitest)
+## Test results
 
 | Suite | Passed | Failed | Skipped |
 |-------|--------|--------|---------|
-| Unit (financial, permissions, money) | 21 | 0 | 0 |
-| Integration (hospital budget workflow) | 1 | 0 | 0 |
+| Vitest unit | 21 | 0 | 0 |
+| Vitest integration | 2 | 0 | 0 |
+| DB tests (`npm run test:db`) | 14 | 0 | 0 |
+| Playwright E2E | 15 | 0 | 0 |
+| Build | SUCCESS | — | — |
 
 ## Remaining gaps
 
-- RLS write-deny policies not exhaustively tested for every role/table combination
-- `supabase test db` pgTAP placeholder not replaced with full pgTAP suite
-- Restaurant branch KPI percentages require mapped actual import data (by design)
-- Some module routes remain scaffolds (actuals list UI, approvals UI, etc.)
-- Auth UI login flow not yet wired (server actions use seeded actor IDs for local workflow demonstration)
-
-## Repeatability
-
-Three consecutive clean resets succeeded after port isolation. Migration order is stable and idempotent within reset lifecycle.
+- RLS not exhaustively tested for every table/role combination
+- pgTAP placeholder not replaced
+- Some module routes remain scaffolds

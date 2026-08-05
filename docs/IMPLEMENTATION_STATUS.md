@@ -1,20 +1,15 @@
 # Implementation Status
 
-**Last updated:** 2026-08-05 (database workflows run)
+**Last updated:** 2026-08-05 (auth workflows milestone)
 
 | Phase | Status | Evidence |
 |-------|--------|----------|
-| 1 — Supabase isolation | ✅ Complete | Ports 56000–56009, `supabase start` OK |
-| 2 — Migrations | ✅ Complete | 9 migrations, 3× clean reset |
-| 3 — DB integrity tests | ✅ Complete | 10/10 passed |
-| 4 — Repository layer | ✅ Complete | `src/data/repositories/*`, seed removed from pages |
-| 5 — Hospital budget slice | ✅ Complete | Budgets UI + hospital dashboard + integration test |
-| 6 — Actual import | ✅ Complete | CSV/XLSX pipeline + post batch |
-| 7 — Project slice | 🟡 Partial | Khamis project bootstrap + EV dashboard |
-| 8 — UI bilingual | ✅ Complete | EN/AR, RTL, localized strings |
-| 9 — Testing | ✅ Complete | 22 unit/integration, 10 DB, 5 E2E |
-| 10 — Verification | ✅ Complete | lint, typecheck, build pass |
-| 11 — Docs + checkpoint | ✅ Complete | Updated docs; tag pending commit |
+| Auth + authorization | ✅ Complete | Supabase Auth, middleware, 49 RLS policies |
+| Hospital budget slice | ✅ Complete | Session-based actors, E2E multi-user flow |
+| Actual import | ✅ Complete | Finance-role gated server actions |
+| Project slice | 🟡 Partial | PM-scoped bootstrap, EV dashboard |
+| Testing | ✅ Complete | 23 unit/integration, 14 DB, 15 E2E |
+| Verification | ✅ Complete | lint, typecheck, build, 2× db reset |
 
 ## Verification snapshot
 
@@ -22,11 +17,13 @@
 |---------|--------|
 | `npm run lint` | Pass |
 | `npm run typecheck` | Pass |
-| `npm run test` | 22/22 pass |
-| `npm run test:db` | 10/10 pass |
-| `npm run test:e2e` | 5/5 pass |
+| `npm run test` | 23/23 pass |
+| `npm run test:db` | 14/14 pass |
+| `npm run test:e2e` | 15/15 pass |
 | `npm run build` | Success |
 
 ## Remaining risks
 
-See [KNOWN_LIMITATIONS.md](./KNOWN_LIMITATIONS.md) and [SECURITY_REVIEW.md](./SECURITY_REVIEW.md).
+- Production OAuth not configured
+- Restaurant KPI pipeline incomplete
+- Approval queue UI not built

@@ -16,10 +16,13 @@ Production-oriented bilingual (Arabic/English) enterprise platform for project m
 ```bash
 cp .env.example .env.local
 npm install
+supabase start
+node scripts/sync-local-env.cjs
+supabase db reset
 npm run dev
 ```
 
-Open [http://localhost:3000/en](http://localhost:3000/en) or [http://localhost:3000/ar](http://localhost:3000/ar).
+Open [http://localhost:3000/en/auth/sign-in](http://localhost:3000/en/auth/sign-in) (local users: `*@modawat.local` / `Password123!`).
 
 ### Local Supabase (optional)
 
@@ -39,7 +42,7 @@ Copy anon/service keys from `supabase status` into `.env.local`. **Never use pro
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript |
 | `npm run test` | Unit tests (Vitest) |
-| `npm run test:e2e` | Playwright E2E |
+| `npm run test:e2e` | Playwright E2E (real Supabase Auth) |
 | `npm run build` | Production build |
 | `npm run verify` | lint + typecheck + test + build |
 

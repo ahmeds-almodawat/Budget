@@ -14,10 +14,11 @@
 
 | Feature | Status |
 |---------|--------|
-| Local Supabase on isolated ports | Database-backed, tested (3× reset) |
-| Migrations + triggers + RLS foundation | Database-backed, tested (10 DB tests) |
+| Local Supabase on isolated ports | Database-backed, tested (2× reset) |
+| Migrations + triggers + RLS | Database-backed, tested (14 DB tests, 49 policies) |
+| **Supabase Auth + authorization** | **Tested (15 E2E, integration, RLS)** |
 | Hospital budget workflow | Database-backed, tested (integration + E2E) |
-| Actual CSV/Excel import | Database-backed, partial E2E (UI load) |
+| Actual CSV/Excel import | Database-backed, E2E |
 | Khamis Mushait project dashboard | Database-backed, partial |
 | Executive / home / hospital dashboards | Database-backed |
 | Financial domain formulas | Tested (21 unit tests) |
@@ -36,7 +37,6 @@ actuals, approvals, audit, changes, commitments, cost-control, forecasts, master
 ## Blocked / not done
 
 - Production Supabase connection (intentionally excluded)
-- Full auth login UI
 - Email alerts
 - Excel export on reports (CSV template download only for import)
 
@@ -47,14 +47,15 @@ supabase start
 supabase db reset
 node scripts/sync-local-env.cjs
 npm run verify
+npm run test:e2e
 ```
 
 ## Priority next steps
 
-1. Session-based auth replacing hardcoded actor IDs in `src/app/actions/*`
-2. Complete RLS for all tables + expand DB negative tests
-3. Restaurant branch KPI workflow (revenue + food/labor % from mapped actuals)
-4. Approval queue UI
-5. Report export (CSV/Excel)
+1. Restaurant branch KPI workflow (revenue + food/labor % from mapped actuals)
+2. Approval queue UI
+3. Report export (CSV/Excel)
+4. Complete RLS for remaining tables + expand DB negative tests
+5. Production OAuth/SSO
 
-See [COMPOSER_COMPLETION_REPORT.md](./COMPOSER_COMPLETION_REPORT.md) and [DATABASE_EXECUTION_REPORT.md](./DATABASE_EXECUTION_REPORT.md).
+See [AUTHENTICATION_AND_AUTHORIZATION.md](./AUTHENTICATION_AND_AUTHORIZATION.md) and [COMPOSER_COMPLETION_REPORT.md](./COMPOSER_COMPLETION_REPORT.md).
