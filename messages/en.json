@@ -1,0 +1,122 @@
+{
+  "common": {
+    "appName": "Enterprise Project, Budget and Performance Control",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "empty": "No data available",
+    "accessDenied": "Access denied",
+    "notFound": "Page not found",
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "approve": "Approve",
+    "reject": "Reject",
+    "export": "Export",
+    "search": "Search",
+    "filter": "Filter",
+    "actions": "Actions",
+    "viewAll": "View all",
+    "currency": "SAR",
+    "confirm": "Confirm"
+  },
+  "nav": {
+    "home": "Home",
+    "executiveDashboard": "Executive Dashboard",
+    "operationalBudgets": "Operational Budgets",
+    "projects": "Projects",
+    "milestones": "Milestones",
+    "tasks": "Tasks",
+    "costControl": "Cost Control",
+    "commitments": "Commitments",
+    "actualCosts": "Actual Costs",
+    "forecasts": "Forecasts",
+    "changes": "Changes",
+    "risksIssues": "Risks & Issues",
+    "reports": "Reports",
+    "employeePerformance": "Employee Performance",
+    "approvals": "Approvals",
+    "imports": "Imports",
+    "masterData": "Master Data",
+    "administration": "Administration",
+    "auditLog": "Audit Log"
+  },
+  "dashboard": {
+    "executive": {
+      "title": "Executive Dashboard",
+      "originalBudget": "Original Approved Budget",
+      "currentBudget": "Current Approved Budget",
+      "actualCost": "Actual Cost",
+      "committedCost": "Committed Cost",
+      "eac": "Estimate at Completion",
+      "variance": "Forecast Variance",
+      "delayedMilestones": "Delayed Milestones",
+      "projectsAtRisk": "Projects at Risk",
+      "hospitalPerformance": "Hospital Budget Performance",
+      "restaurantPerformance": "Restaurant Budget Performance"
+    },
+    "project": {
+      "title": "Project Dashboard",
+      "timeline": "Timeline",
+      "physicalProgress": "Physical Progress",
+      "cpi": "Cost Performance Index",
+      "spi": "Schedule Performance Index",
+      "pv": "Planned Value",
+      "ev": "Earned Value",
+      "ac": "Actual Cost"
+    },
+    "hospital": {
+      "title": "Hospital Operational Dashboard",
+      "mtd": "Month to Date",
+      "ytd": "Year to Date",
+      "fullYearForecast": "Full Year Forecast",
+      "unmappedActuals": "Unmapped Actual Transactions"
+    },
+    "restaurant": {
+      "title": "Restaurant Operational Dashboard",
+      "foodCostPercent": "Food Cost %",
+      "laborCostPercent": "Labor Cost %",
+      "branchComparison": "Branch Comparison"
+    },
+    "employee": {
+      "title": "Employee & Team Performance",
+      "onTimeCompletion": "On-Time Completion",
+      "accountableDelay": "Accountable Delay",
+      "forecastAccuracy": "Forecast Accuracy"
+    }
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "email": "Email",
+    "password": "Password"
+  },
+  "budget": {
+    "title": "Budgets",
+    "draft": "Draft",
+    "submitted": "Submitted",
+    "approved": "Approved",
+    "currentApproved": "Current Approved",
+    "varianceExplanationRequired": "Variance explanation required"
+  },
+  "project": {
+    "title": "Projects",
+    "phases": "Phases",
+    "workPackages": "Work Packages",
+    "baseline": "Original Baseline",
+    "forecast": "Current Forecast"
+  },
+  "financial": {
+    "budgetVsActual": "Budget vs Actual",
+    "commitments": "Commitments",
+    "availableBudget": "Available Budget",
+    "positiveVariance": "Favorable variance",
+    "negativeVariance": "Unfavorable variance"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected"
+  }
+}

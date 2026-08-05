@@ -1,0 +1,122 @@
+{
+  "common": {
+    "appName": "منصة إدارة المشاريع والميزانيات وقياس الأداء",
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ",
+    "empty": "لا توجد بيانات",
+    "accessDenied": "تم رفض الوصول",
+    "notFound": "الصفحة غير موجودة",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "submit": "إرسال",
+    "approve": "اعتماد",
+    "reject": "رفض",
+    "export": "تصدير",
+    "search": "بحث",
+    "filter": "تصفية",
+    "actions": "إجراءات",
+    "viewAll": "عرض الكل",
+    "currency": "ر.س",
+    "confirm": "تأكيد"
+  },
+  "nav": {
+    "home": "الرئيسية",
+    "executiveDashboard": "لوحة الإدارة التنفيذية",
+    "operationalBudgets": "الميزانيات التشغيلية",
+    "projects": "المشاريع",
+    "milestones": "المعالم",
+    "tasks": "المهام",
+    "costControl": "ضبط التكاليف",
+    "commitments": "الالتزامات",
+    "actualCosts": "التكاليف الفعلية",
+    "forecasts": "التوقعات",
+    "changes": "التغييرات",
+    "risksIssues": "المخاطر والقضايا",
+    "reports": "التقارير",
+    "employeePerformance": "أداء الموظفين",
+    "approvals": "الاعتمادات",
+    "imports": "الاستيراد",
+    "masterData": "البيانات الرئيسية",
+    "administration": "الإدارة",
+    "auditLog": "سجل التدقيق"
+  },
+  "dashboard": {
+    "executive": {
+      "title": "لوحة الإدارة التنفيذية",
+      "originalBudget": "الميزانية المعتمدة الأصلية",
+      "currentBudget": "الميزانية المعتمدة الحالية",
+      "actualCost": "التكلفة الفعلية",
+      "committedCost": "التكلفة الملتزم بها",
+      "eac": "تقدير التكلفة عند الإنجاز",
+      "variance": "انحراف التوقع",
+      "delayedMilestones": "المعالم المتأخرة",
+      "projectsAtRisk": "المشاريع المعرضة للمخاطر",
+      "hospitalPerformance": "أداء ميزانية المستشفى",
+      "restaurantPerformance": "أداء ميزانية المطاعم"
+    },
+    "project": {
+      "title": "لوحة المشروع",
+      "timeline": "الجدول الزمني",
+      "physicalProgress": "التقدم الفعلي",
+      "cpi": "مؤشر أداء التكلفة",
+      "spi": "مؤشر أداء الجدول",
+      "pv": "القيمة المخططة",
+      "ev": "القيمة المكتسبة",
+      "ac": "التكلفة الفعلية"
+    },
+    "hospital": {
+      "title": "لوحة التشغيل — المستشفى",
+      "mtd": "من بداية الشهر",
+      "ytd": "من بداية السنة",
+      "fullYearForecast": "توقع نهاية السنة",
+      "unmappedActuals": "معاملات فعلية غير مربوطة"
+    },
+    "restaurant": {
+      "title": "لوحة التشغيل — المطاعم",
+      "foodCostPercent": "نسبة تكلفة الطعام",
+      "laborCostPercent": "نسبة تكلفة العمالة",
+      "branchComparison": "مقارنة الفروع"
+    },
+    "employee": {
+      "title": "أداء الموظفين والفرق",
+      "onTimeCompletion": "الإنجاز في الموعد",
+      "accountableDelay": "التأخير المسؤول عنه",
+      "forecastAccuracy": "دقة التوقعات"
+    }
+  },
+  "auth": {
+    "signIn": "تسجيل الدخول",
+    "signOut": "تسجيل الخروج",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور"
+  },
+  "budget": {
+    "title": "الميزانيات",
+    "draft": "مسودة",
+    "submitted": "مقدمة",
+    "approved": "معتمدة",
+    "currentApproved": "المعتمدة الحالية",
+    "varianceExplanationRequired": "مطلوب تفسير للانحراف"
+  },
+  "project": {
+    "title": "المشاريع",
+    "phases": "المراحل",
+    "workPackages": "حزم العمل",
+    "baseline": "خط الأساس الأصلي",
+    "forecast": "التوقع الحالي"
+  },
+  "financial": {
+    "budgetVsActual": "الميزانية مقابل الفعلي",
+    "commitments": "الالتزامات",
+    "availableBudget": "الميزانية المتاحة",
+    "positiveVariance": "انحراف favorable",
+    "negativeVariance": "انحراف غير favorable"
+  },
+  "status": {
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "pending": "قيد الانتظار",
+    "approved": "معتمد",
+    "rejected": "مرفوض"
+  }
+}
