@@ -1,41 +1,45 @@
-# Forecast Control Model
+# Forecast Control Model (P4)
 
-## Status
+## State graph
 
-**Partially implemented** on `fix/audit-p3-reporting-ingress`.
+```
+draft ──submit──► submitted ──review──► under_review ──approve──► approved ──lock──► locked
+  │                  │                      │                         │
+  cancel             reject/cancel          reject/cancel             supersede
+  ▼                  ▼                      ▼                         ▼
+cancelled          rejected/cancelled     rejected/cancelled        superseded
+```
 
-## Schema
+## Uniqueness grain (current approved)
 
-`forecast_versions` extended with workflow columns mirroring budget versions:
+One `is_current_approved = true` row per:
 
-- `is_current_approved`, `submitted_at/by`, `reviewed_at/by`, `approved_at/by`, `locked_at`
-- Unique partial index: one current approved forecast per legal entity + control scope
+- `legal_entity_id`
+- `control_scope_id`
+- `fiscal_year_id`
+- `scenario`
+- `COALESCE(project_id, zero-uuid)`
+- `COALESCE(control_account_id, zero-uuid)`
 
-## Workflow (application layer)
+## Transactional commands
 
-| Step | Actor | Status transition |
-|------|-------|-------------------|
-| Create draft | Forecast owner | `draft` |
-| Submit | Owner | `submitted` |
-| Approve | Separate approver | `approved` / `locked` |
-| Supersede | System on new approval | prior → `superseded` |
+| Command | RPC |
+|---------|-----|
+| Create draft | `rpc_forecast_create_draft` |
+| Update draft | `rpc_forecast_update_draft` |
+| Submit | `rpc_forecast_submit` |
+| Begin review | `rpc_forecast_start_review` |
+| Reject | `rpc_forecast_reject` |
+| Cancel | `rpc_forecast_cancel` |
+| Approve + lock | `rpc_forecast_approve_and_lock` |
+| Supersede | `rpc_forecast_supersede` |
 
-Actions: `src/app/actions/forecast-actions.ts`  
-UI: `src/app/[locale]/forecasts/page.tsx`
+## Immutability
 
-## Relationship to reporting
+- Approved/locked/superseded version headers: financial metadata immutable
+- Forecast lines: mutable only while parent version is `draft`
 
-- Hospital forecast extension in `v_hospital_period_performance`: `full_year_forecast = ytd_actual + remaining_budget`
-- Governed forecast versions are the target for future report integration
+## Segregation of duties
 
-## Limitations
-
-- No P2-style transactional RPC commands yet (app-layer with RLS)
-- Monthly forecast line entry is basic; full assumption/quantity/rate model pending
-- Comparison with budget and actuals is read-only from reporting views
-
-## Future work
-
-- Transactional submit/approve RPCs with audit events
-- Forecast line grain matching `REPORTING_GRAIN_AND_LINEAGE.md`
-- Approved forecast selection in hospital and project reports
+- Submitter cannot approve (`SOD_VIOLATION`)
+- Draft edit restricted to owner or controller roles
