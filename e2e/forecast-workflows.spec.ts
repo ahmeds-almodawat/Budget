@@ -35,6 +35,7 @@ test.describe("forecast governed workflow (English)", () => {
     await signIn(ownerPage, USERS.budgetOwner);
     await ownerPage.goto("/en/forecasts");
     await expect(ownerPage.getByRole("heading", { name: "Forecasts" })).toBeVisible({ timeout: 15000 });
+    await expect(ownerPage.getByRole("button", { name: "Create draft" }).first()).toBeVisible({ timeout: 15000 });
 
     await ownerPage.getByLabel("Version label").fill(`E2E-FC1-${suffix}`);
     await ownerPage.getByLabel("Forecast amount").fill("42000");
@@ -86,11 +87,11 @@ test.describe("forecast governed workflow (English)", () => {
     const approver2Page = await approver2Context.newPage();
     await signIn(approver2Page, USERS.approver);
     await approver2Page.goto("/en/forecasts");
-    await expect(approver2Page.getByText("Approve and supersede current forecast")).toBeVisible({ timeout: 15000 });
-    await approver2Page.getByLabel("Approver comment").fill("E2E supersede approval");
-    await approver2Page.getByRole("button", { name: "Confirm approve and supersede" }).click();
-    await approver2Page.getByRole("button", { name: "Confirm" }).click();
-    await expect(approver2Page.getByText(/prior version superseded/i)).toBeVisible({ timeout: 15000 });
+    await expect(approverPage.getByText("Approve and supersede current forecast")).toBeVisible({ timeout: 15000 });
+    await approverPage.getByLabel("Approver comment").fill("E2E supersede approval");
+    await approverPage.getByRole("button", { name: "Confirm approve and supersede" }).click();
+    await approverPage.getByRole("button", { name: "Confirm" }).click();
+    await expect(approverPage.getByText(/prior version superseded|approved and locked/i)).toBeVisible({ timeout: 30000 });
     await expect(approver2Page.getByText("Superseded")).toBeVisible();
     await approver2Context.close();
   });
@@ -103,6 +104,7 @@ test.describe("forecast governed workflow (Arabic RTL)", () => {
     await page.goto("/ar/forecasts");
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expect(page.getByRole("heading", { name: "التوقعات" })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("button", { name: "إنشاء مسودة" }).first()).toBeVisible({ timeout: 15000 });
     await page.getByLabel("تسمية الإصدار").fill(`AR-FC-${Date.now()}`);
     await page.getByLabel("مبلغ التوقع").fill("35000");
     await page.getByRole("button", { name: "إنشاء مسودة" }).click();

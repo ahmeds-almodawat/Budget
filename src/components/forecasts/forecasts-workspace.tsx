@@ -183,12 +183,20 @@ export function ForecastsWorkspace({
           </CardHeader>
           <CardContent className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">{t("versionLabel")}</label>
-              <Input value={versionLabel} onChange={(e) => setVersionLabel(e.target.value)} />
+              <label htmlFor="forecast-version-label" className="text-xs font-medium text-slate-600">
+                {t("versionLabel")}
+              </label>
+              <Input
+                id="forecast-version-label"
+                value={versionLabel}
+                onChange={(e) => setVersionLabel(e.target.value)}
+              />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">{t("monthlyAmount")}</label>
-              <Input value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <label htmlFor="forecast-amount" className="text-xs font-medium text-slate-600">
+                {t("monthlyAmount")}
+              </label>
+              <Input id="forecast-amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
             <Button disabled={pending} onClick={handleCreate}>
               {t("createDraft")}
