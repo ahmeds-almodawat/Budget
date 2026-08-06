@@ -34,6 +34,9 @@ const EXPOSED_TABLES = [
   "schedule_change_requests", "tasks", "teams", "unmapped_transaction_queue",
   "variance_explanations", "vendors", "work_packages", "schedule_baseline_versions",
   "forecast_versions", "forecast_lines",
+  "governed_master_records", "approval_delegations", "fiscal_period_module_controls",
+  "purchase_requisitions", "purchase_requisition_lines", "purchase_orders",
+  "supplier_invoices", "payment_requests", "approval_rule_versions",
 ];
 const EXPOSED_VIEWS = [
   "v_approval_inbox", "v_budget_vs_actual", "v_restaurant_branch_performance",
@@ -51,11 +54,17 @@ const INSERT_TABLES = [
   "issues", "milestone_progress_updates", "milestones", "progress_evidence", "projects",
   "register_actions", "register_dependencies", "risks", "schedule_change_requests",
   "unmapped_transaction_queue", "variance_explanations",
+  "governed_master_records", "approval_delegations", "fiscal_period_module_controls",
+  "purchase_requisitions", "purchase_requisition_lines", "purchase_orders",
+  "supplier_invoices", "payment_requests", "approval_rule_versions",
 ];
 const UPDATE_TABLES = [
   "actual_transactions", "approval_requests", "budget_change_requests", "budget_lines",
   "budget_versions", "commitments", "import_batches", "milestone_progress_updates",
   "milestones", "projects", "risks", "schedule_change_requests", "variance_explanations",
+  "governed_master_records", "approval_delegations", "fiscal_period_module_controls",
+  "purchase_requisitions", "purchase_requisition_lines", "purchase_orders",
+  "supplier_invoices", "payment_requests", "approval_rule_versions",
 ];
 
 async function asRole(client, role, userId, fn) {
@@ -490,7 +499,7 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
   `);
   const tables = objects.filter((row) => row.relkind === "r");
   const views = objects.filter((row) => row.relkind === "v");
-  assert(tables.length === 55, `Expected 55 public tables, found ${tables.length}`);
+  assert(tables.length === 64, `Expected 64 public tables, found ${tables.length}`);
   assert(views.length === 5, `Expected 5 public views, found ${views.length}`);
   assert(tables.every((row) => row.relrowsecurity && row.relforcerowsecurity), "Every table must enable and force RLS");
   assert(objects.every((row) => row.classification?.startsWith("@classification ")), "Every public table/view needs a classification");
@@ -502,7 +511,7 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
     WHERE schemaname = 'public'
     ORDER BY tablename, policyname
   `);
-  assert(policies.length === 87, `Expected 87 reviewed policies, found ${policies.length}`);
+  assert(policies.length === 114, `Expected 114 reviewed policies, found ${policies.length}`);
   assert(
     policies.every((policy) => String(policy.roles) === "{authenticated}"),
     "Every policy must explicitly target authenticated",
@@ -618,7 +627,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
     WHERE n.nspname = 'public'
     ORDER BY p.proname
   `);
-  assert(publicFunctions.length === 23, `Expected 23 public RPC wrappers, found ${publicFunctions.length}`);
+  assert(publicFunctions.length === 43, `Expected 43 public RPC wrappers, found ${publicFunctions.length}`);
   for (const fn of publicFunctions) {
     assert(fn.proname.startsWith("rpc_"), `Unexpected public function ${fn.proname}`);
     assert(fn.prosecdef, `${fn.proname} must be SECURITY DEFINER`);
@@ -648,7 +657,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
   ]);
   const triggerOnly = new Set([
     "deny_audit_mutation", "enforce_allocation_tenant_consistency", "enforce_leaf_posting",
-    "prevent_cost_node_cycle", "prevent_inactive_cost_posting", "prevent_org_unit_cycle",
+    "prevent_cost_node_cycle", "prevent_inactive_cost_posting", "prevent_org_unit_cycle", "master_record_cycle_guard",
     "protect_immutable_budget_line", "protect_immutable_budget_monthly", "protect_locked_budget_version",
     "protect_immutable_forecast_line", "protect_locked_forecast_version",
     "protect_milestone_baseline", "protect_phase_baseline", "protect_posted_actual",

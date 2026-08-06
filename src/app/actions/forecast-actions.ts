@@ -16,7 +16,7 @@ import {
 import { FISCAL_YEAR_2027 } from "@/types/database";
 
 export async function fetchForecastsAction() {
-  return withActivePermission("budget", "read", async ({ legalEntityId, db }) => {
+  return withActivePermission("forecast", "read", async ({ legalEntityId, db }) => {
     const { data, error } = await db
       .from("forecast_versions")
       .select("*, forecast_lines(*)")
@@ -35,7 +35,7 @@ export async function createForecastDraftAction(params: {
   controlAccountId?: string;
   assumptions?: string;
 }) {
-  return withActivePermission("budget", "create", async ({ legalEntityId, db }) => {
+  return withActivePermission("forecast", "create", async ({ legalEntityId, db }) => {
     const result = await forecastCreateDraft(db, {
       legalEntityId,
       controlScopeId: params.controlScopeId,
@@ -63,7 +63,7 @@ export async function updateForecastDraftAction(params: {
   assumptions?: string;
   lines?: ForecastLineInput[];
 }) {
-  return withActivePermission("budget", "update", async ({ db }) => {
+  return withActivePermission("forecast", "update", async ({ db }) => {
     const result = await forecastUpdateDraft(db, params);
     const { data, error } = await db
       .from("forecast_versions")
@@ -76,7 +76,7 @@ export async function updateForecastDraftAction(params: {
 }
 
 export async function submitForecastAction(forecastVersionId: string) {
-  return withActivePermission("budget", "update", async ({ db }) => {
+  return withActivePermission("forecast", "update", async ({ db }) => {
     await forecastSubmit(db, forecastVersionId);
     const { data, error } = await db
       .from("forecast_versions")
@@ -89,7 +89,7 @@ export async function submitForecastAction(forecastVersionId: string) {
 }
 
 export async function startForecastReviewAction(forecastVersionId: string) {
-  return withActivePermission("budget", "update", async ({ db }) => {
+  return withActivePermission("forecast", "update", async ({ db }) => {
     await forecastStartReview(db, forecastVersionId);
     const { data, error } = await db
       .from("forecast_versions")
@@ -102,7 +102,7 @@ export async function startForecastReviewAction(forecastVersionId: string) {
 }
 
 export async function rejectForecastAction(forecastVersionId: string) {
-  return withActivePermission("budget", "approve", async ({ db }) => {
+  return withActivePermission("forecast", "approve", async ({ db }) => {
     await forecastReject(db, forecastVersionId);
     const { data, error } = await db
       .from("forecast_versions")
@@ -115,7 +115,7 @@ export async function rejectForecastAction(forecastVersionId: string) {
 }
 
 export async function cancelForecastAction(forecastVersionId: string) {
-  return withActivePermission("budget", "update", async ({ db }) => {
+  return withActivePermission("forecast", "update", async ({ db }) => {
     await forecastCancel(db, forecastVersionId);
     const { data, error } = await db
       .from("forecast_versions")
@@ -128,7 +128,7 @@ export async function cancelForecastAction(forecastVersionId: string) {
 }
 
 export async function approveForecastAction(forecastVersionId: string) {
-  return withActivePermission("budget", "approve", async ({ db }) => {
+  return withActivePermission("forecast", "approve", async ({ db }) => {
     await forecastApproveAndLock(db, forecastVersionId);
     const { data, error } = await db
       .from("forecast_versions")
@@ -146,7 +146,7 @@ export async function supersedeForecastAction(params: {
   approverComment: string;
   idempotencyKey?: string;
 }) {
-  return withActivePermission("budget", "approve", async ({ db }) => {
+  return withActivePermission("forecast", "approve", async ({ db }) => {
     await forecastApproveAndSupersede(db, {
       newForecastVersionId: params.newForecastVersionId,
       supersededForecastVersionId: params.supersededForecastVersionId,

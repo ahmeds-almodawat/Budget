@@ -9,6 +9,7 @@ on:
       - fix/audit-p2-financial-transactions
       - fix/audit-p3-reporting-ingress
       - fix/audit-p4-localization-forecast-rpc
+      - fix/audit-p5-procurement-governance
   push:
     branches:
       - feature/enterprise-control-platform
@@ -16,6 +17,7 @@ on:
       - fix/audit-p2-financial-transactions
       - fix/audit-p3-reporting-ingress
       - fix/audit-p4-localization-forecast-rpc
+      - fix/audit-p5-procurement-governance
   workflow_dispatch:
 
 concurrency:
@@ -46,7 +48,7 @@ jobs:
           version: 2.111.0
 
       - name: Start Supabase
-        run: supabase start
+        run: node scripts/start-local-stack.mjs
 
       - name: Wait for local services
         run: npm run db:wait-local

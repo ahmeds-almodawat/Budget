@@ -166,7 +166,7 @@ export function ForecastsWorkspace({
     if (status === "locked") return t("locked");
     if (status === "superseded") return t("superseded");
     if (status === "under_review") return tStatus("pending");
-    if (status === "submitted") return t("submit");
+    if (status === "submitted") return tStatus("submitted");
     if (status === "draft") return t("createDraft");
     if (status === "approved") return tStatus("approved");
     if (status === "rejected") return tStatus("rejected");
@@ -265,9 +265,17 @@ export function ForecastsWorkspace({
           </Card>
         ) : (
           forecasts.map((forecast) => (
-            <Card key={forecast.id}>
+            <Card
+              key={forecast.id}
+              as="article"
+              data-testid="forecast-version-card"
+              data-forecast-version-id={forecast.id}
+              aria-labelledby={`forecast-version-title-${forecast.id}`}
+            >
               <CardHeader className="flex flex-row items-center justify-between gap-2">
-                <CardTitle className="text-base">{forecast.version_label}</CardTitle>
+                <CardTitle id={`forecast-version-title-${forecast.id}`} className="text-base">
+                  {forecast.version_label}
+                </CardTitle>
                 <div className="flex items-center gap-2">
                   {forecast.is_current_approved ? (
                     <Badge variant="default">{t("currentApprovedBadge")}</Badge>

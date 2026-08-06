@@ -26,12 +26,42 @@ async function signOut(page: Page, locale: "en" | "ar" = "en") {
 }
 
 function forecastCard(page: Page, versionLabel: string) {
-  return page.locator("div").filter({ has: page.getByRole("heading", { name: versionLabel }) });
+  return page.getByTestId("forecast-version-card").filter({
+    has: page.getByRole("heading", {
+      name: versionLabel,
+      exact: true,
+    }),
+  });
 }
 
 async function clickForecastAction(page: Page, versionLabel: string, buttonName: string) {
-  await forecastCard(page, versionLabel).getByRole("button", { name: buttonName }).click();
+  const card = forecastCard(page, versionLabel);
+
+  await expect(card).toHaveCount(1);
+  await expect(card).toBeVisible();
+
+  const button = card.getByRole("button", {
+    name: buttonName,
+    exact: true,
+  });
+
+  await expect(button).toHaveCount(1);
+  await expect(button).toBeEnabled();
+  await button.click();
 }
+
+async function waitForForecastCardStatus(
+  page: Page,
+  versionLabel: string,
+  statusLabel: string,
+) {
+  const card = forecastCard(page, versionLabel);
+  await expect(card).toHaveCount(1);
+  await expect(card).toBeVisible({ timeout: 15000 });
+  await expect(card.getByText(statusLabel, { exact: true })).toBeVisible({ timeout: 15000 });
+}
+
+test.describe.configure({ mode: "serial" });
 
 test.describe("forecast governed workflow (English)", () => {
   test("full draft submit review approve supersede path", async ({ browser }) => {
@@ -59,7 +89,7 @@ test.describe("forecast governed workflow (English)", () => {
     const financePage = await financeContext.newPage();
     await signIn(financePage, USERS.finance);
     await financePage.goto("/en/forecasts");
-    await expect(forecastCard(financePage, v1)).toBeVisible({ timeout: 15000 });
+    await waitForForecastCardStatus(financePage, v1, "Submitted");
     await clickForecastAction(financePage, v1, "Start review");
     await expect(financePage.getByText(/review started/i)).toBeVisible({ timeout: 15000 });
     await financeContext.close();
@@ -68,7 +98,7 @@ test.describe("forecast governed workflow (English)", () => {
     const approverPage = await approverContext.newPage();
     await signIn(approverPage, USERS.approver);
     await approverPage.goto("/en/forecasts");
-    await expect(forecastCard(approverPage, v1)).toBeVisible({ timeout: 15000 });
+    await waitForForecastCardStatus(approverPage, v1, "Pending");
     await clickForecastAction(approverPage, v1, "Approve");
     await expect(approverPage.getByText(/approved and locked/i)).toBeVisible({ timeout: 15000 });
     await approverContext.close();
@@ -89,7 +119,7 @@ test.describe("forecast governed workflow (English)", () => {
     const finance2Page = await finance2Context.newPage();
     await signIn(finance2Page, USERS.finance);
     await finance2Page.goto("/en/forecasts");
-    await expect(forecastCard(finance2Page, v2)).toBeVisible({ timeout: 15000 });
+    await waitForForecastCardStatus(finance2Page, v2, "Submitted");
     await clickForecastAction(finance2Page, v2, "Start review");
     await expect(finance2Page.getByText(/review started/i)).toBeVisible({ timeout: 15000 });
     await finance2Context.close();
