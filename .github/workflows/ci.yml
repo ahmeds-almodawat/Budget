@@ -8,12 +8,14 @@ on:
       - fix/audit-p0-authorization
       - fix/audit-p2-financial-transactions
       - fix/audit-p3-reporting-ingress
+      - fix/audit-p4-localization-forecast-rpc
   push:
     branches:
       - feature/enterprise-control-platform
       - fix/audit-p0-authorization
       - fix/audit-p2-financial-transactions
       - fix/audit-p3-reporting-ingress
+      - fix/audit-p4-localization-forecast-rpc
   workflow_dispatch:
 
 concurrency:
@@ -75,8 +77,14 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Translation completeness
+        run: npm run test:i18n
+
       - name: Unit and integration tests
         run: npm run test
+
+      - name: Import security tests
+        run: npm run test:import-security
 
       - name: Database tests
         run: npm run test:db

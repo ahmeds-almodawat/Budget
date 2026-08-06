@@ -14,6 +14,8 @@
     "test:e2e": "playwright test",
     "test:db": "node scripts/run-db-tests.mjs",
     "test:concurrency": "node scripts/run-concurrency-tests.mjs",
+    "test:i18n": "node scripts/check-translations.mjs",
+    "test:import-security": "vitest run src/lib/import/secure-csv.security.test.ts",
     "db:fixtures:local": "node scripts/seed-local-fixtures.mjs --confirm-local",
     "db:wait-local": "node scripts/wait-for-local-stack.mjs",
     "env:sync": "node scripts/sync-local-env.cjs",
