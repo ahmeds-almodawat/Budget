@@ -27,5 +27,6 @@
 | Item | Value |
 |------|-------|
 | PR | [#3](https://github.com/ahmeds-almodawat/Budget/pull/3) |
-| Exact-head SHA | _pending first green run_ |
-| Run URL | _pending_ |
+| Exact-head SHA | `9157de9f4aef488fa256cf16442f579aa9e4019a` |
+| Run URL | https://github.com/ahmeds-almodawat/Budget/actions/runs/31077004643 |
+| Result | **SUCCESS** |

@@ -68,12 +68,9 @@ Sequence: `npm ci` → Supabase start → `db reset --no-seed` → migration saf
 
 ## Exact-head GitHub Actions evidence
 
-> Updated after the first green run at the CI-enabled exact head.
-
 | Field | Value |
 |-------|-------|
-| Exact head SHA | _pending first green run_ |
-| Workflow run URL | _pending_ |
-| Result | _pending_ |
-
-Local verification (2026-08-06, pre-CI-enablement): lint, typecheck, 31/31 Vitest, 23/23 DB, 4/4 concurrency, 61-route build passed; E2E requires isolated port in CI (`CI=true`).
+| Exact head SHA | `9157de9f4aef488fa256cf16442f579aa9e4019a` |
+| Workflow run URL | https://github.com/ahmeds-almodawat/Budget/actions/runs/31077004643 |
+| Result | **SUCCESS** (first attempt, all stages including concurrency and E2E) |
+| Verified at | 2026-08-06 |
