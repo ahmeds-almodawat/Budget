@@ -4,35 +4,32 @@
 > or happy path existed; it does not mean the independent audit accepted the
 > module as production-complete. See `CODEX_AUDIT_REPORT.md`.
 
-**Last updated:** 2026-08-05 (Codex review preparation)
+**Last updated:** 2026-08-06 (P3 remediation branch)
 
 | Module | Status | Evidence |
 |--------|--------|----------|
-| Auth + authorization | Remediated; CI pending | 54 forced-RLS tables, 84 explicit policies, generated privilege matrix |
-| Hospital budget workflow | ✅ Complete | Integration + E2E multi-user |
-| Actual import | ✅ Complete | Finance-gated server actions + E2E |
-| Project schedule & progress | ✅ Complete | Timeline, tasks, milestones, verification E2E |
-| Risk / issue / action / decision | ✅ Complete | Separate registers |
-| Approvals workspace | ✅ Complete | Unified inbox |
-| Actuals & commitments UI | ✅ Complete | Reversals-only for posted actuals |
-| Restaurant operational KPIs | ✅ Complete | 2-branch comparison from mapped actuals |
-| Audit & exceptions | ✅ Complete | Searchable audit + alerts |
-| Reporting & export | ✅ Complete | CSV/Excel |
-| GitHub Actions CI | Pending evidence | pinned toolchain and no-retry workflow added; exact-head result required |
-| `main` base branch | ✅ Created | From `composer-foundation-v1` (`7d754c8`) |
+| Auth + authorization | Remediated (P0/P2); CI verified | 55 forced-RLS tables, 85 policies |
+| Active tenant context | Implemented (P3) | Cookie + membership validation |
+| Hospital budget workflow | Complete | Integration + E2E multi-user |
+| Actual import | Secured (P3) | CSV-only bounded parser |
+| Reporting & export | Rebuilt (P3) | Authoritative views + safe export |
+| Forecasts | Partial (P3) | Draft/submit/approve page |
+| Project EVM | Rebuilt (P3) | `v_project_earned_value` |
+| GitHub Actions CI | P2 verified; P3 pending | See remediation evidence docs |
 
-## Verification snapshot (local, 2026-08-05 review prep)
+## Verification snapshot (P3 branch, pending final run)
 
 | Command | Result |
 |---------|--------|
-| `npm run lint` | Pass |
-| `npm run typecheck` | Pass |
-| `npm run test` | **26/26** pass, 0 skipped |
-| `npm run test:db` | **15/15** pass |
-| `npm run test:e2e` | **17/17** pass (one complete run) |
-| `npm run build` | Pass (first attempt this run) |
-| Migrations | **16** |
-| RLS policies | **75** (exact `pg_policies` count) |
+| `npm run lint` | Pass (local) |
+| `npm run typecheck` | Pass (local) |
+| `npm run test` | 51+ unit/integration (fixtures required for integration) |
+| `npm run test:db` | 23 pass |
+| `npm run test:concurrency` | 4 pass |
+| `npm run test:e2e` | 17 (CI authoritative) |
+| `npm run build` | Pass (local) |
+| Migrations | **28** |
+| RLS policies | **85** |
 
 CI Linux results are recorded separately when the GitHub Actions workflow completes.
 
@@ -41,5 +38,7 @@ CI Linux results are recorded separately when the GitHub Actions workflow comple
 - Production OAuth/SSO not configured
 - Delegated approval records not wired
 - Full procurement document lifecycle (contracts → invoices → payments)
-- Scaffold modules: cost-control, forecasts, performance, administration, master-data
-- Windows build may intermittently fail with worker exit `3221226505` (environmental; see completion report)
+- Scaffold modules: cost-control, performance, administration, master-data
+- Complete bilingual localization (partial on P3)
+- Transactional forecast RPC commands
+- Windows build may intermittently fail with worker exit `3221226505` (environmental)

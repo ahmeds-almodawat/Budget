@@ -17,7 +17,21 @@
 
 ## Migration
 
-`20260806090000_p3_reporting_forecast_indexes.sql` — rebuilds `v_budget_vs_actual`, adds `v_hospital_period_performance`, `v_project_earned_value`, forecast workflow columns, indexes.
+- `20260806090000_p3_reporting_forecast_indexes.sql` — rebuilds `v_budget_vs_actual`, adds `v_hospital_period_performance`, `v_project_earned_value`, forecast workflow columns, indexes.
+- `20260806100000_p3_budget_change_approve_fix.sql` — fixes COD-H-006 immutability trigger conflict on change approval.
+
+## Catalog counts (live, post-P3)
+
+| Object | Count |
+|--------|------:|
+| Public tables | 55 |
+| RLS-enabled tables | 55 |
+| Forced-RLS tables | 55 |
+| Authenticated policies | 85 |
+| Security-invoker views | 5 |
+| Public RPC wrappers | 14 |
+| Private functions | 37 |
+| Migrations | 28 |
 
 ## Parser disposition
 
@@ -30,7 +44,7 @@
 | Limit | Value |
 |-------|------:|
 | maxBytes | 5_242_880 (5 MiB) |
-| maxRows | 50_000 |
+| maxRows | 25,000 |
 | maxColumns | 64 |
 | maxCellLength | 4_096 |
 | maxLineLength | 65_536 |
