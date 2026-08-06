@@ -28,7 +28,7 @@ export default async function AuditPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <Link href={`/${locale}/exceptions`} className="text-sm text-teal-700 hover:underline">
+        <Link href={`/${locale}/exceptions`} className="text-sm text-primary hover:underline">
           {t("exceptions")}
         </Link>
       </div>

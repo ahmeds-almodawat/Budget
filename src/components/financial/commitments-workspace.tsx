@@ -47,7 +47,7 @@ export function CommitmentsWorkspace({
             key={key}
             type="button"
             onClick={() => setTab(key)}
-            className={`rounded-md px-3 py-1.5 text-sm ${tab === key ? "bg-teal-800 text-white" : "bg-slate-100"}`}
+            className={`rounded-md px-3 py-1.5 text-sm ${tab === key ? "bg-primary text-primary-foreground" : "bg-surface-muted text-foreground"}`}
           >
             {t(TAB_LABEL_KEYS[key])}
           </button>
@@ -65,8 +65,8 @@ export function CommitmentsWorkspace({
                     <span>{c.reference_number}</span>
                     <span>{c.approval_status}</span>
                   </div>
-                  <div className="text-slate-600">{c.description}</div>
-                  <div className="flex justify-between text-slate-500">
+                  <div className="text-text-secondary">{c.description}</div>
+                  <div className="flex justify-between text-muted-foreground">
                     <span>{formatMoney(c.original_value, "SAR")}</span>
                     <span>{tWorkspace("open")}: {formatMoney(c.openCommitment, "SAR")}</span>
                   </div>
@@ -79,7 +79,7 @@ export function CommitmentsWorkspace({
 
       {tab === "pos" && (
         <Card>
-          <CardContent className="p-4 text-sm text-slate-600">
+          <CardContent className="p-4 text-sm text-text-secondary">
             {commitments.filter((c) => c.reference_number.startsWith("PO-")).map((c) => (
               <div key={c.id} className="border-b py-2">{c.reference_number} — {formatMoney(c.original_value, "SAR")}</div>
             ))}
@@ -89,7 +89,7 @@ export function CommitmentsWorkspace({
 
       {tab !== "commitments" && tab !== "pos" && (
         <Card>
-          <CardContent className="p-4 text-sm text-slate-500">
+          <CardContent className="p-4 text-sm text-muted-foreground">
             {tWorkspace("noRecordsCategory")}
           </CardContent>
         </Card>
@@ -102,7 +102,7 @@ export function CommitmentsWorkspace({
             {vendors.map((v) => (
               <li key={v.id}>{v.code} — {pickLocalized(locale, v.name_en, v.name_ar)}</li>
             ))}
-            {vendors.length === 0 && <li className="text-slate-500">{tWorkspace("none")}</li>}
+            {vendors.length === 0 && <li className="text-muted-foreground">{tWorkspace("none")}</li>}
           </ul>
         </CardContent>
       </Card>

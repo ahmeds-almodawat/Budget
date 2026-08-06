@@ -115,12 +115,12 @@ export function DelegationWorkspace({
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1 sm:col-span-2">
-              <label htmlFor="del-delegate" className="text-xs font-medium text-slate-600">
+              <label htmlFor="del-delegate" className="text-xs font-medium text-text-secondary">
                 {t("delegate")}
               </label>
               <select
                 id="del-delegate"
-                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-border px-3 py-2 text-sm"
                 value={delegateId}
                 onChange={(e) => setDelegateId(e.target.value)}
               >
@@ -133,31 +133,31 @@ export function DelegationWorkspace({
               </select>
             </div>
             <div className="space-y-1">
-              <label htmlFor="del-workflow" className="text-xs font-medium text-slate-600">
+              <label htmlFor="del-workflow" className="text-xs font-medium text-text-secondary">
                 {t("workflowType")}
               </label>
               <Input id="del-workflow" value={workflowType} onChange={(e) => setWorkflowType(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <label htmlFor="del-permission" className="text-xs font-medium text-slate-600">
+              <label htmlFor="del-permission" className="text-xs font-medium text-text-secondary">
                 {t("permissionCode")}
               </label>
               <Input id="del-permission" value={permissionCode} onChange={(e) => setPermissionCode(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <label htmlFor="del-start" className="text-xs font-medium text-slate-600">
+              <label htmlFor="del-start" className="text-xs font-medium text-text-secondary">
                 {t("effectiveStart")}
               </label>
               <Input id="del-start" type="datetime-local" value={effectiveStart} onChange={(e) => setEffectiveStart(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <label htmlFor="del-end" className="text-xs font-medium text-slate-600">
+              <label htmlFor="del-end" className="text-xs font-medium text-text-secondary">
                 {t("effectiveEnd")}
               </label>
               <Input id="del-end" type="datetime-local" value={effectiveEnd} onChange={(e) => setEffectiveEnd(e.target.value)} />
             </div>
             <div className="space-y-1 sm:col-span-2">
-              <label htmlFor="del-reason" className="text-xs font-medium text-slate-600">
+              <label htmlFor="del-reason" className="text-xs font-medium text-text-secondary">
                 {t("reason")}
               </label>
               <Input id="del-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
@@ -173,12 +173,12 @@ export function DelegationWorkspace({
       ) : null}
 
       {message ? <p className="text-sm text-green-700">{message}</p> : null}
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       <div className="grid gap-4">
         {delegations.length === 0 ? (
           <Card>
-            <CardContent className="p-6 text-slate-600">{tCommon("empty")}</CardContent>
+            <CardContent className="p-6 text-text-secondary">{tCommon("empty")}</CardContent>
           </Card>
         ) : (
           delegations.map((d) => (
@@ -187,7 +187,7 @@ export function DelegationWorkspace({
                 <CardTitle className="text-base">{d.workflow_type}</CardTitle>
                 <Badge variant="outline">{d.delegation_status}</Badge>
               </CardHeader>
-              <CardContent className="text-sm text-slate-600 space-y-2">
+              <CardContent className="text-sm text-text-secondary space-y-2">
                 <p>{t("permissionCode")}: {d.permission_code}</p>
                 <p>{t("reason")}: {d.reason}</p>
                 <p>{t("effectiveRange", { start: d.effective_start, end: d.effective_end })}</p>

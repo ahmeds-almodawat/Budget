@@ -50,23 +50,23 @@ export function SignInForm() {
   }
 
   return (
-    <Card className="w-full max-w-md border-slate-200/80 shadow-[var(--shadow-card)]">
+    <Card className="w-full max-w-md border-border shadow-[var(--shadow-card)]">
       <CardHeader className="space-y-4 pb-2">
         <div className="lg:hidden">
           <BrandMark locale={locale as "en" | "ar"} compact />
         </div>
         <div>
           <CardTitle className="text-xl">{t("signIn")}</CardTitle>
-          <p className="mt-1.5 text-sm text-slate-500 lg:hidden">{t("signInSubtitle")}</p>
+          <p className="mt-1.5 text-sm text-muted-foreground lg:hidden">{t("signInSubtitle")}</p>
         </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+          <label className="block space-y-1.5 text-sm font-medium text-text-secondary">
             <span>{t("email")}</span>
             <div className="relative">
               <Mail
-                className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                 aria-hidden
               />
               <Input
@@ -80,11 +80,11 @@ export function SignInForm() {
               />
             </div>
           </label>
-          <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+          <label className="block space-y-1.5 text-sm font-medium text-text-secondary">
             <span>{t("password")}</span>
             <div className="relative">
               <Lock
-                className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                 aria-hidden
               />
               <Input
@@ -98,19 +98,19 @@ export function SignInForm() {
             </div>
           </label>
           {error ? (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+            <p className="rounded-lg border border-danger/30 bg-danger-surface px-3 py-2 text-sm text-danger" role="alert">
               {error}
             </p>
           ) : null}
-          <Button type="submit" className="w-full shadow-md shadow-teal-900/10" disabled={loading} size="lg">
+          <Button type="submit" className="w-full" disabled={loading} size="lg">
             {loading ? t("signingIn") : t("signIn")}
           </Button>
         </form>
-        <div className="mt-6 flex items-center justify-center gap-2 border-t border-slate-100 pt-4 text-sm">
-          <Languages className="h-4 w-4 text-slate-400" aria-hidden />
+        <div className="mt-6 flex items-center justify-center gap-2 border-t border-border pt-4 text-sm">
+          <Languages className="h-4 w-4 text-muted-foreground" aria-hidden />
           <Link
             href={`/${altLocale}/auth/sign-in`}
-            className="font-medium text-teal-700 transition-colors hover:text-teal-800"
+            className="font-medium text-primary transition-colors hover:text-primary-hover"
           >
             {altLocale === "ar" ? tSidebar("switchToArabic") : tSidebar("switchToEnglish")}
           </Link>

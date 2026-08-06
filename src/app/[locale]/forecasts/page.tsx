@@ -43,11 +43,11 @@ export default async function ForecastsPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <p className="mt-1 text-sm text-slate-600">{t("subtitle")}</p>
+        <p className="mt-1 text-sm text-text-secondary">{t("subtitle")}</p>
       </div>
 
       {errorMessage ? (
-        <p className="text-sm text-red-700">{errorMessage}</p>
+        <p className="text-sm text-danger">{errorMessage}</p>
       ) : (
         <ForecastsWorkspace
           initialForecasts={forecasts}

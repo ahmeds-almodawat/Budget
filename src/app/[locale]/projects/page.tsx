@@ -25,7 +25,7 @@ export default async function ProjectsListPage({
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t("title")}</h1>
-      {error ? <p className="text-red-700">{error.message}</p> : null}
+      {error ? <p className="text-danger">{error.message}</p> : null}
       <div className="grid gap-4">
         {(scopes ?? []).map((scope) => {
           const type = (scope.control_scope_types as { scope_type?: string } | null)?.scope_type;
@@ -39,12 +39,12 @@ export default async function ProjectsListPage({
                 {type === "project" ? (
                   <Link
                     href={`/${locale}/projects/${scope.id}`}
-                    className="text-teal-700 hover:underline"
+                    className="text-primary hover:underline"
                   >
                     {tPages("view")}
                   </Link>
                 ) : type === "operational_budget" ? (
-                  <Link href={`/${locale}/dashboard/hospital`} className="text-teal-700 hover:underline">
+                  <Link href={`/${locale}/dashboard/hospital`} className="text-primary hover:underline">
                     {tPages("operationalDashboard")}
                   </Link>
                 ) : null}

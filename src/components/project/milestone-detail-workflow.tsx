@@ -79,15 +79,15 @@ export function MilestoneDetailWorkflow({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{name}</h1>
-          <p className="text-sm text-slate-500">{milestone.code}</p>
+          <p className="text-sm text-muted-foreground">{milestone.code}</p>
         </div>
-        <Link href={`/${locale}/milestones`} className="text-sm text-teal-700 hover:underline">
+        <Link href={`/${locale}/milestones`} className="text-sm text-primary hover:underline">
           {t("backToMilestones")}
         </Link>
       </div>
 
       {message && <p className="rounded bg-green-50 p-3 text-sm text-green-800">{message}</p>}
-      {error && <p className="rounded bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+      {error && <p className="rounded bg-danger-surface p-3 text-sm text-red-800">{error}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -211,7 +211,7 @@ export function MilestoneDetailWorkflow({
               </li>
             ))}
             {updates.length === 0 && (
-              <li className="text-slate-500">{t("noUpdates")}</li>
+              <li className="text-muted-foreground">{t("noUpdates")}</li>
             )}
           </ul>
         </CardContent>

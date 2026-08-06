@@ -29,13 +29,13 @@ export default async function HospitalDashboardPage({
       <div className="space-y-4">
         <h1 className="text-2xl font-bold">{t("title")}</h1>
         <Card>
-          <CardContent className="p-6 text-slate-600">
+          <CardContent className="p-6 text-text-secondary">
             {dbError
               ? `${tLabels("databaseError")}: ${dbError}`
               : tLabels("noApprovedBudget")}
           </CardContent>
         </Card>
-        <Link href={`/${locale}/budgets`} className="text-teal-700 hover:underline">
+        <Link href={`/${locale}/budgets`} className="text-primary hover:underline">
           {tLabels("goToBudgets")}
         </Link>
       </div>
@@ -88,8 +88,8 @@ export default async function HospitalDashboardPage({
       </div>
 
       {explanationRequired ? (
-        <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="p-4 text-amber-900">
+        <Card className="border-amber-300 bg-warning-surface">
+          <CardContent className="p-4 text-warning">
             {t("varianceExplanationRequired")} — MTD {formatMoney(String(mtdVariance), "SAR")}
           </CardContent>
         </Card>
@@ -114,7 +114,7 @@ export default async function HospitalDashboardPage({
                   <td className="py-2 font-mono text-xs">{line.id.slice(0, 8)}</td>
                   <td className="py-2">{formatMoney(line.planned_amount, "SAR")}</td>
                   <td className="py-2">
-                    <Link href={`/${locale}/budgets/transactions/${line.id}`} className="text-teal-700 hover:underline">
+                    <Link href={`/${locale}/budgets/transactions/${line.id}`} className="text-primary hover:underline">
                       {tLabels("transactions")}
                     </Link>
                   </td>

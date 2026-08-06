@@ -20,13 +20,13 @@ export default async function RisksPage({
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("title")}</h1>
         <div className="flex gap-3 text-sm">
-          <Link href={`/${locale}/issues`} className="text-teal-700 hover:underline">
+          <Link href={`/${locale}/issues`} className="text-primary hover:underline">
             {t("issues")}
           </Link>
-          <Link href={`/${locale}/actions`} className="text-teal-700 hover:underline">
+          <Link href={`/${locale}/actions`} className="text-primary hover:underline">
             {t("actions")}
           </Link>
-          <Link href={`/${locale}/decisions`} className="text-teal-700 hover:underline">
+          <Link href={`/${locale}/decisions`} className="text-primary hover:underline">
             {t("decisions")}
           </Link>
         </div>
@@ -53,13 +53,13 @@ export default async function RisksPage({
               <div>{t("status")}: {r.status}</div>
               <div>{t("escalation")}: {r.escalation_level ?? "—"}</div>
               {r.mitigation_plan && (
-                <div className="md:col-span-3 text-slate-600">{r.mitigation_plan}</div>
+                <div className="md:col-span-3 text-text-secondary">{r.mitigation_plan}</div>
               )}
             </CardContent>
           </Card>
         ))}
         {risks.length === 0 && (
-          <p className="text-slate-500">{t("empty")}</p>
+          <p className="text-muted-foreground">{t("empty")}</p>
         )}
       </div>
     </div>

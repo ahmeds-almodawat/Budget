@@ -21,7 +21,7 @@ export function CostControlWorkspace({ rows }: { rows: CostControlRow[] }) {
     <div className="space-y-4">
       {rows.length === 0 ? (
         <Card>
-          <CardContent className="p-6 text-slate-600">{t("empty")}</CardContent>
+          <CardContent className="p-6 text-text-secondary">{t("empty")}</CardContent>
         </Card>
       ) : (
         rows.map((row) => (
@@ -31,23 +31,23 @@ export function CostControlWorkspace({ rows }: { rows: CostControlRow[] }) {
             </CardHeader>
             <CardContent className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
               <div>
-                <span className="text-slate-500">{t("approvedBudget")}</span>
+                <span className="text-muted-foreground">{t("approvedBudget")}</span>
                 <p className="font-medium">{formatMoney(row.approved_budget, "SAR")}</p>
               </div>
               <div>
-                <span className="text-slate-500">{t("actualCost")}</span>
+                <span className="text-muted-foreground">{t("actualCost")}</span>
                 <p className="font-medium">{formatMoney(row.actual_cost, "SAR")}</p>
               </div>
               <div>
-                <span className="text-slate-500">{t("committedCost")}</span>
+                <span className="text-muted-foreground">{t("committedCost")}</span>
                 <p className="font-medium">{formatMoney(row.committed_cost, "SAR")}</p>
               </div>
               <div>
-                <span className="text-slate-500">{t("openCommitment")}</span>
+                <span className="text-muted-foreground">{t("openCommitment")}</span>
                 <p className="font-medium">{formatMoney(row.open_commitment, "SAR")}</p>
               </div>
               <div>
-                <span className="text-slate-500">{t("variance")}</span>
+                <span className="text-muted-foreground">{t("variance")}</span>
                 <p className="font-medium">{formatMoney(row.variance, "SAR")}</p>
               </div>
             </CardContent>

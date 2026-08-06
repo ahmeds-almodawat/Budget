@@ -454,7 +454,20 @@
   },
   "sidebar": {
     "switchToArabic": "العربية",
-    "switchToEnglish": "English"
+    "switchToEnglish": "English",
+    "systemOperational": "All systems operational"
+  },
+  "theme": {
+    "label": "Color theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "shell": {
+    "eyebrow": "Enterprise Control",
+    "tagline": "Project · Budget · Performance",
+    "openNavigation": "Open navigation",
+    "closeNavigation": "Close navigation"
   },
   "masterData": {
     "title": "Master Data Governance",

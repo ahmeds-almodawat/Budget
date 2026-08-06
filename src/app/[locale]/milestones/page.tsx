@@ -28,7 +28,7 @@ export default async function MilestonesPage({
         {canApprove && (
           <Link
             href={`/${locale}/milestones/progress-approval`}
-            className="text-sm text-teal-700 hover:underline"
+            className="text-sm text-primary hover:underline"
           >
             {t("progressApproval")}
           </Link>
@@ -40,12 +40,12 @@ export default async function MilestonesPage({
           <Card key={m.id}>
             <CardHeader>
               <CardTitle className="text-base">
-                <Link href={`/${locale}/milestones/${m.id}`} className="hover:text-teal-700">
+                <Link href={`/${locale}/milestones/${m.id}`} className="hover:text-primary">
                   {pickLocalized(locale, m.name_en, m.name_ar)}
                 </Link>
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex justify-between text-sm text-slate-600">
+            <CardContent className="flex justify-between text-sm text-text-secondary">
               <span>{m.code}</span>
               <span>
                 {m.approved_progress}% — {m.approval_status}
@@ -55,7 +55,7 @@ export default async function MilestonesPage({
           </Card>
         ))}
         {milestones.length === 0 && (
-          <p className="text-slate-500">{t("empty")}</p>
+          <p className="text-muted-foreground">{t("empty")}</p>
         )}
       </div>
     </div>

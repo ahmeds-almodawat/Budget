@@ -54,7 +54,7 @@ export default async function TasksPage({
                       <span>
                         {task.progress_percent}% — {task.status}
                       </span>
-                      <span className="text-slate-500">
+                      <span className="text-muted-foreground">
                         {task.baseline_start} → {task.baseline_end}
                       </span>
                     </li>
@@ -67,7 +67,7 @@ export default async function TasksPage({
       ))}
 
       {phases.length === 0 && (
-        <p className="text-slate-500">{t("empty")}</p>
+        <p className="text-muted-foreground">{t("empty")}</p>
       )}
     </div>
   );

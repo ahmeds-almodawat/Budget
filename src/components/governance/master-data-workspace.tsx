@@ -152,7 +152,7 @@ export function MasterDataWorkspace({
             aria-label={tCommon("search")}
           />
           <select
-            className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-md border border-border px-3 py-2 text-sm"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
             aria-label={tCommon("filter")}
@@ -174,12 +174,12 @@ export function MasterDataWorkspace({
           </CardHeader>
           <CardContent className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <label htmlFor="md-type" className="text-xs font-medium text-slate-600">
+              <label htmlFor="md-type" className="text-xs font-medium text-text-secondary">
                 {t("recordType")}
               </label>
               <select
                 id="md-type"
-                className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+                className="rounded-md border border-border px-3 py-2 text-sm"
                 value={recordType}
                 onChange={(e) => setRecordType(e.target.value)}
               >
@@ -191,19 +191,19 @@ export function MasterDataWorkspace({
               </select>
             </div>
             <div className="space-y-1">
-              <label htmlFor="md-code" className="text-xs font-medium text-slate-600">
+              <label htmlFor="md-code" className="text-xs font-medium text-text-secondary">
                 {t("code")}
               </label>
               <Input id="md-code" value={code} onChange={(e) => setCode(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <label htmlFor="md-name-en" className="text-xs font-medium text-slate-600">
+              <label htmlFor="md-name-en" className="text-xs font-medium text-text-secondary">
                 {t("nameEn")}
               </label>
               <Input id="md-name-en" value={nameEn} onChange={(e) => setNameEn(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <label htmlFor="md-name-ar" className="text-xs font-medium text-slate-600">
+              <label htmlFor="md-name-ar" className="text-xs font-medium text-text-secondary">
                 {t("nameAr")}
               </label>
               <Input id="md-name-ar" value={nameAr} onChange={(e) => setNameAr(e.target.value)} dir="rtl" />
@@ -216,11 +216,11 @@ export function MasterDataWorkspace({
       ) : null}
 
       {message ? <p className="text-sm text-green-700">{message}</p> : null}
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       {filtered.length === 0 ? (
         <Card>
-          <CardContent className="p-6 text-slate-600">{tCommon("empty")}</CardContent>
+          <CardContent className="p-6 text-text-secondary">{tCommon("empty")}</CardContent>
         </Card>
       ) : (
         <div className="grid gap-4">
@@ -235,7 +235,7 @@ export function MasterDataWorkspace({
                   <Badge variant="secondary">{statusLabel(record.governance_status)}</Badge>
                 </div>
               </CardHeader>
-              <CardContent className="flex flex-wrap gap-2 text-sm text-slate-600">
+              <CardContent className="flex flex-wrap gap-2 text-sm text-text-secondary">
                 <span>{t("effectiveFrom", { date: record.effective_start })}</span>
                 <div className="flex flex-wrap gap-2 ms-auto">
                   {canSubmit && record.governance_status === "draft" ? (

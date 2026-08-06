@@ -454,7 +454,20 @@
   },
   "sidebar": {
     "switchToArabic": "العربية",
-    "switchToEnglish": "English"
+    "switchToEnglish": "English",
+    "systemOperational": "جميع الأنظمة تعمل"
+  },
+  "theme": {
+    "label": "سمة الألوان",
+    "light": "فاتح",
+    "dark": "داكن",
+    "system": "النظام"
+  },
+  "shell": {
+    "eyebrow": "التحكم المؤسسي",
+    "tagline": "المشاريع · الميزانية · الأداء",
+    "openNavigation": "فتح القائمة",
+    "closeNavigation": "إغلاق القائمة"
   },
   "masterData": {
     "title": "حوكمة البيانات الرئيسية",

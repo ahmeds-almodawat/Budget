@@ -65,14 +65,14 @@ export function AuditSearchWorkspace({ initialEvents }: { initialEvents: AuditEv
                   <span>{e.action} · {e.entity_type}</span>
                   <span>{new Date(e.created_at).toLocaleString(locale)}</span>
                 </div>
-                <div className="text-slate-500">
+                <div className="text-muted-foreground">
                   {e.profiles?.full_name_en ?? e.profiles?.email ?? "—"} — {e.entity_id.slice(0, 8)}…
                 </div>
-                {e.reason && <div className="text-slate-600">{e.reason}</div>}
+                {e.reason && <div className="text-text-secondary">{e.reason}</div>}
               </li>
             ))}
             {events.length === 0 && (
-              <li className="text-slate-500">{t("noEvents")}</li>
+              <li className="text-muted-foreground">{t("noEvents")}</li>
             )}
           </ul>
         </CardContent>

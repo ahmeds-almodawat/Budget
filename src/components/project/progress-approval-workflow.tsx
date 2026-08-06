@@ -44,7 +44,7 @@ export function ProgressApprovalWorkflow({ updates }: { updates: PendingUpdate[]
   return (
     <div className="space-y-6">
       {message && <p className="rounded bg-green-50 p-3 text-sm text-green-800">{message}</p>}
-      {error && <p className="rounded bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+      {error && <p className="rounded bg-danger-surface p-3 text-sm text-red-800">{error}</p>}
 
       <Card>
         <CardHeader>
@@ -58,10 +58,10 @@ export function ProgressApprovalWorkflow({ updates }: { updates: PendingUpdate[]
                   <div className="font-medium">
                     {pickLocalized(locale, u.milestones?.name_en, u.milestones?.name_ar)}
                   </div>
-                  <div className="text-sm text-slate-500">
+                  <div className="text-sm text-muted-foreground">
                     {u.milestones?.code} — {u.reported_progress}%
                   </div>
-                  {u.notes && <div className="text-sm text-slate-600">{u.notes}</div>}
+                  {u.notes && <div className="text-sm text-text-secondary">{u.notes}</div>}
                 </div>
                 <Button disabled={pending} onClick={() => verify(u.id, u.reported_progress)}>
                   {t("verify")}
@@ -69,7 +69,7 @@ export function ProgressApprovalWorkflow({ updates }: { updates: PendingUpdate[]
               </li>
             ))}
             {updates.length === 0 && (
-              <li className="text-slate-500">{t("noPendingUpdates")}</li>
+              <li className="text-muted-foreground">{t("noPendingUpdates")}</li>
             )}
           </ul>
         </CardContent>

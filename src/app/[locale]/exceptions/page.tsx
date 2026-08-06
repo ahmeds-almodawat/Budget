@@ -31,7 +31,7 @@ export default async function ExceptionsPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{tPages("title")}</h1>
-        <Link href={`/${locale}/audit`} className="text-sm text-teal-700 hover:underline">
+        <Link href={`/${locale}/audit`} className="text-sm text-primary hover:underline">
           {tPages("auditLog")}
         </Link>
       </div>
@@ -46,7 +46,7 @@ export default async function ExceptionsPage({
               <li key={v.id} className="border-b py-2">{v.cause} — {v.variance_amount}</li>
             ))}
             {(exceptions?.varianceExplanations ?? []).length === 0 && (
-              <li className="text-slate-500">{tWorkspace("none")}</li>
+              <li className="text-muted-foreground">{tWorkspace("none")}</li>
             )}
           </ul>
         </CardContent>
@@ -62,7 +62,7 @@ export default async function ExceptionsPage({
               <li key={u.id} className="border-b py-2">{u.source_transaction_id} — {u.amount}</li>
             ))}
             {(exceptions?.unmappedTransactions ?? []).length === 0 && (
-              <li className="text-slate-500">{tWorkspace("none")}</li>
+              <li className="text-muted-foreground">{tWorkspace("none")}</li>
             )}
           </ul>
         </CardContent>
@@ -80,7 +80,7 @@ export default async function ExceptionsPage({
               </li>
             ))}
             {(exceptions?.notifications ?? []).length === 0 && (
-              <li className="text-slate-500">{tWorkspace("none")}</li>
+              <li className="text-muted-foreground">{tWorkspace("none")}</li>
             )}
           </ul>
         </CardContent>

@@ -131,7 +131,7 @@ export function ReportsWorkspace() {
               </tbody>
             </table>
           ) : (
-            <p className="text-slate-500">{t("selectReport")}</p>
+            <p className="text-muted-foreground">{t("selectReport")}</p>
           )}
         </CardContent>
       </Card>

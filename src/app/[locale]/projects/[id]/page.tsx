@@ -23,7 +23,7 @@ export default async function ProjectDashboardPage({
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <p className="text-slate-600">{tPages("notFound")}</p>
+        <p className="text-text-secondary">{tPages("notFound")}</p>
       </div>
     );
   }
@@ -33,7 +33,7 @@ export default async function ProjectDashboardPage({
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t("title")}</h1>
-      <p className="text-slate-600">
+      <p className="text-text-secondary">
         {pickLocalized(locale, project.control_scopes?.name_en, project.control_scopes?.name_ar)}
       </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -40,7 +40,7 @@ export function ActualsWorkspace({ transactions, unmapped, batches, duplicates }
             key={key}
             type="button"
             onClick={() => setTab(key)}
-            className={`rounded-md px-3 py-1.5 text-sm ${tab === key ? "bg-teal-800 text-white" : "bg-slate-100"}`}
+            className={`rounded-md px-3 py-1.5 text-sm ${tab === key ? "bg-primary text-primary-foreground" : "bg-surface-muted text-foreground"}`}
           >
             {t(key)}
           </button>
@@ -59,7 +59,7 @@ export function ActualsWorkspace({ transactions, unmapped, batches, duplicates }
                   <span>{tx.source_transaction_id}</span>
                   <span>{tx.transaction_date}</span>
                   <span>{formatMoney(tx.amount_ex_vat, "SAR")}</span>
-                  <span className="text-slate-500">{tx.is_posted ? "posted" : "draft"}</span>
+                  <span className="text-muted-foreground">{tx.is_posted ? "posted" : "draft"}</span>
                 </li>
               ))}
             </ul>
@@ -108,7 +108,7 @@ export function ActualsWorkspace({ transactions, unmapped, batches, duplicates }
           )}
         </CardContent>
       </Card>
-      <p className="text-xs text-slate-500">{tWorkspace("postedActualsNote")}</p>
+      <p className="text-xs text-muted-foreground">{tWorkspace("postedActualsNote")}</p>
     </div>
   );
 }

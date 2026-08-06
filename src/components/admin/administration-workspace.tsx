@@ -38,7 +38,7 @@ export function AdministrationWorkspace({
         <CardHeader>
           <CardTitle className="text-base">{t("activeEntity")}</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-slate-600">{legalEntityName}</CardContent>
+        <CardContent className="text-sm text-text-secondary">{legalEntityName}</CardContent>
       </Card>
 
       <Card>
@@ -77,7 +77,7 @@ export function AdministrationWorkspace({
         <CardHeader>
           <CardTitle className="text-base">{t("localDiagnostics")}</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-slate-600">{t("localDiagnosticsNote")}</CardContent>
+        <CardContent className="text-sm text-text-secondary">{t("localDiagnosticsNote")}</CardContent>
       </Card>
     </div>
   );

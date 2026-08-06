@@ -72,7 +72,7 @@ export default async function ExecutiveDashboardPage({
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("variance")}</CardTitle></CardHeader>
-          <CardContent className={`text-2xl font-bold ${Number(variance) < 0 ? "text-red-700" : ""}`}>
+          <CardContent className={`text-2xl font-bold ${Number(variance) < 0 ? "text-danger" : ""}`}>
             {formatMoney(variance, "SAR")}
           </CardContent>
         </Card>
@@ -85,11 +85,11 @@ export default async function ExecutiveDashboardPage({
         <Card>
           <CardHeader><CardTitle>{t("hospitalPerformance")}</CardTitle></CardHeader>
           <CardContent>
-            <Link href={`/${locale}/dashboard/hospital`} className="text-teal-700 hover:underline">
+            <Link href={`/${locale}/dashboard/hospital`} className="text-primary hover:underline">
               {tLabels("openHospitalDashboard")}
             </Link>
             {hospital ? (
-              <div className="mt-2 text-sm text-slate-600">
+              <div className="mt-2 text-sm text-text-secondary">
                 MTD {formatMoney(hospital.mtdActual, "SAR")} / {formatMoney(hospital.mtdBudget, "SAR")}
               </div>
             ) : null}
@@ -98,7 +98,7 @@ export default async function ExecutiveDashboardPage({
         <Card>
           <CardHeader><CardTitle>{tLabels("projects")}</CardTitle></CardHeader>
           <CardContent>
-            <Link href={`/${locale}/projects/cs-khamis-hospital`} className="text-teal-700 hover:underline">
+            <Link href={`/${locale}/projects/cs-khamis-hospital`} className="text-primary hover:underline">
               Khamis Mushait New Hospital
             </Link>
           </CardContent>

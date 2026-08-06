@@ -59,13 +59,13 @@ export function ApprovalRulesWorkspace({
           </CardHeader>
           <CardContent className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <label htmlFor="sim-workflow" className="text-xs font-medium text-slate-600">
+              <label htmlFor="sim-workflow" className="text-xs font-medium text-text-secondary">
                 {t("workflowType")}
               </label>
               <Input id="sim-workflow" value={simWorkflow} onChange={(e) => setSimWorkflow(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <label htmlFor="sim-amount" className="text-xs font-medium text-slate-600">
+              <label htmlFor="sim-amount" className="text-xs font-medium text-text-secondary">
                 {t("amount")}
               </label>
               <Input id="sim-amount" value={simAmount} onChange={(e) => setSimAmount(e.target.value)} />
@@ -73,7 +73,7 @@ export function ApprovalRulesWorkspace({
             <Button type="button" onClick={simulate}>
               {t("runSimulation")}
             </Button>
-            {simResult ? <p className="w-full text-sm text-slate-600">{simResult}</p> : null}
+            {simResult ? <p className="w-full text-sm text-text-secondary">{simResult}</p> : null}
           </CardContent>
         </Card>
       ) : null}
@@ -87,7 +87,7 @@ export function ApprovalRulesWorkspace({
               </CardTitle>
               <Badge variant="outline">{rule.governance_status}</Badge>
             </CardHeader>
-            <CardContent className="text-sm text-slate-600">
+            <CardContent className="text-sm text-text-secondary">
               {t("effectiveFrom", { date: rule.effective_start })}
             </CardContent>
           </Card>

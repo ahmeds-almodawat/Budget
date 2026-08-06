@@ -22,7 +22,7 @@ export default async function ProjectTimelinePage({
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <p className="text-slate-600">{tPages("notFound")}</p>
+        <p className="text-text-secondary">{tPages("notFound")}</p>
       </div>
     );
   }
@@ -39,16 +39,16 @@ export default async function ProjectTimelinePage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="text-slate-600">{scopeName}</p>
+          <p className="text-text-secondary">{scopeName}</p>
         </div>
         <div className="flex gap-4 text-sm">
-          <Link href={`/${locale}/tasks`} className="text-teal-700 hover:underline">
+          <Link href={`/${locale}/tasks`} className="text-primary hover:underline">
             {t("tasks")}
           </Link>
-          <Link href={`/${locale}/milestones`} className="text-teal-700 hover:underline">
+          <Link href={`/${locale}/milestones`} className="text-primary hover:underline">
             {t("milestones")}
           </Link>
-          <Link href={`/${locale}/changes`} className="text-teal-700 hover:underline">
+          <Link href={`/${locale}/changes`} className="text-primary hover:underline">
             {t("scheduleChanges")}
           </Link>
         </div>
@@ -95,7 +95,7 @@ export default async function ProjectTimelinePage({
           <ul className="space-y-2 text-sm">
             {milestones.map((m) => (
               <li key={m.id} className="flex justify-between border-b py-2">
-                <Link href={`/${locale}/milestones/${m.id}`} className="text-teal-700 hover:underline">
+                <Link href={`/${locale}/milestones/${m.id}`} className="text-primary hover:underline">
                   {pickLocalized(locale, m.name_en, m.name_ar)}
                 </Link>
                 <span>{m.baseline_date} / {m.forecast_date}</span>

@@ -87,19 +87,19 @@ export function RequisitionWorkspace({
           </CardHeader>
           <CardContent className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <label htmlFor="req-number" className="text-xs font-medium text-slate-600">
+              <label htmlFor="req-number" className="text-xs font-medium text-text-secondary">
                 {t("number")}
               </label>
               <Input id="req-number" value={reqNumber} onChange={(e) => setReqNumber(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <label htmlFor="req-title-en" className="text-xs font-medium text-slate-600">
+              <label htmlFor="req-title-en" className="text-xs font-medium text-text-secondary">
                 {t("titleEn")}
               </label>
               <Input id="req-title-en" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <label htmlFor="req-title-ar" className="text-xs font-medium text-slate-600">
+              <label htmlFor="req-title-ar" className="text-xs font-medium text-text-secondary">
                 {t("titleAr")}
               </label>
               <Input id="req-title-ar" value={titleAr} onChange={(e) => setTitleAr(e.target.value)} dir="rtl" />
@@ -112,7 +112,7 @@ export function RequisitionWorkspace({
       ) : null}
 
       {message ? <p className="text-sm text-green-700">{message}</p> : null}
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       <div className="grid gap-4">
         {requisitions.map((r) => (
@@ -123,7 +123,7 @@ export function RequisitionWorkspace({
               </CardTitle>
               <Badge variant="outline">{r.requisition_status}</Badge>
             </CardHeader>
-            <CardContent className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
+            <CardContent className="flex flex-wrap items-center justify-between gap-2 text-sm text-text-secondary">
               <span>{t("estimatedTotal", { amount: formatMoney(r.estimated_total, "SAR") })}</span>
               {canSubmit && r.requisition_status === "draft" ? (
                 <Button size="sm" disabled={pending} onClick={() => handleSubmit(r.id)}>

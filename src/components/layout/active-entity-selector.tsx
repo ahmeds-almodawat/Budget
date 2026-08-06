@@ -33,11 +33,11 @@ export function ActiveEntitySelector({ user }: { user: UserSummary | null }) {
   }
 
   return (
-    <label className="flex min-w-0 items-center gap-2 text-sm text-slate-600">
-      <Building2 className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+    <label className="flex min-w-0 items-center gap-2 text-sm text-text-secondary">
+      <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       <span className="sr-only">Active legal entity</span>
       <select
-        className="max-w-[12rem] truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-600/20 disabled:opacity-60 sm:max-w-xs"
+        className="max-w-[12rem] truncate rounded-lg border border-input bg-input-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30 disabled:opacity-60 sm:max-w-xs"
         value={activeId ?? ""}
         disabled={pending}
         onChange={(event) => {

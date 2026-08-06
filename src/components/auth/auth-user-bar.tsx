@@ -24,12 +24,12 @@ export function AuthUserBar({ user }: { user: UserSummary | null }) {
   const primaryRole = user.roleCodes[0];
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2 shadow-sm">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-800 text-white shadow-inner">
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 shadow-sm">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
         <User className="h-4 w-4" aria-hidden />
       </div>
       <div className="hidden min-w-0 text-start sm:block">
-        <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
+        <div className="truncate text-sm font-semibold text-foreground">{displayName}</div>
         <div className="mt-0.5 flex flex-wrap items-center gap-1">
           {primaryRole ? (
             <Badge variant="secondary" className="capitalize">

@@ -183,7 +183,7 @@ export function ForecastsWorkspace({
           </CardHeader>
           <CardContent className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <label htmlFor="forecast-version-label" className="text-xs font-medium text-slate-600">
+              <label htmlFor="forecast-version-label" className="text-xs font-medium text-text-secondary">
                 {t("versionLabel")}
               </label>
               <Input
@@ -193,7 +193,7 @@ export function ForecastsWorkspace({
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="forecast-amount" className="text-xs font-medium text-slate-600">
+              <label htmlFor="forecast-amount" className="text-xs font-medium text-text-secondary">
                 {t("monthlyAmount")}
               </label>
               <Input id="forecast-amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
@@ -210,28 +210,28 @@ export function ForecastsWorkspace({
           <CardHeader>
             <CardTitle className="text-base">{t("supersedeTitle")}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm text-slate-600">
+          <CardContent className="space-y-4 text-sm text-text-secondary">
             <p>{t("supersedeDescription")}</p>
             <div className="grid gap-2 sm:grid-cols-2">
               <div>
-                <span className="font-medium text-slate-800">{t("supersededVersion")}: </span>
+                <span className="font-medium text-foreground">{t("supersededVersion")}: </span>
                 {currentLocked?.version_label}
               </div>
               <div>
-                <span className="font-medium text-slate-800">{t("candidateVersion")}: </span>
+                <span className="font-medium text-foreground">{t("candidateVersion")}: </span>
                 {candidateReview?.version_label}
               </div>
               <div>
-                <span className="font-medium text-slate-800">{t("effectiveDate")}: </span>
+                <span className="font-medium text-foreground">{t("effectiveDate")}: </span>
                 {candidateReview?.effective_date ?? candidateReview?.as_of_date ?? "—"}
               </div>
               <div>
-                <span className="font-medium text-slate-800">{t("scenario")}: </span>
+                <span className="font-medium text-foreground">{t("scenario")}: </span>
                 {candidateReview?.scenario ?? "latest"}
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600" htmlFor="approver-comment">
+              <label className="text-xs font-medium text-text-secondary" htmlFor="approver-comment">
                 {t("approverComment")}
               </label>
               <Input
@@ -256,12 +256,12 @@ export function ForecastsWorkspace({
       ) : null}
 
       {message ? <p className="text-sm text-green-700">{message}</p> : null}
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       <div className="grid gap-4">
         {forecasts.length === 0 ? (
           <Card>
-            <CardContent className="p-6 text-slate-600">{t("empty")}</CardContent>
+            <CardContent className="p-6 text-text-secondary">{t("empty")}</CardContent>
           </Card>
         ) : (
           forecasts.map((forecast) => (
@@ -283,7 +283,7 @@ export function ForecastsWorkspace({
                   <Badge variant="outline">{statusLabel(forecast.approval_status)}</Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm text-slate-600">
+              <CardContent className="space-y-3 text-sm text-text-secondary">
                 <div>{t("totalForecast", { amount: formatMoney(forecast.forecast_cost, "SAR") })}</div>
                 <div>{t("lineCount", { count: forecast.forecast_lines?.length ?? 0 })}</div>
                 {forecast.as_of_date ? <div>{t("asOfDate", { date: forecast.as_of_date })}</div> : null}

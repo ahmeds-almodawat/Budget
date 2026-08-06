@@ -91,7 +91,15 @@ const navSections: { labelKey?: string; items: NavItem[] }[] = [
   },
 ];
 
-export function AppSidebar({ user }: { user: UserSummary | null }) {
+export function AppSidebar({
+  user,
+  onNavigate,
+  testId = "app-sidebar",
+}: {
+  user: UserSummary | null;
+  onNavigate?: () => void;
+  testId?: string;
+}) {
   const t = useTranslations("nav");
   const tSidebar = useTranslations("sidebar");
   const locale = useLocale();
@@ -116,10 +124,13 @@ export function AppSidebar({ user }: { user: UserSummary | null }) {
   }
 
   return (
-    <aside className="flex h-screen w-[17.5rem] shrink-0 flex-col border-e border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-foreground)] shadow-xl shadow-slate-950/20">
-      <div className="border-b border-[var(--sidebar-border)] p-4">
+    <aside
+      data-testid={testId}
+      className="flex h-screen w-[17.5rem] shrink-0 flex-col border-e border-sidebar-border bg-sidebar text-sidebar-foreground"
+    >
+      <div className="border-b border-sidebar-border p-4">
         <BrandMark locale={locale as "en" | "ar"} />
-        <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-slate-400">
+        <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-sidebar-muted">
           {pickLocalized(locale, productConfig.workingName.en, productConfig.workingName.ar)}
         </p>
       </div>
@@ -132,7 +143,7 @@ export function AppSidebar({ user }: { user: UserSummary | null }) {
           return (
             <div key={sectionIndex} className={cn(sectionIndex > 0 && "mt-5")}>
               {section.labelKey ? (
-                <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-muted">
                   {t(section.labelKey as Parameters<typeof t>[0])}
                 </p>
               ) : null}
@@ -144,17 +155,19 @@ export function AppSidebar({ user }: { user: UserSummary | null }) {
                     <li key={key}>
                       <Link
                         href={url}
+                        onClick={onNavigate}
+                        data-active={active ? "true" : "false"}
                         className={cn(
-                          "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                          "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150",
                           active
-                            ? "bg-gradient-to-r from-teal-600/90 to-teal-700/80 text-white shadow-md shadow-teal-950/30"
-                            : "text-slate-300 hover:bg-white/5 hover:text-white",
+                            ? "bg-sidebar-active text-sidebar-active-foreground shadow-[var(--glow)]"
+                            : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground",
                         )}
                       >
                         <Icon
                           className={cn(
                             "h-4 w-4 shrink-0 transition-colors",
-                            active ? "text-teal-100" : "text-slate-500 group-hover:text-teal-300",
+                            active ? "text-sidebar-accent" : "opacity-80 group-hover:opacity-100",
                           )}
                           aria-hidden
                         />
@@ -169,14 +182,19 @@ export function AppSidebar({ user }: { user: UserSummary | null }) {
         })}
       </nav>
 
-      <div className="border-t border-[var(--sidebar-border)] p-3">
+      <div className="border-t border-sidebar-border p-3">
         <Link
           href={pathname.replace(`/${locale}`, `/${altLocale}`)}
-          className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
+          onClick={onNavigate}
+          className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground"
         >
           <Languages className="h-4 w-4 shrink-0" aria-hidden />
           <span>{altLocale === "ar" ? tSidebar("switchToArabic") : tSidebar("switchToEnglish")}</span>
         </Link>
+        <p className="mt-2 flex items-center gap-2 px-3 text-[11px] text-sidebar-muted">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+          {tSidebar("systemOperational")}
+        </p>
       </div>
     </aside>
   );

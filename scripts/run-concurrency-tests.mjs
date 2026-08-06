@@ -92,10 +92,18 @@ async function main() {
 
   await test("COD-H-010: duplicate reversal is idempotent via unique index", async () => {
     await asUser(client, FINANCE, async () => {
+      // Prefer a posted original that has allocations so reversal reconciliation
+      // can succeed (orphan posted rows without allocations are not reversible).
       const { rows: originals } = await client.query(
-        `SELECT id FROM actual_transactions
-         WHERE legal_entity_id = $1 AND is_posted = true AND is_reversal = false
-         AND reverses_transaction_id IS NULL LIMIT 1`,
+        `SELECT atx.id FROM actual_transactions AS atx
+         WHERE atx.legal_entity_id = $1 AND atx.is_posted = true AND atx.is_reversal = false
+           AND atx.reverses_transaction_id IS NULL
+           AND EXISTS (
+             SELECT 1 FROM actual_transaction_allocations AS ata
+             WHERE ata.actual_transaction_id = atx.id
+           )
+         ORDER BY atx.id
+         LIMIT 1`,
         [LEGAL_ENTITY],
       );
       if (originals.length === 0) throw new Error("No posted original transaction found");

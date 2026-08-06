@@ -60,7 +60,16 @@
 
 ### Reports / localization
 - [ ] Report catalog completion
+- [x] Dual-theme (light / dark / system) unified redesign
 - [ ] Full i18n parity
+
+### Dual-theme redesign
+- [x] Semantic token architecture (`globals.css`)
+- [x] ThemeProvider + persistence + flash prevention
+- [x] Light sidebar in light mode / dark sidebar in dark mode
+- [x] Shared shell, primitives, and workspace chrome migration
+- [x] Theme unit + Playwright coverage
+- [x] `docs/DUAL_THEME_DESIGN_SYSTEM.md`
 
 ### Testing
 - [x] Revenue unit + integration expansion (closure patch)
@@ -68,7 +77,7 @@
 - [ ] DB / concurrency expansion
 - [x] E2E: revenue budget + BVA export (closure patch)
 - [ ] E2E: no placeholder routes
-- [ ] Final verification run
+- [x] Final verification run (dual-theme redesign phase)
 
 ### Final deliverables
 - [ ] Push `feat/mega-finish-platform`

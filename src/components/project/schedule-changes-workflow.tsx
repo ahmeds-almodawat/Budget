@@ -59,7 +59,7 @@ export function ScheduleChangesWorkflow({
   return (
     <div className="space-y-6">
       {message && <p className="rounded bg-green-50 p-3 text-sm text-green-800">{message}</p>}
-      {error && <p className="rounded bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+      {error && <p className="rounded bg-danger-surface p-3 text-sm text-red-800">{error}</p>}
 
       {permissions.canRequest && (
         <Card>
@@ -143,15 +143,15 @@ export function ScheduleChangesWorkflow({
                   <span>{new Date(r.created_at).toLocaleDateString(locale)}</span>
                   <span>{r.approval_status}</span>
                 </div>
-                <div className="text-slate-600">
+                <div className="text-text-secondary">
                   {r.requested_days}d — gross {r.gross_delay_days ?? "—"}, excusable{" "}
                   {r.excusable_delay_days ?? "—"}, net {r.net_delay_days ?? "—"}
                 </div>
-                <div className="text-slate-500">{r.reason}</div>
+                <div className="text-muted-foreground">{r.reason}</div>
               </li>
             ))}
             {scheduleChanges.length === 0 && (
-              <li className="text-slate-500">{t("noRequests")}</li>
+              <li className="text-muted-foreground">{t("noRequests")}</li>
             )}
           </ul>
         </CardContent>

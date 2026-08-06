@@ -32,7 +32,7 @@ export default async function ChangesPage({
         <h1 className="text-2xl font-bold">{tPages("title")}</h1>
         <Link
           href={`/${locale}/projects/cs-khamis-hospital/timeline`}
-          className="text-sm text-teal-700 hover:underline"
+          className="text-sm text-primary hover:underline"
         >
           {tPages("timeline")}
         </Link>

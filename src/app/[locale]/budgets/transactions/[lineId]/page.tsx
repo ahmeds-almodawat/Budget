@@ -23,18 +23,18 @@ export default async function BudgetLineTransactionsPage({
 
   return (
     <div className="space-y-6">
-      <Link href={`/${locale}/dashboard/hospital`} className="text-teal-700 hover:underline">
+      <Link href={`/${locale}/dashboard/hospital`} className="text-primary hover:underline">
         ← {t("hospitalDashboard")}
       </Link>
       <h1 className="text-2xl font-bold">{t("title")}</h1>
-      {error ? <p className="text-red-700">{error}</p> : null}
+      {error ? <p className="text-danger">{error}</p> : null}
       <Card>
         <CardHeader>
           <CardTitle>{t("linkedTransactions")}</CardTitle>
         </CardHeader>
         <CardContent>
           {rows.length === 0 ? (
-            <p className="text-slate-500">{t("empty")}</p>
+            <p className="text-muted-foreground">{t("empty")}</p>
           ) : (
             <table className="w-full text-sm">
               <thead>

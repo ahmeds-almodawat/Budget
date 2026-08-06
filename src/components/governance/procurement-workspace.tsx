@@ -56,7 +56,7 @@ export function ProcurementWorkspace({
         </CardHeader>
         <CardContent>
           {purchaseOrders.length === 0 ? (
-            <p className="text-sm text-slate-600">{t("emptyOrders")}</p>
+            <p className="text-sm text-text-secondary">{t("emptyOrders")}</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {purchaseOrders.map((po) => {
@@ -65,7 +65,7 @@ export function ProcurementWorkspace({
                   <li key={po.id} className="flex items-center justify-between border-b py-2" data-testid="po-row">
                     <div>
                       <p className="font-medium">{t("poNumber", { number: po.po_number })}</p>
-                      <p className="text-slate-600">
+                      <p className="text-text-secondary">
                         {t("vendor")}: {vendor ? pickLocalized(locale, vendor.name_en, vendor.name_ar) : tCommon("none")}
                       </p>
                     </div>
@@ -87,7 +87,7 @@ export function ProcurementWorkspace({
         </CardHeader>
         <CardContent>
           {invoices.length === 0 ? (
-            <p className="text-sm text-slate-600">{t("emptyInvoices")}</p>
+            <p className="text-sm text-text-secondary">{t("emptyInvoices")}</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {invoices.map((inv) => {
@@ -97,7 +97,7 @@ export function ProcurementWorkspace({
                   <li key={inv.id} className="flex items-center justify-between border-b py-2" data-testid="invoice-row">
                     <div>
                       <p className="font-medium">{t("invoiceNumber", { number: inv.invoice_number })}</p>
-                      <p className="text-slate-600">
+                      <p className="text-text-secondary">
                         {t("vendor")}: {vendor ? pickLocalized(locale, vendor.name_en, vendor.name_ar) : tCommon("none")}
                         {po ? ` · PO ${po.po_number}` : ""}
                       </p>
@@ -120,7 +120,7 @@ export function ProcurementWorkspace({
         </CardHeader>
         <CardContent>
           {payments.length === 0 ? (
-            <p className="text-sm text-slate-600">{t("emptyPayments")}</p>
+            <p className="text-sm text-text-secondary">{t("emptyPayments")}</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {payments.map((pr) => {

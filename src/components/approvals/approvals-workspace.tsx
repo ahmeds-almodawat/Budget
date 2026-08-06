@@ -86,9 +86,9 @@ function isApprovalType(value: string): value is (typeof APPROVAL_TYPE_KEYS)[num
                   <span className="font-medium">
                     {pickLocalized(locale, item.title_en, item.title_ar)}
                   </span>
-                  <span className="text-slate-500">{item.approval_status}</span>
+                  <span className="text-muted-foreground">{item.approval_status}</span>
                 </div>
-                <div className="text-slate-600">
+                <div className="text-text-secondary">
                   {isApprovalType(item.item_type)
                     ? t(`types.${item.item_type}` as Parameters<typeof t>[0])
                     : item.item_type}
@@ -99,7 +99,7 @@ function isApprovalType(value: string): value is (typeof APPROVAL_TYPE_KEYS)[num
               </li>
             ))}
             {items.length === 0 && (
-              <li className="text-slate-500">{t("noItems")}</li>
+              <li className="text-muted-foreground">{t("noItems")}</li>
             )}
           </ul>
         </CardContent>

@@ -102,7 +102,7 @@ export function HospitalBudgetWorkflow({ permissions }: { permissions: BudgetWor
           <label className="space-y-1 text-sm md:col-span-2">
             <span>{tWorkflow("annualAmount")}</span>
             <Input value={annualAmount} onChange={(e) => setAnnualAmount(e.target.value)} disabled={!permissions.canDraft} />
-            <span className="text-slate-500">{tWorkflow("driver")}: {computed} SAR</span>
+            <span className="text-muted-foreground">{tWorkflow("driver")}: {computed} SAR</span>
           </label>
         </CardContent>
       </Card>
@@ -216,9 +216,9 @@ export function HospitalBudgetWorkflow({ permissions }: { permissions: BudgetWor
       </Card>
 
       {message ? <p className="text-green-700">{message}</p> : null}
-      {error ? <p className="text-red-700" role="alert">{error}</p> : null}
+      {error ? <p className="text-danger" role="alert">{error}</p> : null}
       {budgetVersionId ? (
-        <p className="text-xs text-slate-500">Budget version: {budgetVersionId}</p>
+        <p className="text-xs text-muted-foreground">Budget version: {budgetVersionId}</p>
       ) : null}
     </div>
   );

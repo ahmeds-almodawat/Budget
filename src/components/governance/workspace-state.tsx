@@ -7,7 +7,7 @@ export function WorkspaceDenied() {
   const t = useTranslations("common");
   return (
     <Card>
-      <CardContent className="p-6 text-sm text-red-700">{t("accessDenied")}</CardContent>
+      <CardContent className="p-6 text-sm text-danger">{t("accessDenied")}</CardContent>
     </Card>
   );
 }
@@ -16,7 +16,7 @@ export function WorkspaceError({ message }: { message: string }) {
   const t = useTranslations("workspace");
   return (
     <Card>
-      <CardContent className="p-6 text-sm text-red-700">
+      <CardContent className="p-6 text-sm text-danger">
         {t("databaseError")}: {message}
       </CardContent>
     </Card>
@@ -27,7 +27,7 @@ export function WorkspaceEmpty({ message }: { message?: string }) {
   const t = useTranslations("common");
   return (
     <Card>
-      <CardContent className="p-6 text-sm text-slate-600">{message ?? t("empty")}</CardContent>
+      <CardContent className="p-6 text-sm text-text-secondary">{message ?? t("empty")}</CardContent>
     </Card>
   );
 }
@@ -36,7 +36,7 @@ export function WorkspaceLoading() {
   const t = useTranslations("common");
   return (
     <Card>
-      <CardContent className="p-6 text-sm text-slate-500">{t("loading")}</CardContent>
+      <CardContent className="p-6 text-sm text-muted-foreground">{t("loading")}</CardContent>
     </Card>
   );
 }

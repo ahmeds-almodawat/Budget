@@ -94,12 +94,12 @@ export function PeriodCloseWorkspace({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1">
-            <label htmlFor="period-select" className="text-xs font-medium text-slate-600">
+            <label htmlFor="period-select" className="text-xs font-medium text-text-secondary">
               {t("selectPeriod")}
             </label>
             <select
               id="period-select"
-              className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+              className="rounded-md border border-border px-3 py-2 text-sm"
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
             >
@@ -113,12 +113,12 @@ export function PeriodCloseWorkspace({
           {canClose ? (
             <>
               <div className="space-y-1">
-                <label htmlFor="reopen-reason" className="text-xs font-medium text-slate-600">
+                <label htmlFor="reopen-reason" className="text-xs font-medium text-text-secondary">
                   {t("reopenReason")}
                 </label>
                 <input
                   id="reopen-reason"
-                  className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
                   value={reopenReason}
                   onChange={(e) => setReopenReason(e.target.value)}
                 />
@@ -156,7 +156,7 @@ export function PeriodCloseWorkspace({
       </Card>
 
       {message ? <p className="text-sm text-green-700">{message}</p> : null}
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       <Card>
         <CardHeader>
@@ -164,7 +164,7 @@ export function PeriodCloseWorkspace({
         </CardHeader>
         <CardContent>
           {controls.length === 0 ? (
-            <p className="text-sm text-slate-600">{t("allOpen")}</p>
+            <p className="text-sm text-text-secondary">{t("allOpen")}</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {controls.map((c) => (

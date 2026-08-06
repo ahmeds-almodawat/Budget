@@ -119,7 +119,7 @@ export function BudgetVsActualWorkspace({
           <button
             key={key}
             type="button"
-            className={`rounded-md px-3 py-1.5 text-sm ${tab === key ? "bg-teal-700 text-white" : "bg-slate-100"}`}
+            className={`rounded-md px-3 py-1.5 text-sm ${tab === key ? "bg-primary text-primary-foreground" : "bg-surface-muted text-foreground"}`}
             onClick={() => setTab(key)}
           >
             {t(`tabs.${key}`)}
@@ -168,7 +168,7 @@ export function BudgetVsActualWorkspace({
           <CardContent className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-slate-500">
+                <tr className="border-b text-left text-muted-foreground">
                   <th className="p-2">{t("columns.period")}</th>
                   <th className="p-2">{t("columns.budget")}</th>
                   <th className="p-2">{t("columns.gross")}</th>
@@ -206,7 +206,7 @@ export function BudgetVsActualWorkspace({
           <CardContent className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-slate-500">
+                <tr className="border-b text-left text-muted-foreground">
                   <th className="p-2">{t("columns.period")}</th>
                   <th className="p-2">{t("columns.classification")}</th>
                   <th className="p-2">{t("columns.budget")}</th>
