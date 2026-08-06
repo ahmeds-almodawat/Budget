@@ -17,7 +17,7 @@ async function invokeRpc<T extends CommandResult>(
   if (!result.ok) {
     const code = result.error_code ?? "COMMAND_FAILED";
     if (code === "NOT_FOUND") throw new DataAccessError(result.message ?? "Not found", "NOT_FOUND");
-    if (code === "STATE_MISMATCH" || code === "INVALID_TRANSITION" || code === "VALIDATION" || code === "RECONCILIATION") {
+    if (code === "STATE_MISMATCH" || code === "STATE_CONFLICT" || code === "SCOPE_MISMATCH" || code === "INVALID_TRANSITION" || code === "VALIDATION" || code === "RECONCILIATION") {
       throw new DataAccessError(result.message ?? "Validation failed", "VALIDATION");
     }
     if (code === "FORBIDDEN" || code === "SOD_VIOLATION" || code === "UNAUTHENTICATED") {
@@ -391,6 +391,29 @@ export async function forecastApproveAndLock(
       p_expected_status: options.expectedStatus ?? "under_review",
       p_idempotency_key: options.idempotencyKey ?? null,
       p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function forecastApproveAndSupersede(
+  db: SupabaseClient,
+  params: {
+    newForecastVersionId: string;
+    supersededForecastVersionId: string;
+    approverComment: string;
+    expectedNewStatus?: ApprovalStatus;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_forecast_approve_and_supersede", {
+      p_new_forecast_version_id: params.newForecastVersionId,
+      p_superseded_forecast_version_id: params.supersededForecastVersionId,
+      p_expected_new_status: params.expectedNewStatus ?? "under_review",
+      p_approver_comment: params.approverComment,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
     }),
   );
 }
