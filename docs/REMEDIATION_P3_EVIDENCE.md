@@ -57,5 +57,6 @@ Cookie `ecp_active_legal_entity_id` (httpOnly) validated against membership-deri
 
 | Field | Value |
 |-------|-------|
-| Exact head SHA | _pending first green P3 run_ |
-| Run URL | _pending_ |
+| Exact head SHA | `a81dc69c104e24ae718b4abf71dfa70f666cd2f5` |
+| Run URL | https://github.com/ahmeds-almodawat/Budget/actions/runs/31079669202 |
+| Result | **success** (first attempt at head) |

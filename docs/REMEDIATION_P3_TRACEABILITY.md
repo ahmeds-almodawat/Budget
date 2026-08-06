@@ -32,5 +32,5 @@ Includes P2 chain plus:
 |-------|-------|
 | P2 verified SHA | `9157de9` |
 | P2 CI URL | https://github.com/ahmeds-almodawat/Budget/actions/runs/31077004643 |
-| P3 exact-head SHA | _pending green run_ |
-| P3 CI URL | _pending_ |
+| P3 exact-head SHA | `a81dc69` |
+| P3 CI URL | https://github.com/ahmeds-almodawat/Budget/actions/runs/31079669202 |
