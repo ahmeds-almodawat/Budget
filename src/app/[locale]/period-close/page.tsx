@@ -1,32 +1,29 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/layout/page-header";
-import { MasterDataWorkspace } from "@/components/governance/master-data-workspace";
+import { PeriodCloseWorkspace } from "@/components/governance/period-close-workspace";
 import { WorkspaceDenied, WorkspaceError } from "@/components/governance/workspace-state";
-import { fetchMasterRecordsAction } from "@/app/actions/governance-actions";
+import { fetchPeriodControlsAction } from "@/app/actions/governance-actions";
+import { getFiscalPeriods } from "@/data/repositories/budget-repository";
 import { getAuthContext } from "@/lib/auth/context";
 import { hasPermission } from "@/domain/auth/permissions";
-import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
+import { createClient } from "@/lib/supabase/server";
+import { FISCAL_YEAR_2027, LEGAL_ENTITY_MODAWAT } from "@/types/database";
 
-export default async function MasterDataPage({
+export default async function PeriodClosePage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations("masterData");
+  const t = await getTranslations("periodClose");
   const ctx = await getAuthContext();
   const entityId = ctx?.primaryLegalEntityId ?? LEGAL_ENTITY_MODAWAT;
   const roles = ctx?.roleAssignments ?? [];
+  const canRead = hasPermission(roles, "budget", "read", entityId);
+  const canClose = hasPermission(roles, "budget", "approve", entityId);
 
-  const permissions = {
-    canCreate: hasPermission(roles, "master_data", "create", entityId),
-    canSubmit: hasPermission(roles, "master_data", "update", entityId),
-    canApprove: hasPermission(roles, "master_data", "approve", entityId),
-    canRead: hasPermission(roles, "master_data", "read", entityId),
-  };
-
-  if (!permissions.canRead) {
+  if (!canRead) {
     return (
       <div className="space-y-6">
         <PageHeader title={t("title")} description={t("subtitle")} />
@@ -35,10 +32,13 @@ export default async function MasterDataPage({
     );
   }
 
-  let records: Awaited<ReturnType<typeof fetchMasterRecordsAction>> = [];
+  let controls: Awaited<ReturnType<typeof fetchPeriodControlsAction>> = [];
+  let fiscalPeriods: { id: string; period_number: number; start_date: string; end_date: string }[] = [];
   let errorMessage: string | null = null;
   try {
-    records = await fetchMasterRecordsAction();
+    const db = await createClient();
+    fiscalPeriods = await getFiscalPeriods(db, FISCAL_YEAR_2027);
+    controls = await fetchPeriodControlsAction();
   } catch (e) {
     errorMessage = e instanceof Error ? e.message : t("loadError");
   }
@@ -49,7 +49,11 @@ export default async function MasterDataPage({
       {errorMessage ? (
         <WorkspaceError message={errorMessage} />
       ) : (
-        <MasterDataWorkspace initialRecords={records} {...permissions} />
+        <PeriodCloseWorkspace
+          initialControls={controls}
+          fiscalPeriods={fiscalPeriods}
+          canClose={canClose}
+        />
       )}
     </div>
   );

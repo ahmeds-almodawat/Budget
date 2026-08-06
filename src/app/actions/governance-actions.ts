@@ -1,15 +1,20 @@
 "use server";
 
-import { withActivePermission } from "@/lib/auth/action-guard";
 import {
-  createRisk,
   getDecisions,
   getIssues,
   getRegisterActions,
-  getRegisterDependencies,
   getRisks,
 } from "@/data/repositories/governance-repository";
-import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
+import { DataAccessError } from "@/data/repositories/budget-repository";
+import {
+  delegationCreateDraft,
+  masterRecordCreateDraft,
+  periodSoftClose,
+  requisitionCreateDraft,
+  requisitionSubmit,
+} from "@/lib/commands";
+import { withActivePermission } from "@/lib/auth/action-guard";
 
 export async function fetchRisksAction() {
   return withActivePermission("project", "read", async ({ legalEntityId, db }) =>
@@ -35,29 +40,281 @@ export async function fetchDecisionsAction() {
   );
 }
 
-export async function fetchRegisterDependenciesAction() {
-  return withActivePermission("project", "read", async ({ legalEntityId, db }) =>
-    getRegisterDependencies(db, legalEntityId),
-  );
+export async function fetchCostControlSummaryAction() {
+  return withActivePermission("budget", "read", async ({ legalEntityId, db }) => {
+    const { data, error } = await db
+      .from("v_budget_vs_actual")
+      .select("control_scope_id, current_approved_amount, ytd_actual, commitment_open")
+      .eq("legal_entity_id", legalEntityId);
+    if (error) throw new DataAccessError(error.message, "DATABASE");
+
+    const { data: scopes } = await db
+      .from("control_scopes")
+      .select("id, name_en")
+      .eq("legal_entity_id", legalEntityId);
+
+    const byScope = new Map<string, { approved: number; actual: number; commitment: number }>();
+    for (const row of data ?? []) {
+      const sid = row.control_scope_id as string;
+      const cur = byScope.get(sid) ?? { approved: 0, actual: 0, commitment: 0 };
+      cur.approved += Number(row.current_approved_amount ?? 0);
+      cur.actual += Number(row.ytd_actual ?? 0);
+      cur.commitment += Number(row.commitment_open ?? 0);
+      byScope.set(sid, cur);
+    }
+
+    const scopeNames = new Map((scopes ?? []).map((s) => [s.id, s.name_en]));
+    return [...byScope.entries()].map(([control_scope_id, agg]) => ({
+      control_scope_id,
+      scope_name: scopeNames.get(control_scope_id) ?? control_scope_id,
+      approved_budget: agg.approved.toFixed(2),
+      actual_cost: agg.actual.toFixed(2),
+      committed_cost: agg.commitment.toFixed(2),
+      open_commitment: agg.commitment.toFixed(2),
+      variance: (agg.actual - agg.approved).toFixed(2),
+    }));
+  });
 }
 
-export async function createRiskAction(input: {
+export async function fetchAdministrationDataAction() {
+  return withActivePermission("organization", "read", async ({ legalEntityId, db }) => {
+    const { data: entity } = await db
+      .from("legal_entities")
+      .select("name_en")
+      .eq("id", legalEntityId)
+      .single();
+
+    const { data: memberships, error: memErr } = await db
+      .from("memberships")
+      .select("user_id")
+      .eq("legal_entity_id", legalEntityId)
+      .eq("status", "active");
+    if (memErr) throw new DataAccessError(memErr.message, "DATABASE");
+
+    const userIds = (memberships ?? []).map((m) => m.user_id);
+    const { data: profiles } = userIds.length
+      ? await db.from("profiles").select("id, email, full_name_en, full_name_ar, status").in("id", userIds)
+      : { data: [] };
+
+    const { data: roles, error: roleErr } = await db
+      .from("role_assignments")
+      .select("id, user_id, scope_type, effective_start, effective_end, roles(code)")
+      .in("user_id", userIds.length ? userIds : ["00000000-0000-0000-0000-000000000000"]);
+    if (roleErr) throw new DataAccessError(roleErr.message, "DATABASE");
+
+    return {
+      legalEntityName: entity?.name_en ?? legalEntityId,
+      profiles: profiles ?? [],
+      roles: (roles ?? []).map((r) => {
+        const role = Array.isArray(r.roles) ? r.roles[0] : r.roles;
+        return {
+          id: r.id,
+          user_id: r.user_id,
+          role_code: role?.code ?? "unknown",
+          scope_type: r.scope_type,
+          effective_start: r.effective_start,
+          effective_end: r.effective_end,
+        };
+      }),
+    };
+  });
+}
+
+export async function fetchMasterRecordsAction(recordType?: string) {
+  return withActivePermission("master_data", "read", async ({ legalEntityId, db }) => {
+    let query = db
+      .from("governed_master_records")
+      .select("*")
+      .eq("legal_entity_id", legalEntityId)
+      .order("updated_at", { ascending: false });
+    if (recordType) query = query.eq("record_type", recordType);
+    const { data, error } = await query;
+    if (error) throw new DataAccessError(error.message, "DATABASE");
+    return data ?? [];
+  });
+}
+
+export async function createMasterRecordDraftAction(params: {
+  recordType: string;
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  description?: string;
+  changeReason?: string;
+}) {
+  return withActivePermission("master_data", "create", async ({ legalEntityId, db }) => {
+    const result = await masterRecordCreateDraft(db, {
+      legalEntityId,
+      ...params,
+    });
+    const { data, error } = await db
+      .from("governed_master_records")
+      .select("*")
+      .eq("id", result.entity_id as string)
+      .single();
+    if (error || !data) throw new DataAccessError("Master record not found.", "NOT_FOUND");
+    return data;
+  });
+}
+
+async function masterRecordTransition(
+  recordId: string,
+  rpc: string,
+  expectedStatus: string,
+) {
+  return withActivePermission("master_data", "update", async ({ db }) => {
+    const { error: rpcError } = await db.rpc(rpc, {
+      p_record_id: recordId,
+      p_expected_status: expectedStatus,
+      p_idempotency_key: null,
+      p_correlation_id: null,
+    });
+    if (rpcError) throw new DataAccessError(rpcError.message, "DATABASE");
+    const { data, error } = await db
+      .from("governed_master_records")
+      .select("*")
+      .eq("id", recordId)
+      .single();
+    if (error || !data) throw new DataAccessError("Master record not found.", "NOT_FOUND");
+    return data;
+  });
+}
+
+export async function submitMasterRecordAction(recordId: string) {
+  return masterRecordTransition(recordId, "rpc_master_record_submit", "draft");
+}
+
+export async function approveMasterRecordAction(recordId: string) {
+  return masterRecordTransition(recordId, "rpc_master_record_approve", "submitted");
+}
+
+export async function fetchDelegationsAction() {
+  return withActivePermission("approval", "read", async ({ legalEntityId, db }) => {
+    const { data, error } = await db
+      .from("approval_delegations")
+      .select("*")
+      .eq("legal_entity_id", legalEntityId)
+      .order("created_at", { ascending: false });
+    if (error) throw new DataAccessError(error.message, "DATABASE");
+    return data ?? [];
+  });
+}
+
+export async function createDelegationDraftAction(params: {
+  delegateId: string;
+  workflowType: string;
+  permissionCode: string;
+  effectiveStart: string;
+  effectiveEnd: string;
+  reason: string;
+  financialThreshold?: string;
+}) {
+  return withActivePermission("approval", "create", async ({ legalEntityId, db }) => {
+    const result = await delegationCreateDraft(db, { legalEntityId, ...params });
+    const { data, error } = await db
+      .from("approval_delegations")
+      .select("*")
+      .eq("id", result.entity_id as string)
+      .single();
+    if (error || !data) throw new DataAccessError("Delegation not found.", "NOT_FOUND");
+    return data;
+  });
+}
+
+export async function fetchRequisitionsAction() {
+  return withActivePermission("commitment", "read", async ({ legalEntityId, db }) => {
+    const { data, error } = await db
+      .from("purchase_requisitions")
+      .select("*")
+      .eq("legal_entity_id", legalEntityId)
+      .order("created_at", { ascending: false });
+    if (error) throw new DataAccessError(error.message, "DATABASE");
+    return data ?? [];
+  });
+}
+
+export async function createRequisitionDraftAction(params: {
+  requisitionNumber: string;
   titleEn: string;
   titleAr: string;
-  probabilityPercent: number;
-  financialImpact: string;
-  mitigationPlan?: string;
+  fiscalPeriodId?: string;
 }) {
-  return withActivePermission("project", "update", async ({ ctx, legalEntityId, db }) =>
-    createRisk(db, {
+  return withActivePermission("commitment", "create", async ({ legalEntityId, db }) => {
+    const result = await requisitionCreateDraft(db, { legalEntityId, ...params });
+    const { data, error } = await db
+      .from("purchase_requisitions")
+      .select("*")
+      .eq("id", result.entity_id as string)
+      .single();
+    if (error || !data) throw new DataAccessError("Requisition not found.", "NOT_FOUND");
+    return data;
+  });
+}
+
+export async function submitRequisitionAction(requisitionId: string) {
+  return withActivePermission("commitment", "update", async ({ db }) => {
+    await requisitionSubmit(db, requisitionId);
+    const { data, error } = await db
+      .from("purchase_requisitions")
+      .select("*")
+      .eq("id", requisitionId)
+      .single();
+    if (error || !data) throw new DataAccessError("Requisition not found.", "NOT_FOUND");
+    return data;
+  });
+}
+
+export async function fetchPeriodControlsAction() {
+  return withActivePermission("budget", "read", async ({ legalEntityId, db }) => {
+    const { data, error } = await db
+      .from("fiscal_period_module_controls")
+      .select("*, fiscal_periods(period_number, start_date, end_date, fiscal_year_id)")
+      .eq("legal_entity_id", legalEntityId)
+      .order("updated_at", { ascending: false });
+    if (error) throw new DataAccessError(error.message, "DATABASE");
+    return data ?? [];
+  });
+}
+
+export async function softClosePeriodAction(params: {
+  fiscalPeriodId: string;
+  module: string;
+}) {
+  return withActivePermission("budget", "approve", async ({ legalEntityId, db }) => {
+    await periodSoftClose(db, {
+      fiscalPeriodId: params.fiscalPeriodId,
       legalEntityId,
-      controlScopeId: CONTROL_SCOPE_KM_HOSPITAL,
-      titleEn: input.titleEn,
-      titleAr: input.titleAr,
-      probabilityPercent: input.probabilityPercent,
-      financialImpact: input.financialImpact,
-      mitigationPlan: input.mitigationPlan,
-      ownerId: ctx.userId,
-    }),
-  );
+      module: params.module,
+    });
+    const { data, error } = await db
+      .from("fiscal_period_module_controls")
+      .select("*, fiscal_periods(period_number, start_date, end_date, fiscal_year_id)")
+      .eq("legal_entity_id", legalEntityId)
+      .order("updated_at", { ascending: false });
+    if (error) throw new DataAccessError(error.message, "DATABASE");
+    return data ?? [];
+  });
+}
+
+export async function fetchApprovalRulesAction() {
+  return withActivePermission("approval", "read", async ({ legalEntityId, db }) => {
+    const { data, error } = await db
+      .from("approval_rule_versions")
+      .select("*")
+      .eq("legal_entity_id", legalEntityId)
+      .order("version_number", { ascending: false });
+    if (error) throw new DataAccessError(error.message, "DATABASE");
+    return data ?? [];
+  });
+}
+
+export async function fetchProfilesForDelegationAction() {
+  return withActivePermission("approval", "read", async ({ db }) => {
+    const { data, error } = await db
+      .from("profiles")
+      .select("id, email, full_name_en, full_name_ar")
+      .order("full_name_en");
+    if (error) throw new DataAccessError(error.message, "DATABASE");
+    return (data ?? []).filter((p) => p.id);
+  });
 }
