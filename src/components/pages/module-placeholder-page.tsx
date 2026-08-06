@@ -41,7 +41,7 @@ export default async function ModulePlaceholderPage({
       />
       <Card>
         <CardContent className="flex items-start gap-4 p-6">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-warning-surface text-warning ring-1 ring-amber-100">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-warning-surface text-warning ring-1 ring-warning/30">
             <Construction className="h-6 w-6" aria-hidden />
           </div>
           <p className="text-sm leading-relaxed text-text-secondary">{t("expansionNote")}</p>

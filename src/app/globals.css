@@ -28,7 +28,7 @@
   --border-strong: #cbd5e1;
 
   --input-background: #ffffff;
-  --input-border: #d0d7e2;
+  --input-border: #7c899c;
 
   --sidebar: #f8fafc;
   --sidebar-foreground: #0f172a;
@@ -51,6 +51,7 @@
   --warning: #b45309;
   --warning-surface: #fef3c7;
   --danger: #b91c1c;
+  --danger-foreground: #ffffff;
   --danger-surface: #fee2e2;
   --information: #1d4ed8;
   --information-surface: #dbeafe;
@@ -70,6 +71,10 @@
   --chart-5: #db2777;
   --chart-6: #64748b;
   --chart-grid: #e2e8f0;
+  --chart-axis: #475569;
+  --chart-tooltip: #ffffff;
+  --chart-tooltip-foreground: #0f172a;
+  --chart-tooltip-border: #cbd5e1;
 
   --scrollbar: #cbd5e1;
   --scrollbar-hover: #94a3b8;
@@ -109,7 +114,7 @@
   --border-strong: rgba(148, 163, 184, 0.28);
 
   --input-background: #0f172a;
-  --input-border: rgba(148, 163, 184, 0.24);
+  --input-border: rgba(148, 163, 184, 0.6);
 
   --sidebar: #0a101c;
   --sidebar-foreground: #e2e8f0;
@@ -132,6 +137,7 @@
   --warning: #f59e0b;
   --warning-surface: rgba(245, 158, 11, 0.14);
   --danger: #f87171;
+  --danger-foreground: #0b1220;
   --danger-surface: rgba(248, 113, 113, 0.14);
   --information: #38bdf8;
   --information-surface: rgba(56, 189, 248, 0.14);
@@ -151,6 +157,10 @@
   --chart-5: #f472b6;
   --chart-6: #94a3b8;
   --chart-grid: rgba(148, 163, 184, 0.16);
+  --chart-axis: #cbd5e1;
+  --chart-tooltip: #1a2332;
+  --chart-tooltip-foreground: #f1f5f9;
+  --chart-tooltip-border: rgba(148, 163, 184, 0.6);
 
   --scrollbar: #334155;
   --scrollbar-hover: #64748b;
@@ -200,6 +210,7 @@
   --color-warning: var(--warning);
   --color-warning-surface: var(--warning-surface);
   --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
   --color-danger-surface: var(--danger-surface);
   --color-information: var(--information);
   --color-information-surface: var(--information-surface);
@@ -211,6 +222,11 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
+  --color-chart-tooltip: var(--chart-tooltip);
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
+  --color-chart-tooltip-border: var(--chart-tooltip-border);
   --font-sans: var(--font-sans-latin), var(--font-sans-arabic), ui-sans-serif, system-ui, sans-serif;
   --radius-lg: var(--radius);
   --radius-md: var(--radius-sm);

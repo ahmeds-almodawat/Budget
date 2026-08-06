@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   THEME_STORAGE_KEY,
   applyResolvedTheme,
   isThemePreference,
   resolveTheme,
+  themeInitScript,
 } from "@/lib/theme/theme";
 
 describe("theme resolution", () => {
@@ -68,6 +69,29 @@ describe("theme persistence fallback", () => {
     localStorage.setItem(THEME_STORAGE_KEY, "dark");
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
     expect(business.budget).toBe(100);
+  });
+
+  it("initializes from System when storage access is denied", () => {
+    const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("Storage unavailable", "SecurityError");
+    });
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+
+    window.eval(themeInitScript);
+
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    expect(document.documentElement.getAttribute("data-theme-preference")).toBe("system");
+
+    getItem.mockRestore();
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: originalMatchMedia,
+    });
   });
 });
 

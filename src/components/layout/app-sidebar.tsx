@@ -135,7 +135,7 @@ export function AppSidebar({
         </p>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Main navigation">
+      <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label={tSidebar("mainNavigation")}>
         {navSections.map((section, sectionIndex) => {
           const visibleItems = section.items.filter((item) => shouldShow(item.key));
           if (visibleItems.length === 0) return null;

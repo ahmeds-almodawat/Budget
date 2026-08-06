@@ -354,7 +354,11 @@
     "unmapped": "Unmapped",
     "importBatches": "Import batches",
     "duplicateQueue": "Duplicate queue",
-    "reversals": "Reversals"
+    "reversals": "Reversals",
+    "posted": "Posted",
+    "draft": "Draft",
+    "incompleteAllocation": "Incomplete allocation",
+    "rowCount": "{count, plural, one {# row} other {# rows}}"
   },
   "approvals": {
     "awaiting": "Awaiting my approval",
@@ -455,7 +459,8 @@
   "sidebar": {
     "switchToArabic": "العربية",
     "switchToEnglish": "English",
-    "systemOperational": "All systems operational"
+    "systemOperational": "All systems operational",
+    "mainNavigation": "Main navigation"
   },
   "theme": {
     "label": "Color theme",
@@ -467,7 +472,9 @@
     "eyebrow": "Enterprise Control",
     "tagline": "Project · Budget · Performance",
     "openNavigation": "Open navigation",
-    "closeNavigation": "Close navigation"
+    "closeNavigation": "Close navigation",
+    "navigationTitle": "Main navigation",
+    "activeLegalEntity": "Active legal entity"
   },
   "masterData": {
     "title": "Master Data Governance",

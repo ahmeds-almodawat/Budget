@@ -95,7 +95,9 @@ Semantic classes preferred:
 
 ## Charts
 
-Series map to `--chart-1` … `--chart-6`. Geometry and series order stay identical; only colors and grids change.
+Future series map to `--chart-1` … `--chart-6`; axes, grids, and tooltip chrome map to the corresponding `--chart-*` semantic tokens. Geometry and series order must stay identical between themes.
+
+The audited repository currently has no rendered Recharts component or chart wrapper. `recharts` is installed as a dependency, but chart presentation remains a scaffold rather than a completed visual module.
 
 ## Theme persistence and System mode
 
@@ -151,7 +153,7 @@ Nested detail routes inherit the shell automatically.
 
 ## Known limitations
 
-- Some page-local chart colors may still use library defaults until each chart is wired to `--chart-*`.
+- Charts are not implemented; any future chart must consume the documented semantic chart tokens and receive dual-theme visual regression coverage.
 - Moderate npm advisory for `uuid` via `exceljs` remains (no unsafe override).
 - Decorative brand logo assets referenced in product config are still text/initial-based.
 - Dual-theme visual QA for every nested dialog variant is ongoing; shell + primary workspaces are the baseline.

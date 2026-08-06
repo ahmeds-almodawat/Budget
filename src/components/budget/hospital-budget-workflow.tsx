@@ -215,7 +215,7 @@ export function HospitalBudgetWorkflow({ permissions }: { permissions: BudgetWor
         </CardContent>
       </Card>
 
-      {message ? <p className="text-green-700">{message}</p> : null}
+      {message ? <p className="text-success">{message}</p> : null}
       {error ? <p className="text-danger" role="alert">{error}</p> : null}
       {budgetVersionId ? (
         <p className="text-xs text-muted-foreground">Budget version: {budgetVersionId}</p>

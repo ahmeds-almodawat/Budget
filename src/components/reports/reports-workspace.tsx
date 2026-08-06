@@ -110,7 +110,7 @@ export function ReportsWorkspace() {
               <thead>
                 <tr className="border-b">
                   {headers.map((h) => (
-                    <th key={h} className="px-2 py-1 text-left">{h}</th>
+                    <th key={h} className="px-2 py-1 text-start">{h}</th>
                   ))}
                 </tr>
               </thead>

@@ -88,7 +88,7 @@ export default async function HospitalDashboardPage({
       </div>
 
       {explanationRequired ? (
-        <Card className="border-amber-300 bg-warning-surface">
+        <Card className="border-warning/40 bg-warning-surface">
           <CardContent className="p-4 text-warning">
             {t("varianceExplanationRequired")} — MTD {formatMoney(String(mtdVariance), "SAR")}
           </CardContent>

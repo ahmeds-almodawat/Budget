@@ -12,6 +12,14 @@ const connectionString =
 
 const LEGAL_ENTITY = "11111111-1111-1111-1111-111111111102";
 const FINANCE = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3";
+const LEGACY_ORPHAN_SOURCE_IDS = [
+  "REST-B1-FOOD-001",
+  "REST-B1-LAB-001",
+  "REST-B1-REV-001",
+  "REST-B2-FOOD-001",
+  "REST-B2-LAB-001",
+  "REST-B2-REV-001",
+];
 
 async function asUser(client, userId, fn) {
   await client.query("BEGIN");
@@ -92,22 +100,45 @@ async function main() {
 
   await test("COD-H-010: duplicate reversal is idempotent via unique index", async () => {
     await asUser(client, FINANCE, async () => {
-      // Prefer a posted original that has allocations so reversal reconciliation
-      // can succeed (orphan posted rows without allocations are not reversible).
-      const { rows: originals } = await client.query(
-        `SELECT atx.id FROM actual_transactions AS atx
-         WHERE atx.legal_entity_id = $1 AND atx.is_posted = true AND atx.is_reversal = false
-           AND atx.reverses_transaction_id IS NULL
-           AND EXISTS (
-             SELECT 1 FROM actual_transaction_allocations AS ata
-             WHERE ata.actual_transaction_id = atx.id
-           )
-         ORDER BY atx.id
+      const { rows: dimensions } = await client.query(
+        `SELECT ou.id AS organization_unit_id, cn.id AS cost_node_id
+         FROM organization_units AS ou
+         CROSS JOIN cost_nodes AS cn
+         WHERE ou.legal_entity_id = $1 AND cn.legal_entity_id = $1
+           AND cn.is_leaf = true AND cn.allows_posting = true
+         ORDER BY ou.id, cn.id
          LIMIT 1`,
         [LEGAL_ENTITY],
       );
-      if (originals.length === 0) throw new Error("No posted original transaction found");
+      if (dimensions.length === 0) throw new Error("No valid allocation dimensions found");
+
+      const sourceId = `CONCURRENCY-REVERSAL-${Date.now()}`;
+      const { rows: originals } = await client.query(
+        `INSERT INTO actual_transactions (
+           legal_entity_id, source_system, source_transaction_id, transaction_date,
+           amount_ex_vat, amount_inc_vat, is_posted
+         ) VALUES ($1, 'CONCURRENCY-TEST', $2, '2027-04-01', 123.45, 123.45, false)
+         RETURNING id`,
+        [LEGAL_ENTITY, sourceId],
+      );
       const origId = originals[0].id;
+      await client.query(
+        `INSERT INTO actual_transaction_allocations (
+           actual_transaction_id, organization_unit_id, cost_node_id,
+           allocation_amount, allocation_percent
+         ) VALUES ($1, $2, $3, 123.45, 100)`,
+        [
+          origId,
+          dimensions[0].organization_unit_id,
+          dimensions[0].cost_node_id,
+        ],
+      );
+      const posted = await client.query(
+        `SELECT public.rpc_post_actual_transaction($1, $2, gen_random_uuid()) AS r`,
+        [origId, `test-post-${Date.now()}`],
+      );
+      if (!posted.rows[0].r.ok) throw new Error("Self-contained posting setup failed");
+
       const key = `test-rev-${Date.now()}`;
       const first = await client.query(
         `SELECT public.rpc_reverse_actual_transaction($1, 'concurrency test', $2, gen_random_uuid()) AS r`,
@@ -124,6 +155,26 @@ async function main() {
         throw new Error("Duplicate reversal did not return same reversal id");
       }
     });
+  });
+
+  await test("DTA-M-001: legacy fixture allocation debt is bounded and explicit", async () => {
+    const { rows } = await client.query(
+      `SELECT atx.source_transaction_id
+       FROM actual_transactions AS atx
+       WHERE atx.is_posted = true
+         AND atx.is_reversal = false
+         AND NOT EXISTS (
+           SELECT 1 FROM actual_transaction_allocations AS ata
+           WHERE ata.actual_transaction_id = atx.id
+         )
+       ORDER BY atx.source_transaction_id`,
+    );
+    const actual = rows.map((row) => row.source_transaction_id);
+    if (JSON.stringify(actual) !== JSON.stringify(LEGACY_ORPHAN_SOURCE_IDS)) {
+      throw new Error(
+        `Unexpected posted transactions without allocations: ${actual.join(", ") || "none"}`,
+      );
+    }
   });
 
   await test("COD-M-005: cross-tenant allocation insert is rejected", async () => {
@@ -172,6 +223,7 @@ async function main() {
           "COD-H-003 audit append-only triggers",
           "COD-H-004 approved budget immutability",
           "COD-H-010 idempotent reversal",
+          "DTA-M-001 bounded legacy fixture allocation debt",
           "COD-M-005 cross-tenant allocation rejection",
         ],
       },

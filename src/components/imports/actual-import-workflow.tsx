@@ -115,7 +115,7 @@ export function ActualImportWorkflow() {
           {t("unmappedQueue", { count: unmappedCount })}
         </p>
       ) : null}
-      {message ? <p className="text-green-700">{message}</p> : null}
+      {message ? <p className="text-success">{message}</p> : null}
       {error ? <p className="text-danger">{error}</p> : null}
     </div>
   );

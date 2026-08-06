@@ -28,7 +28,7 @@ export default async function RestaurantDashboardPage({
           <CardContent className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left">
+                <tr className="border-b text-start">
                   <th className="py-2">{tLabels("branch")}</th>
                   <th>{tLabels("revenue")}</th>
                   <th>{t("foodCostPercent")}</th>

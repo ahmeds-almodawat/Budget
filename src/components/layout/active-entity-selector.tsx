@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Building2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   fetchSelectableLegalEntitiesAction,
   getActiveLegalEntityIdAction,
@@ -11,6 +12,7 @@ import {
 import type { UserSummary } from "@/components/layout/app-shell";
 
 export function ActiveEntitySelector({ user }: { user: UserSummary | null }) {
+  const t = useTranslations("shell");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [entities, setEntities] = useState<{ id: string; code: string; name_en: string; name_ar: string }[]>([]);
@@ -35,7 +37,7 @@ export function ActiveEntitySelector({ user }: { user: UserSummary | null }) {
   return (
     <label className="flex min-w-0 items-center gap-2 text-sm text-text-secondary">
       <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-      <span className="sr-only">Active legal entity</span>
+      <span className="sr-only">{t("activeLegalEntity")}</span>
       <select
         className="max-w-[12rem] truncate rounded-lg border border-input bg-input-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30 disabled:opacity-60 sm:max-w-xs"
         value={activeId ?? ""}

@@ -288,7 +288,7 @@ export function RevenueBudgetWorkflow({ permissions }: { permissions: RevenueBud
           </div>
 
           {readOnly && <p className="text-sm text-warning" data-testid="read-only-notice">{t("readOnly")}</p>}
-          {message && <p className="text-sm text-green-700">{message}</p>}
+          {message && <p className="text-sm text-success">{message}</p>}
           {error && <p className="text-sm text-danger">{error}</p>}
 
           <div className="flex gap-2">

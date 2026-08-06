@@ -4,7 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useSyncExternalStore,
 } from "react";
@@ -26,6 +26,7 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 const THEME_CHANGE_EVENT = "almodawat-theme-change";
+let transientPreference: ThemePreference | null = null;
 
 function subscribeSystemTheme(onStoreChange: () => void) {
   const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -40,9 +41,11 @@ function getSystemPrefersDark() {
 function getStoredPreference(): ThemePreference {
   try {
     const raw = localStorage.getItem(THEME_STORAGE_KEY);
-    return isThemePreference(raw) ? raw : "system";
+    const stored = isThemePreference(raw) ? raw : "system";
+    transientPreference = stored;
+    return stored;
   } catch {
-    return "system";
+    return transientPreference ?? "system";
   }
 }
 
@@ -74,12 +77,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const resolved = resolveTheme(preference, systemPrefersDark);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     applyResolvedTheme(resolved);
     document.documentElement.setAttribute("data-theme-preference", preference);
   }, [preference, resolved]);
 
   const setPreference = useCallback((next: ThemePreference) => {
+    transientPreference = next;
     try {
       localStorage.setItem(THEME_STORAGE_KEY, next);
     } catch {

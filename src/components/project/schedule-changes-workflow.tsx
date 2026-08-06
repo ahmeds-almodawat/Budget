@@ -58,8 +58,8 @@ export function ScheduleChangesWorkflow({
 
   return (
     <div className="space-y-6">
-      {message && <p className="rounded bg-green-50 p-3 text-sm text-green-800">{message}</p>}
-      {error && <p className="rounded bg-danger-surface p-3 text-sm text-red-800">{error}</p>}
+      {message && <p className="rounded bg-success-surface p-3 text-sm text-success">{message}</p>}
+      {error && <p className="rounded bg-danger-surface p-3 text-sm text-danger">{error}</p>}
 
       {permissions.canRequest && (
         <Card>

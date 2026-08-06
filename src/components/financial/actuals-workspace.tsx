@@ -4,10 +4,18 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
+import { cn } from "@/lib/utils";
 
 type Tab = "transactions" | "unmapped" | "batches" | "duplicates" | "reversals";
 
 const TAB_KEYS: Tab[] = ["transactions", "unmapped", "batches", "duplicates", "reversals"];
+const TAB_LABEL_KEYS = {
+  transactions: "transactions",
+  unmapped: "unmapped",
+  batches: "importBatches",
+  duplicates: "duplicateQueue",
+  reversals: "reversals",
+} as const;
 
 interface ActualsWorkspaceProps {
   transactions: {
@@ -42,7 +50,7 @@ export function ActualsWorkspace({ transactions, unmapped, batches, duplicates }
             onClick={() => setTab(key)}
             className={`rounded-md px-3 py-1.5 text-sm ${tab === key ? "bg-primary text-primary-foreground" : "bg-surface-muted text-foreground"}`}
           >
-            {t(key)}
+            {t(TAB_LABEL_KEYS[key])}
           </button>
         ))}
       </div>
@@ -54,14 +62,28 @@ export function ActualsWorkspace({ transactions, unmapped, batches, duplicates }
         <CardContent>
           {tab === "transactions" && (
             <ul className="space-y-2 text-sm">
-              {transactions.filter((tx) => !tx.is_reversal).map((tx) => (
-                <li key={tx.id} className="flex justify-between border-b py-2">
-                  <span>{tx.source_transaction_id}</span>
-                  <span>{tx.transaction_date}</span>
-                  <span>{formatMoney(tx.amount_ex_vat, "SAR")}</span>
-                  <span className="text-muted-foreground">{tx.is_posted ? "posted" : "draft"}</span>
-                </li>
-              ))}
+              {transactions.filter((tx) => !tx.is_reversal).map((tx) => {
+                const hasIncompleteAllocation =
+                  tx.is_posted && tx.actual_transaction_allocations.length === 0;
+
+                return (
+                  <li key={tx.id} className="grid gap-1 border-b py-2 sm:grid-cols-4 sm:gap-3">
+                    <span>{tx.source_transaction_id}</span>
+                    <span>{tx.transaction_date}</span>
+                    <span>{formatMoney(tx.amount_ex_vat, "SAR")}</span>
+                    <span
+                      className={cn(
+                        "text-muted-foreground",
+                        hasIncompleteAllocation && "font-medium text-warning",
+                      )}
+                      data-testid={hasIncompleteAllocation ? "incomplete-allocation" : undefined}
+                    >
+                      {tx.is_posted ? t("posted") : t("draft")}
+                      {hasIncompleteAllocation ? ` — ${t("incompleteAllocation")}` : ""}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
           {tab === "unmapped" && (
@@ -80,7 +102,7 @@ export function ActualsWorkspace({ transactions, unmapped, batches, duplicates }
               {batches.map((b) => (
                 <li key={b.id} className="flex justify-between border-b py-2">
                   <span>{b.file_name ?? b.id.slice(0, 8)}</span>
-                  <span>{b.row_count} rows</span>
+                  <span>{t("rowCount", { count: b.row_count })}</span>
                   <span>{b.approval_status}</span>
                 </li>
               ))}

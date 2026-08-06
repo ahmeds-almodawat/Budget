@@ -354,7 +354,11 @@
     "unmapped": "غير مربوطة",
     "importBatches": "دفعات الاستيراد",
     "duplicateQueue": "قائمة التكرار",
-    "reversals": "العكسيات"
+    "reversals": "العكسيات",
+    "posted": "مرحّلة",
+    "draft": "مسودة",
+    "incompleteAllocation": "توزيع غير مكتمل",
+    "rowCount": "{count, plural, zero {لا صفوف} one {صف واحد} two {صفان} few {# صفوف} many {# صفًا} other {# صف}}"
   },
   "approvals": {
     "awaiting": "بانتظار اعتمادي",
@@ -455,7 +459,8 @@
   "sidebar": {
     "switchToArabic": "العربية",
     "switchToEnglish": "English",
-    "systemOperational": "جميع الأنظمة تعمل"
+    "systemOperational": "جميع الأنظمة تعمل",
+    "mainNavigation": "التنقل الرئيسي"
   },
   "theme": {
     "label": "سمة الألوان",
@@ -467,7 +472,9 @@
     "eyebrow": "التحكم المؤسسي",
     "tagline": "المشاريع · الميزانية · الأداء",
     "openNavigation": "فتح القائمة",
-    "closeNavigation": "إغلاق القائمة"
+    "closeNavigation": "إغلاق القائمة",
+    "navigationTitle": "التنقل الرئيسي",
+    "activeLegalEntity": "الكيان القانوني النشط"
   },
   "masterData": {
     "title": "حوكمة البيانات الرئيسية",

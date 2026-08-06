@@ -168,7 +168,7 @@ export function BudgetVsActualWorkspace({
           <CardContent className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-muted-foreground">
+                <tr className="border-b text-start text-muted-foreground">
                   <th className="p-2">{t("columns.period")}</th>
                   <th className="p-2">{t("columns.budget")}</th>
                   <th className="p-2">{t("columns.gross")}</th>
@@ -206,7 +206,7 @@ export function BudgetVsActualWorkspace({
           <CardContent className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-muted-foreground">
+                <tr className="border-b text-start text-muted-foreground">
                   <th className="p-2">{t("columns.period")}</th>
                   <th className="p-2">{t("columns.classification")}</th>
                   <th className="p-2">{t("columns.budget")}</th>

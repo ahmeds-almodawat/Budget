@@ -32,7 +32,13 @@ export default async function LocaleLayout({
   const fontClass = `${fontLatin.variable} ${fontArabic.variable}`;
 
   return (
-    <html lang={locale} dir={dir} className={`h-full ${fontClass}`} suppressHydrationWarning>
+    <html
+      lang={locale}
+      dir={dir}
+      className={`h-full ${fontClass}`}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

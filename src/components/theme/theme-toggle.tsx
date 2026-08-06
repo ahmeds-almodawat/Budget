@@ -16,6 +16,28 @@ export function ThemeToggle({ className }: { className?: string }) {
   const t = useTranslations("theme");
   const { preference, setPreference } = useTheme();
 
+  function selectByKeyboard(event: React.KeyboardEvent<HTMLButtonElement>, index: number) {
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = (index + 1) % OPTIONS.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextIndex = (index - 1 + OPTIONS.length) % OPTIONS.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = OPTIONS.length - 1;
+    }
+
+    if (nextIndex === null) return;
+    event.preventDefault();
+    const next = OPTIONS[nextIndex];
+    setPreference(next.value);
+    const radios = event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+      '[role="radio"]',
+    );
+    radios?.[nextIndex]?.focus();
+  }
+
   return (
     <div
       role="radiogroup"
@@ -26,7 +48,7 @@ export function ThemeToggle({ className }: { className?: string }) {
         className,
       )}
     >
-      {OPTIONS.map(({ value, icon: Icon, labelKey }) => {
+      {OPTIONS.map(({ value, icon: Icon, labelKey }, index) => {
         const selected = preference === value;
         return (
           <button
@@ -34,12 +56,14 @@ export function ThemeToggle({ className }: { className?: string }) {
             type="button"
             role="radio"
             aria-checked={selected}
+            tabIndex={selected ? 0 : -1}
             aria-label={t(labelKey)}
             data-testid={`theme-${value}`}
             title={t(labelKey)}
             onClick={() => setPreference(value)}
+            onKeyDown={(event) => selectByKeyboard(event, index)}
             className={cn(
-              "inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "inline-flex h-11 w-11 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               selected
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",

@@ -255,7 +255,7 @@ export function ForecastsWorkspace({
         </Card>
       ) : null}
 
-      {message ? <p className="text-sm text-green-700">{message}</p> : null}
+      {message ? <p className="text-sm text-success">{message}</p> : null}
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       <div className="grid gap-4">
