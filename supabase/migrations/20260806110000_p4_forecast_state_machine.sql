@@ -501,7 +501,7 @@ CREATE OR REPLACE FUNCTION public.rpc_forecast_create_draft(
   p_project_id UUID DEFAULT NULL, p_control_account_id UUID DEFAULT NULL,
   p_assumptions TEXT DEFAULT NULL, p_lines JSONB DEFAULT '[]'::jsonb,
   p_idempotency_key TEXT DEFAULT NULL, p_correlation_id UUID DEFAULT NULL
-) RETURNS JSONB LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
+) RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
   SELECT private.forecast_create_draft(p_legal_entity_id, p_control_scope_id, p_fiscal_year_id,
     p_version_label, p_scenario, p_effective_date, p_as_of_date, p_project_id, p_control_account_id,
     p_assumptions, p_lines, p_idempotency_key, p_correlation_id);
@@ -512,7 +512,7 @@ CREATE OR REPLACE FUNCTION public.rpc_forecast_update_draft(
   p_version_label TEXT DEFAULT NULL, p_assumptions TEXT DEFAULT NULL,
   p_lines JSONB DEFAULT NULL, p_idempotency_key TEXT DEFAULT NULL,
   p_correlation_id UUID DEFAULT NULL
-) RETURNS JSONB LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
+) RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
   SELECT private.forecast_update_draft(p_forecast_version_id, p_expected_row_version,
     p_version_label, p_assumptions, p_lines, p_idempotency_key, p_correlation_id);
 $$;
@@ -520,42 +520,42 @@ $$;
 CREATE OR REPLACE FUNCTION public.rpc_forecast_submit(
   p_forecast_version_id UUID, p_expected_status public.approval_status DEFAULT 'draft',
   p_idempotency_key TEXT DEFAULT NULL, p_correlation_id UUID DEFAULT NULL
-) RETURNS JSONB LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
+) RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
   SELECT private.forecast_transition(p_forecast_version_id, p_expected_status, 'submitted', p_idempotency_key, p_correlation_id);
 $$;
 
 CREATE OR REPLACE FUNCTION public.rpc_forecast_start_review(
   p_forecast_version_id UUID, p_expected_status public.approval_status DEFAULT 'submitted',
   p_idempotency_key TEXT DEFAULT NULL, p_correlation_id UUID DEFAULT NULL
-) RETURNS JSONB LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
+) RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
   SELECT private.forecast_transition(p_forecast_version_id, p_expected_status, 'under_review', p_idempotency_key, p_correlation_id);
 $$;
 
 CREATE OR REPLACE FUNCTION public.rpc_forecast_reject(
   p_forecast_version_id UUID, p_expected_status public.approval_status DEFAULT 'under_review',
   p_idempotency_key TEXT DEFAULT NULL, p_correlation_id UUID DEFAULT NULL
-) RETURNS JSONB LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
+) RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
   SELECT private.forecast_transition(p_forecast_version_id, p_expected_status, 'rejected', p_idempotency_key, p_correlation_id);
 $$;
 
 CREATE OR REPLACE FUNCTION public.rpc_forecast_cancel(
   p_forecast_version_id UUID, p_expected_status public.approval_status DEFAULT 'draft',
   p_idempotency_key TEXT DEFAULT NULL, p_correlation_id UUID DEFAULT NULL
-) RETURNS JSONB LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
+) RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
   SELECT private.forecast_transition(p_forecast_version_id, p_expected_status, 'cancelled', p_idempotency_key, p_correlation_id);
 $$;
 
 CREATE OR REPLACE FUNCTION public.rpc_forecast_approve_and_lock(
   p_forecast_version_id UUID, p_expected_status public.approval_status DEFAULT 'under_review',
   p_idempotency_key TEXT DEFAULT NULL, p_correlation_id UUID DEFAULT NULL
-) RETURNS JSONB LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
+) RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
   SELECT private.forecast_approve_and_lock(p_forecast_version_id, p_expected_status, p_idempotency_key, p_correlation_id);
 $$;
 
 CREATE OR REPLACE FUNCTION public.rpc_forecast_supersede(
   p_forecast_version_id UUID, p_expected_status public.approval_status DEFAULT 'locked',
   p_idempotency_key TEXT DEFAULT NULL, p_correlation_id UUID DEFAULT NULL
-) RETURNS JSONB LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
+) RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
   SELECT private.forecast_transition(p_forecast_version_id, p_expected_status, 'superseded', p_idempotency_key, p_correlation_id);
 $$;
 
