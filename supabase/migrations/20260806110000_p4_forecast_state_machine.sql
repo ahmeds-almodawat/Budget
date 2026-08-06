@@ -581,3 +581,5 @@ REVOKE ALL ON FUNCTION private.forecast_transition(UUID, public.approval_status,
 REVOKE ALL ON FUNCTION private.forecast_create_draft(UUID, UUID, UUID, TEXT, TEXT, DATE, DATE, UUID, UUID, TEXT, JSONB, TEXT, UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION private.forecast_update_draft(UUID, INTEGER, TEXT, TEXT, JSONB, TEXT, UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION private.forecast_approve_and_lock(UUID, public.approval_status, TEXT, UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION private.protect_immutable_forecast_line() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION private.protect_locked_forecast_version() FROM PUBLIC, anon, authenticated, service_role;
