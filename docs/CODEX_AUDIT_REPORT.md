@@ -171,6 +171,8 @@ The branch advanced from `ce1fc16` to `97049df` while review was in progress. Th
 
 ### COD-H-003 — Audit records are forgeable, globally scoped, incomplete, and not physically append-only
 
+**Remediation status (2026-08-06): implemented on `fix/audit-p2-financial-transactions`.** Extended `audit_events` with tenant/correlation/idempotency columns; append-only triggers; command-only writes via `private.write_audit_event`.
+
 | Field | Detail |
 |---|---|
 | Severity | **High** |
@@ -186,6 +188,8 @@ The branch advanced from `ce1fc16` to `97049df` while review was in progress. Th
 | Blocks production | **Yes** |
 
 ### COD-H-004 — Approved budgets and their lines/period allocations remain mutable
+
+**Remediation status (2026-08-06): implemented on `fix/audit-p2-financial-transactions`.** Immutability extended to `approved` status; line and monthly allocation triggers; change-only path via RPC.
 
 | Field | Detail |
 |---|---|
@@ -203,6 +207,8 @@ The branch advanced from `ce1fc16` to `97049df` while review was in progress. Th
 
 ### COD-H-005 — Budget approval transitions are unconstrained, non-atomic, and race-prone
 
+**Remediation status (2026-08-06): implemented on `fix/audit-p2-financial-transactions`.** `private.budget_transition` / `rpc_budget_approve_and_lock` with expected-state checks, SOD, partial unique index.
+
 | Field | Detail |
 |---|---|
 | Severity | **High** |
@@ -219,6 +225,8 @@ The branch advanced from `ce1fc16` to `97049df` while review was in progress. Th
 
 ### COD-H-006 — Budget change approval trusts unrelated client IDs and amounts
 
+**Remediation status (2026-08-06): implemented on `fix/audit-p2-financial-transactions`.** `rpc_budget_approve_change_request` accepts only change request ID; server derives deltas and new version.
+
 | Field | Detail |
 |---|---|
 | Severity | **High** |
@@ -234,6 +242,8 @@ The branch advanced from `ce1fc16` to `97049df` while review was in progress. Th
 | Blocks production | **Yes** |
 
 ### COD-H-007 — Import posting violates segregation, atomicity, and idempotency controls
+
+**Remediation status (2026-08-06): implemented on `fix/audit-p2-financial-transactions`.** `rpc_import_review_batch` / `rpc_import_post_batch` with SOD and single-transaction posting.
 
 | Field | Detail |
 |---|---|
@@ -267,6 +277,8 @@ The branch advanced from `ce1fc16` to `97049df` while review was in progress. Th
 
 ### COD-H-009 — Actual posting and allocation integrity are not enforceable
 
+**Remediation status (2026-08-06): implemented on `fix/audit-p2-financial-transactions`.** Draft default (`is_posted=false`), exact reconciliation RPC, cross-tenant allocation trigger, posted immutability.
+
 | Field | Detail |
 |---|---|
 | Severity | **High** |
@@ -282,6 +294,8 @@ The branch advanced from `ce1fc16` to `97049df` while review was in progress. Th
 | Blocks production | **Yes** |
 
 ### COD-H-010 — Reversals are repeatable, incomplete, and role-incompatible
+
+**Remediation status (2026-08-06): implemented on `fix/audit-p2-financial-transactions`.** `rpc_reverse_actual_transaction` with idempotency, unique reversal index, allocation mirror, audit action `reverse`.
 
 | Field | Detail |
 |---|---|
@@ -314,6 +328,8 @@ The branch advanced from `ce1fc16` to `97049df` while review was in progress. Th
 | Blocks production | **Yes** |
 
 ### COD-H-012 — Progress and schedule workflows permit repeat/concurrent state corruption
+
+**Remediation status (2026-08-06): implemented on `fix/audit-p2-financial-transactions`.** Transactional progress/schedule RPCs with expected status, SOD, and `schedule_baseline_versions`.
 
 | Field | Detail |
 |---|---|
@@ -385,6 +401,8 @@ The branch advanced from `ce1fc16` to `97049df` while review was in progress. Th
 
 ### COD-M-002 — Exception and report repositories query columns that do not exist
 
+**Remediation status (2026-08-06): implemented on `fix/audit-p2-financial-transactions`.** Repositories join exception queues through `import_batches`; unmapped status aligned to `open`.
+
 | Field | Detail |
 |---|---|
 | Severity | **Medium** |
@@ -433,6 +451,8 @@ The branch advanced from `ce1fc16` to `97049df` while review was in progress. Th
 
 ### COD-M-005 — Cross-tenant relational integrity and domain constraints are incomplete
 
+**Remediation status (2026-08-06): partial on `fix/audit-p2-financial-transactions`.** Cross-tenant allocation trigger, progress range checks, one-reversal unique index, one-current-budget partial unique index.
+
 | Field | Detail |
 |---|---|
 | Severity | **Medium** |
@@ -448,6 +468,8 @@ The branch advanced from `ce1fc16` to `97049df` while review was in progress. Th
 | Blocks production | **Yes** |
 
 ### COD-M-006 — Baseline preservation is partial and not version-complete
+
+**Remediation status (2026-08-06): partial on `fix/audit-p2-financial-transactions`.** `schedule_baseline_versions` table; schedule approve command snapshots approved revisions.
 
 | Field | Detail |
 |---|---|
@@ -480,6 +502,8 @@ The branch advanced from `ce1fc16` to `97049df` while review was in progress. Th
 | Blocks production | **Yes** |
 
 ### COD-M-008 — Automated tests provide weak security/accounting assurance
+
+**Remediation status (2026-08-06): improved on `fix/audit-p2-financial-transactions`.** Command unit tests, extended DB invariants, concurrency script mapped to findings.
 
 | Field | Detail |
 |---|---|
