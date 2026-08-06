@@ -88,6 +88,7 @@ jobs:
         run: npm run test:e2e
         env:
           CI: true
+          E2E_PORT: "3010"
 
       - name: Build
         run: npm run build

@@ -1,12 +1,6 @@
 "use server";
 
-import { isAuthError } from "@/lib/auth/errors";
-import {
-  assertLegalEntityAccess,
-  getAuthenticatedDb,
-  requirePermission,
-} from "@/lib/auth/context";
-import { DataAccessError } from "@/data/repositories/budget-repository";
+import { withActivePermission } from "@/lib/auth/action-guard";
 import {
   createRisk,
   getDecisions,
@@ -15,68 +9,36 @@ import {
   getRegisterDependencies,
   getRisks,
 } from "@/data/repositories/governance-repository";
-import { CONTROL_SCOPE_KM_HOSPITAL, LEGAL_ENTITY_MODAWAT } from "@/types/database";
-
-function mapActionError(error: unknown): never {
-  if (isAuthError(error)) {
-    throw new DataAccessError(error.message, "FORBIDDEN");
-  }
-  throw error;
-}
+import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
 
 export async function fetchRisksAction() {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    requirePermission(ctx, "project", "read", LEGAL_ENTITY_MODAWAT);
-    return getRisks(db, LEGAL_ENTITY_MODAWAT);
-  } catch (error) {
-    mapActionError(error);
-  }
+  return withActivePermission("project", "read", async ({ legalEntityId, db }) =>
+    getRisks(db, legalEntityId),
+  );
 }
 
 export async function fetchIssuesAction() {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    requirePermission(ctx, "project", "read", LEGAL_ENTITY_MODAWAT);
-    return getIssues(db, LEGAL_ENTITY_MODAWAT);
-  } catch (error) {
-    mapActionError(error);
-  }
+  return withActivePermission("project", "read", async ({ legalEntityId, db }) =>
+    getIssues(db, legalEntityId),
+  );
 }
 
 export async function fetchRegisterActionsAction() {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    requirePermission(ctx, "project", "read", LEGAL_ENTITY_MODAWAT);
-    return getRegisterActions(db, LEGAL_ENTITY_MODAWAT);
-  } catch (error) {
-    mapActionError(error);
-  }
+  return withActivePermission("project", "read", async ({ legalEntityId, db }) =>
+    getRegisterActions(db, legalEntityId),
+  );
 }
 
 export async function fetchDecisionsAction() {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    requirePermission(ctx, "project", "read", LEGAL_ENTITY_MODAWAT);
-    return getDecisions(db, LEGAL_ENTITY_MODAWAT);
-  } catch (error) {
-    mapActionError(error);
-  }
+  return withActivePermission("project", "read", async ({ legalEntityId, db }) =>
+    getDecisions(db, legalEntityId),
+  );
 }
 
 export async function fetchRegisterDependenciesAction() {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    requirePermission(ctx, "project", "read", LEGAL_ENTITY_MODAWAT);
-    return getRegisterDependencies(db, LEGAL_ENTITY_MODAWAT);
-  } catch (error) {
-    mapActionError(error);
-  }
+  return withActivePermission("project", "read", async ({ legalEntityId, db }) =>
+    getRegisterDependencies(db, legalEntityId),
+  );
 }
 
 export async function createRiskAction(input: {
@@ -86,12 +48,9 @@ export async function createRiskAction(input: {
   financialImpact: string;
   mitigationPlan?: string;
 }) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    requirePermission(ctx, "project", "update", LEGAL_ENTITY_MODAWAT);
-    return createRisk(db, {
-      legalEntityId: LEGAL_ENTITY_MODAWAT,
+  return withActivePermission("project", "update", async ({ ctx, legalEntityId, db }) =>
+    createRisk(db, {
+      legalEntityId,
       controlScopeId: CONTROL_SCOPE_KM_HOSPITAL,
       titleEn: input.titleEn,
       titleAr: input.titleAr,
@@ -99,8 +58,6 @@ export async function createRiskAction(input: {
       financialImpact: input.financialImpact,
       mitigationPlan: input.mitigationPlan,
       ownerId: ctx.userId,
-    });
-  } catch (error) {
-    mapActionError(error);
-  }
+    }),
+  );
 }

@@ -1,11 +1,9 @@
 "use server";
 
-import { AuthError, isAuthError } from "@/lib/auth/errors";
-import {
-  assertLegalEntityAccess,
-  getAuthenticatedDb,
-  requirePermission,
-} from "@/lib/auth/context";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { AuthError } from "@/lib/auth/errors";
+import { requirePermission } from "@/lib/auth/context";
+import { withActivePermission } from "@/lib/auth/action-guard";
 import { DataAccessError } from "@/data/repositories/budget-repository";
 import {
   ensureKhamisProjectStructure,
@@ -23,17 +21,14 @@ import {
   submitProgress,
   verifyProgress,
 } from "@/data/repositories/project-schedule-repository";
-import { CONTROL_SCOPE_KM_HOSPITAL, LEGAL_ENTITY_MODAWAT } from "@/types/database";
+import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
 import type { AuthorizationScope } from "@/domain/auth/permissions";
 
-function mapActionError(error: unknown): never {
-  if (isAuthError(error)) {
-    throw new DataAccessError(error.message, "FORBIDDEN");
-  }
-  throw error;
-}
-
-async function resolveProjectId(db: Awaited<ReturnType<typeof getAuthenticatedDb>>["db"], projectScopeId: string, userId: string) {
+async function resolveProjectScope(
+  db: SupabaseClient,
+  projectScopeId: string,
+  userId: string,
+) {
   if (projectScopeId === CONTROL_SCOPE_KM_HOSPITAL) {
     return ensureKhamisProjectStructure(db, userId);
   }
@@ -45,88 +40,63 @@ async function resolveProjectId(db: Awaited<ReturnType<typeof getAuthenticatedDb
   return data?.id ?? null;
 }
 
-function projectAuthorizationScope(projectId: string): AuthorizationScope {
-  return { legalEntityId: LEGAL_ENTITY_MODAWAT, scopeType: "project", scopeId: projectId };
+function projectAuthorizationScope(legalEntityId: string, projectId: string): AuthorizationScope {
+  return { legalEntityId, scopeType: "project", scopeId: projectId };
 }
 
-async function resolveMilestoneProjectId(
-  db: Awaited<ReturnType<typeof getAuthenticatedDb>>["db"],
-  milestoneId: string,
-) {
+async function resolveMilestoneProjectId(db: SupabaseClient, milestoneId: string) {
   const { data } = await db.from("milestones").select("project_id").eq("id", milestoneId).maybeSingle();
   return data?.project_id ?? null;
 }
 
 export async function fetchProjectDashboardAction(projectScopeId: string) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    const projectId = await resolveProjectId(db, projectScopeId, ctx.userId);
+  return withActivePermission("project", "read", async ({ ctx, legalEntityId, db }) => {
+    const projectId = await resolveProjectScope(db, projectScopeId, ctx.userId);
     if (!projectId) return null;
-    requirePermission(ctx, "project", "read", projectAuthorizationScope(projectId));
+    requirePermission(ctx, "project", "read", projectAuthorizationScope(legalEntityId, projectId));
     return getProjectDashboard(db, projectId);
-  } catch (error) {
-    mapActionError(error);
-  }
+  });
 }
 
 export async function fetchProjectTimelineAction(projectScopeId: string) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    const projectId = await resolveProjectId(db, projectScopeId, ctx.userId);
+  return withActivePermission("project", "read", async ({ ctx, legalEntityId, db }) => {
+    const projectId = await resolveProjectScope(db, projectScopeId, ctx.userId);
     if (!projectId) return null;
-    requirePermission(ctx, "project", "read", projectAuthorizationScope(projectId));
+    requirePermission(ctx, "project", "read", projectAuthorizationScope(legalEntityId, projectId));
     return getProjectTimeline(db, projectId);
-  } catch (error) {
-    mapActionError(error);
-  }
+  });
 }
 
 export async function fetchProjectTasksAction(projectScopeId: string) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    const projectId = await resolveProjectId(db, projectScopeId, ctx.userId);
+  return withActivePermission("project", "read", async ({ ctx, legalEntityId, db }) => {
+    const projectId = await resolveProjectScope(db, projectScopeId, ctx.userId);
     if (!projectId) return [];
-    requirePermission(ctx, "task", "read", projectAuthorizationScope(projectId));
+    requirePermission(ctx, "task", "read", projectAuthorizationScope(legalEntityId, projectId));
     return getProjectTasks(db, projectId);
-  } catch (error) {
-    mapActionError(error);
-  }
+  });
 }
 
 export async function fetchMilestonesAction(projectScopeId?: string) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
+  return withActivePermission("milestone", "read", async ({ ctx, legalEntityId, db }) => {
     let projectId: string | undefined;
     if (projectScopeId) {
-      const resolved = await resolveProjectId(db, projectScopeId, ctx.userId);
+      const resolved = await resolveProjectScope(db, projectScopeId, ctx.userId);
       projectId = resolved ?? undefined;
       if (projectId) {
-        requirePermission(ctx, "milestone", "read", projectAuthorizationScope(projectId));
+        requirePermission(ctx, "milestone", "read", projectAuthorizationScope(legalEntityId, projectId));
       }
-    } else {
-      requirePermission(ctx, "milestone", "read", LEGAL_ENTITY_MODAWAT);
     }
     return getMilestones(db, projectId);
-  } catch (error) {
-    mapActionError(error);
-  }
+  });
 }
 
 export async function fetchMilestoneDetailAction(milestoneId: string) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
+  return withActivePermission("milestone", "read", async ({ ctx, legalEntityId, db }) => {
     const projectId = await resolveMilestoneProjectId(db, milestoneId);
     if (!projectId) throw new DataAccessError("Milestone not found.", "NOT_FOUND");
-    requirePermission(ctx, "milestone", "read", projectAuthorizationScope(projectId));
+    requirePermission(ctx, "milestone", "read", projectAuthorizationScope(legalEntityId, projectId));
     return getMilestoneDetail(db, milestoneId);
-  } catch (error) {
-    mapActionError(error);
-  }
+  });
 }
 
 export async function submitProgressAction(input: {
@@ -135,29 +105,23 @@ export async function submitProgressAction(input: {
   notes?: string;
   evidenceDescription?: string;
 }) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
+  return withActivePermission("milestone", "update", async ({ ctx, legalEntityId, db }) => {
     const projectId = await resolveMilestoneProjectId(db, input.milestoneId);
     if (!projectId) throw new DataAccessError("Milestone not found.", "NOT_FOUND");
-    requirePermission(ctx, "milestone", "update", projectAuthorizationScope(projectId));
+    requirePermission(ctx, "milestone", "update", projectAuthorizationScope(legalEntityId, projectId));
 
     return submitProgress(db, {
       ...input,
       reportedBy: ctx.userId,
     });
-  } catch (error) {
-    mapActionError(error);
-  }
+  });
 }
 
 export async function verifyProgressAction(input: {
   progressUpdateId: string;
   verifiedProgress: number;
 }) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
+  return withActivePermission("milestone", "approve", async ({ ctx, legalEntityId, db }) => {
     const { data: update } = await db
       .from("milestone_progress_updates")
       .select("reported_by, milestone_id")
@@ -167,9 +131,9 @@ export async function verifyProgressAction(input: {
     if (!update) throw new DataAccessError("Progress update not found.", "NOT_FOUND");
     const projectId = await resolveMilestoneProjectId(db, update.milestone_id);
     if (!projectId) throw new DataAccessError("Milestone not found.", "NOT_FOUND");
-    requirePermission(ctx, "milestone", "approve", projectAuthorizationScope(projectId));
+    requirePermission(ctx, "milestone", "approve", projectAuthorizationScope(legalEntityId, projectId));
 
-    if (update?.reported_by === ctx.userId) {
+    if (update.reported_by === ctx.userId) {
       throw new AuthError("Reporter cannot verify own progress.", "FORBIDDEN");
     }
 
@@ -178,22 +142,16 @@ export async function verifyProgressAction(input: {
       verifiedProgress: input.verifiedProgress,
       verifiedBy: ctx.userId,
     });
-  } catch (error) {
-    mapActionError(error);
-  }
+  });
 }
 
 export async function acceptMilestoneAction(milestoneId: string) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
+  return withActivePermission("milestone", "approve", async ({ ctx, legalEntityId, db }) => {
     const projectId = await resolveMilestoneProjectId(db, milestoneId);
     if (!projectId) throw new DataAccessError("Milestone not found.", "NOT_FOUND");
-    requirePermission(ctx, "milestone", "approve", projectAuthorizationScope(projectId));
+    requirePermission(ctx, "milestone", "approve", projectAuthorizationScope(legalEntityId, projectId));
     return acceptMilestone(db, milestoneId, ctx.userId);
-  } catch (error) {
-    mapActionError(error);
-  }
+  });
 }
 
 export async function requestScheduleExtensionAction(input: {
@@ -204,12 +162,10 @@ export async function requestScheduleExtensionAction(input: {
   reason: string;
   delayReasonClass?: string;
 }) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    const projectId = await resolveProjectId(db, input.projectScopeId, ctx.userId);
+  return withActivePermission("project", "update", async ({ ctx, legalEntityId, db }) => {
+    const projectId = await resolveProjectScope(db, input.projectScopeId, ctx.userId);
     if (!projectId) throw new DataAccessError("Project not found.", "NOT_FOUND");
-    requirePermission(ctx, "project", "update", projectAuthorizationScope(projectId));
+    requirePermission(ctx, "project", "update", projectAuthorizationScope(legalEntityId, projectId));
 
     return requestScheduleExtension(db, {
       projectId,
@@ -220,35 +176,22 @@ export async function requestScheduleExtensionAction(input: {
       delayReasonClass: input.delayReasonClass,
       requesterId: ctx.userId,
     });
-  } catch (error) {
-    mapActionError(error);
-  }
+  });
 }
 
 export async function approveScheduleExtensionAction(requestId: string, approvedDays: number) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
+  return withActivePermission("project", "approve", async ({ ctx, legalEntityId, db }) => {
     const { data: request } = await db
       .from("schedule_change_requests")
       .select("project_id")
       .eq("id", requestId)
       .maybeSingle();
     if (!request) throw new DataAccessError("Schedule request not found.", "NOT_FOUND");
-    requirePermission(ctx, "project", "approve", projectAuthorizationScope(request.project_id));
+    requirePermission(ctx, "project", "approve", projectAuthorizationScope(legalEntityId, request.project_id));
     return approveScheduleExtension(db, requestId, ctx.userId, approvedDays);
-  } catch (error) {
-    mapActionError(error);
-  }
+  });
 }
 
 export async function fetchPendingProgressUpdatesAction() {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    requirePermission(ctx, "milestone", "approve", LEGAL_ENTITY_MODAWAT);
-    return getPendingProgressUpdates(db);
-  } catch (error) {
-    mapActionError(error);
-  }
+  return withActivePermission("milestone", "approve", async ({ db }) => getPendingProgressUpdates(db));
 }

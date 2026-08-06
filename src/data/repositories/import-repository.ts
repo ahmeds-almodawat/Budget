@@ -47,10 +47,11 @@ export async function createImportBatch(
     fileContent: string;
     rows: ParsedImportRow[];
     importedBy: string;
+    fileHash?: string;
   },
 ) {
   const totals = calculateImportTotals(params.rows);
-  const fileHash = createHash("sha256").update(params.fileContent).digest("hex");
+  const fileHash = params.fileHash ?? createHash("sha256").update(params.fileContent).digest("hex");
 
   const { data: existing } = await db
     .from("import_batches")

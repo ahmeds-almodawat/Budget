@@ -49,7 +49,7 @@ export function ActualImportWorkflow() {
           </Button>
           <input
             type="file"
-            accept=".csv,.xlsx,.xls"
+            accept=".csv"
             onChange={(event) => {
               const file = event.target.files?.[0];
               if (!file) return;

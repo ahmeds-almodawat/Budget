@@ -281,65 +281,32 @@ export async function getHospitalBudgetPerformance(db: SupabaseClient, filters: 
     .select("*")
     .eq("legal_entity_id", entityId)
     .eq("control_scope_id", scopeId)
+    .eq("is_current_approved", true)
     .in("approval_status", ["approved", "locked", "posted"])
-    .order("created_at", { ascending: false })
-    .limit(1)
     .maybeSingle();
   if (versionError) throw new DataAccessError(versionError.message, "DATABASE");
   if (!version) return null;
+
+  const periods = await getFiscalPeriods(db, version.fiscal_year_id);
+  const statusDate = filters.reportDate ?? new Date().toISOString().slice(0, 10);
+  const currentPeriod =
+    periods.find((period) => statusDate >= period.start_date && statusDate <= period.end_date) ??
+    periods[periods.length - 1];
+
+  const { data: performance, error: perfError } = await db
+    .from("v_hospital_period_performance")
+    .select("*")
+    .eq("legal_entity_id", entityId)
+    .eq("control_scope_id", scopeId)
+    .eq("fiscal_period_id", currentPeriod?.id ?? "")
+    .maybeSingle();
+  if (perfError) throw new DataAccessError(perfError.message, "DATABASE");
 
   const { data: lines, error: linesError } = await db
     .from("budget_lines")
     .select("id, planned_amount, organization_unit_id, cost_node_id")
     .eq("budget_version_id", version.id);
   if (linesError) throw new DataAccessError(linesError.message, "DATABASE");
-
-  const { data: allocations, error: allocError } = await db
-    .from("budget_monthly_allocations")
-    .select("allocated_amount, fiscal_period_id, budget_line_id")
-    .in("budget_line_id", (lines ?? []).map((l) => l.id));
-  if (allocError) throw new DataAccessError(allocError.message, "DATABASE");
-
-  const lineIds = (lines ?? []).map((l) => l.id);
-  let actualRows: { allocation_amount: string; organization_unit_id: string | null; cost_node_id: string | null; fiscal_period_id: string | null }[] = [];
-  if (lineIds.length > 0) {
-    const { data, error } = await db
-      .from("actual_transaction_allocations")
-      .select("allocation_amount, organization_unit_id, cost_node_id, actual_transaction_id")
-      .in("organization_unit_id", (lines ?? []).map((l) => l.organization_unit_id));
-    if (error) throw new DataAccessError(error.message, "DATABASE");
-    const txnIds = [...new Set((data ?? []).map((r) => r.actual_transaction_id))];
-    let txnPeriodMap = new Map<string, string>();
-    if (txnIds.length > 0) {
-      const { data: txns } = await db
-        .from("actual_transactions")
-        .select("id, accounting_period_id")
-        .in("id", txnIds);
-      txnPeriodMap = new Map((txns ?? []).map((t) => [t.id, t.accounting_period_id]));
-    }
-    actualRows = (data ?? []).map((row) => ({
-      allocation_amount: row.allocation_amount,
-      organization_unit_id: row.organization_unit_id,
-      cost_node_id: row.cost_node_id,
-      fiscal_period_id: txnPeriodMap.get(row.actual_transaction_id) ?? null,
-    }));
-  }
-
-  const periods = await getFiscalPeriods(db, version.fiscal_year_id);
-  const currentPeriod = periods.find((p) => p.period_number === 3) ?? periods[0];
-
-  const mtdBudget = sumMoney(
-    (allocations ?? [])
-      .filter((a) => a.fiscal_period_id === currentPeriod?.id)
-      .map((a) => a.allocated_amount),
-  );
-  const ytdBudget = sumMoney((allocations ?? []).map((a) => a.allocated_amount));
-  const mtdActual = sumMoney(
-    actualRows
-      .filter((a) => a.fiscal_period_id === currentPeriod?.id)
-      .map((a) => a.allocation_amount),
-  );
-  const ytdActual = sumMoney(actualRows.map((a) => a.allocation_amount));
 
   const currentApproved = calculateCurrentApprovedBudget({
     originalApproved: version.original_approved_amount,
@@ -350,15 +317,16 @@ export async function getHospitalBudgetPerformance(db: SupabaseClient, filters: 
   return {
     version,
     currentApproved: currentApproved.toFixed(2),
-    mtdBudget: mtdBudget.toFixed(2),
-    mtdActual: mtdActual.toFixed(2),
-    ytdBudget: ytdBudget.toFixed(2),
-    ytdActual: ytdActual.toFixed(2),
-    fullYearForecast: ytdActual.plus(mtdBudget).toFixed(2),
+    mtdBudget: performance?.mtd_budget ?? "0",
+    mtdActual: performance?.mtd_actual ?? "0",
+    ytdBudget: performance?.ytd_budget ?? "0",
+    ytdActual: performance?.ytd_actual ?? "0",
+    fullYearForecast: performance?.full_year_forecast ?? "0",
+    remainingBudget: performance?.remaining_budget ?? "0",
     lines: lines ?? [],
-    actualRows,
     periods,
     currentPeriodId: currentPeriod?.id ?? null,
+    reportDate: statusDate,
   };
 }
 
