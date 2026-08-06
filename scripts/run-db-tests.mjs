@@ -502,7 +502,7 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
     WHERE schemaname = 'public'
     ORDER BY tablename, policyname
   `);
-  assert(policies.length === 85, `Expected 85 reviewed policies, found ${policies.length}`);
+  assert(policies.length === 87, `Expected 87 reviewed policies, found ${policies.length}`);
   assert(
     policies.every((policy) => String(policy.roles) === "{authenticated}"),
     "Every policy must explicitly target authenticated",
