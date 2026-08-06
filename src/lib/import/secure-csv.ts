@@ -364,11 +364,30 @@ export function parseSecureCsv(
       continue;
     }
 
+    if (fields.length !== headers.length) {
+      pushIssue(errors, limits, {
+        code: "INCONSISTENT_ROW_WIDTH",
+        message: `Row has ${fields.length} columns but ${headers.length} headers were expected.`,
+        row: lineIndex + 1,
+      });
+      continue;
+    }
+
     const row: Record<string, string> = {};
     for (let columnIndex = 0; columnIndex < headers.length; columnIndex += 1) {
       const header = headers[columnIndex];
       const rawValue = fields[columnIndex] ?? "";
       const value = rawValue.trim();
+
+      if (value.includes("\0")) {
+        pushIssue(errors, limits, {
+          code: "INVALID_CELL",
+          message: "Cell contains null bytes.",
+          row: lineIndex + 1,
+          column: header,
+        });
+        continue;
+      }
 
       if (value.length > limits.maxCellLength) {
         pushIssue(errors, limits, {
