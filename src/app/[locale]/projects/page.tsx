@@ -1,9 +1,8 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/server";
-import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
 import { pickLocalized } from "@/lib/i18n/display";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function ProjectsListPage({
   params,
@@ -12,14 +11,15 @@ export default async function ProjectsListPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const session = await requireRoutePermission("project", "read");
   const t = await getTranslations("project");
   const tPages = await getTranslations("pages.projects");
 
-  const db = await createClient();
+  const db = session.db;
   const { data: scopes, error } = await db
     .from("control_scopes")
     .select("id, code, name_en, name_ar, scope_type_id, control_scope_types(scope_type)")
-    .eq("legal_entity_id", LEGAL_ENTITY_MODAWAT)
+    .eq("legal_entity_id", session.legalEntityId)
     .order("code");
 
   return (

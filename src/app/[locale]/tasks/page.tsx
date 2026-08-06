@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchProjectTasksAction } from "@/app/actions/project-actions";
 import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
 import { pickLocalized } from "@/lib/i18n/display";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function TasksPage({
   params,
@@ -11,6 +12,7 @@ export default async function TasksPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("task", "read");
   const t = await getTranslations("pages.tasks");
 
   const phases = (await fetchProjectTasksAction(CONTROL_SCOPE_KM_HOSPITAL)) ?? [];

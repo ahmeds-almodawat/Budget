@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchProjectTimelineAction } from "@/app/actions/project-actions";
 import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
 import { pickLocalized } from "@/lib/i18n/display";
+import { loadRouteData, requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function ProjectTimelinePage({
   params,
@@ -12,11 +13,12 @@ export default async function ProjectTimelinePage({
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("project", "read");
   const t = await getTranslations("timeline");
   const tPages = await getTranslations("pages.projects");
 
   const scopeId = id === "cs-khamis-hospital" ? CONTROL_SCOPE_KM_HOSPITAL : id;
-  const timeline = await fetchProjectTimelineAction(scopeId);
+  const timeline = await loadRouteData(() => fetchProjectTimelineAction(scopeId));
 
   if (!timeline) {
     return (

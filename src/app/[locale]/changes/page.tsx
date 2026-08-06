@@ -3,9 +3,9 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchProjectTimelineAction } from "@/app/actions/project-actions";
 import { ScheduleChangesWorkflow } from "@/components/project/schedule-changes-workflow";
-import { getAuthContext } from "@/lib/auth/context";
 import { hasPermission, type RoleAssignment } from "@/domain/auth/permissions";
-import { CONTROL_SCOPE_KM_HOSPITAL, LEGAL_ENTITY_MODAWAT } from "@/types/database";
+import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function ChangesPage({
   params,
@@ -14,16 +14,16 @@ export default async function ChangesPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const session = await requireRoutePermission("project", "read");
   const tPages = await getTranslations("pages.changes");
   const tTimeline = await getTranslations("timeline");
 
   const timeline = await fetchProjectTimelineAction(CONTROL_SCOPE_KM_HOSPITAL);
-  const ctx = await getAuthContext();
-  const roleAssignments: RoleAssignment[] = ctx?.roleAssignments ?? [];
+  const roleAssignments: RoleAssignment[] = session.ctx.roleAssignments;
 
   const permissions = {
-    canRequest: hasPermission(roleAssignments, "project", "update", LEGAL_ENTITY_MODAWAT),
-    canApprove: hasPermission(roleAssignments, "project", "approve", LEGAL_ENTITY_MODAWAT),
+    canRequest: hasPermission(roleAssignments, "project", "update", session.legalEntityId),
+    canApprove: hasPermission(roleAssignments, "project", "approve", session.legalEntityId),
   };
 
   return (

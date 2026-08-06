@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchRestaurantPerformanceAction } from "@/app/actions/restaurant-actions";
 import { formatMoney } from "@/lib/money";
 import { pickLocalized } from "@/lib/i18n/display";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function RestaurantDashboardPage({
   params,
@@ -11,6 +12,7 @@ export default async function RestaurantDashboardPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("report", "read");
   const t = await getTranslations("dashboard.restaurant");
   const tLabels = await getTranslations("dashboardLabels");
 

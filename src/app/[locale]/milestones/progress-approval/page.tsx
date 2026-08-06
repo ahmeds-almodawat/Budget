@@ -2,10 +2,7 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { fetchPendingProgressUpdatesAction } from "@/app/actions/project-actions";
 import { ProgressApprovalWorkflow } from "@/components/project/progress-approval-workflow";
-import { getAuthContext } from "@/lib/auth/context";
-import { hasPermission, type RoleAssignment } from "@/domain/auth/permissions";
-import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
-import { redirect } from "next/navigation";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function ProgressApprovalPage({
   params,
@@ -14,13 +11,8 @@ export default async function ProgressApprovalPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("milestone", "approve");
   const t = await getTranslations("pages.progressApproval");
-
-  const ctx = await getAuthContext();
-  const roleAssignments: RoleAssignment[] = ctx?.roleAssignments ?? [];
-  if (!hasPermission(roleAssignments, "milestone", "approve", LEGAL_ENTITY_MODAWAT)) {
-    redirect(`/${locale}/auth/access-denied`);
-  }
 
   const updates = (await fetchPendingProgressUpdatesAction()) ?? [];
 

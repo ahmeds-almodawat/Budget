@@ -1,9 +1,8 @@
 import { HospitalBudgetWorkflow } from "@/components/budget/hospital-budget-workflow";
 import { RevenueBudgetWorkflow } from "@/components/budget/revenue-budget-workflow";
-import { getAuthContext } from "@/lib/auth/context";
-import { hasPermission, type RoleAssignment, type RoleCode } from "@/domain/auth/permissions";
-import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
+import { hasPermission, type RoleAssignment } from "@/domain/auth/permissions";
 import { setRequestLocale, getTranslations } from "next-intl/server";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function BudgetsPage({
   params,
@@ -12,18 +11,11 @@ export default async function BudgetsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const session = await requireRoutePermission("budget", "read");
   const t = await getTranslations("budget");
-  const ctx = await getAuthContext();
+  const roleAssignments: RoleAssignment[] = session.ctx.roleAssignments;
 
-  const roleAssignments: RoleAssignment[] = (ctx?.roleAssignments ?? []).length
-    ? ctx!.roleAssignments
-    : (ctx?.roleCodes ?? []).map((roleCode) => ({
-        roleCode: roleCode as RoleCode,
-        scopeType: "legal_entity" as const,
-        scopeId: LEGAL_ENTITY_MODAWAT,
-      }));
-
-  const scopeId = LEGAL_ENTITY_MODAWAT;
+  const scopeId = session.legalEntityId;
   const permissions = {
     canDraft: hasPermission(roleAssignments, "budget", "create", scopeId),
     canSubmit: hasPermission(roleAssignments, "budget", "update", scopeId),

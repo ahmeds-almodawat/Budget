@@ -4,6 +4,7 @@ import { formatMoney } from "@/lib/money";
 import { fetchProjectDashboardAction } from "@/app/actions/project-actions";
 import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
 import { pickLocalized } from "@/lib/i18n/display";
+import { loadRouteData, requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function ProjectDashboardPage({
   params,
@@ -12,12 +13,13 @@ export default async function ProjectDashboardPage({
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("project", "read");
   const t = await getTranslations("dashboard.project");
   const tPages = await getTranslations("pages.projects");
   const tLabels = await getTranslations("dashboardLabels");
 
   const scopeId = id === "cs-khamis-hospital" ? CONTROL_SCOPE_KM_HOSPITAL : id;
-  const dashboard = await fetchProjectDashboardAction(scopeId);
+  const dashboard = await loadRouteData(() => fetchProjectDashboardAction(scopeId));
 
   if (!dashboard) {
     return (

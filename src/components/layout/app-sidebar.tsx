@@ -30,8 +30,9 @@ import { cn } from "@/lib/utils";
 import { productConfig } from "@/config/product";
 import { BrandMark } from "@/components/layout/brand-mark";
 import type { UserSummary } from "@/components/layout/app-shell";
-import { hasPermission, type RoleAssignment, type RoleCode } from "@/domain/auth/permissions";
+import type { RoleAssignment } from "@/domain/auth/permissions";
 import { otherLocale, pickLocalized } from "@/lib/i18n/display";
+import { canAccessNavRoute } from "@/config/route-access";
 
 type NavItem = { key: string; href: string; icon: LucideIcon };
 
@@ -106,21 +107,17 @@ export function AppSidebar({
   const pathname = usePathname();
   const altLocale = otherLocale(locale);
 
-  const roleAssignments: RoleAssignment[] = (user?.roleCodes ?? []).map((roleCode) => ({
-    roleCode: roleCode as RoleCode,
-    scopeType: "legal_entity",
-    scopeId: user?.primaryLegalEntityId ?? "",
-  }));
-
-  function canRead(resource: Parameters<typeof hasPermission>[1]) {
-    if (!user) return false;
-    return hasPermission(roleAssignments, resource, "read", user.primaryLegalEntityId ?? undefined);
-  }
+  const roleAssignments: RoleAssignment[] = user?.roleAssignments ?? [];
 
   function shouldShow(key: string) {
-    if (key === "auditLog" && !canRead("audit")) return false;
-    if (key === "imports" && !canRead("actual")) return false;
-    return true;
+    if (!user) return false;
+    const legalEntityId = user.activeLegalEntityId ?? user.primaryLegalEntityId;
+    if (!legalEntityId) return false;
+    return canAccessNavRoute(
+      roleAssignments,
+      key,
+      legalEntityId,
+    );
   }
 
   return (

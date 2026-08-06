@@ -24,8 +24,10 @@ export function resolveActiveLegalEntityId(
     return trimmed;
   }
 
-  if (allowed.length === 1) {
-    return allowed[0];
+  if (!trimmed) {
+    return ctx.primaryLegalEntityId && allowed.includes(ctx.primaryLegalEntityId)
+      ? ctx.primaryLegalEntityId
+      : allowed[0];
   }
 
   return null;

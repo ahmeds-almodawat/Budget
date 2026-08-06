@@ -2,7 +2,7 @@
 
 **Branch:** `feat/mega-finish-platform`  
 **Started:** 2026-08-06  
-**Base:** `e7d3ed52158e7d926136cd452aa02cf1cf04d8b5`
+**Closure start SHA:** `99ca3959a4c6b87af18327538f2b8b0e43af361c`
 
 ## Checklist
 
@@ -51,7 +51,7 @@
 - [x] Revenue budget vs actual, gross-to-net, profitability (P6 patch)
 - [x] Component-based and net-only revenue budget entry (closure patch)
 - [x] Revenue CSV export with formula-injection protection (closure patch)
-- [ ] Forecast enhancements
+- [x] Transactional forecast lifecycle, locking, and supersede
 
 ### Admin / evidence / notifications
 - [x] Administration workspace (read-only baseline)
@@ -59,9 +59,9 @@
 - [ ] In-app notifications expansion
 
 ### Reports / localization
-- [ ] Report catalog completion
+- [x] Eleven-report database-backed catalog
 - [x] Dual-theme (light / dark / system) unified redesign
-- [ ] Full i18n parity
+- [x] EN/AR translation-key parity
 
 ### Dual-theme redesign
 - [x] Semantic token architecture (`globals.css`)
@@ -73,15 +73,17 @@
 
 ### Testing
 - [x] Revenue unit + integration expansion (closure patch)
-- [ ] Unit expansion (non-revenue)
-- [ ] DB / concurrency expansion
+- [x] Route authorization and active-context unit expansion
+- [x] DB authorization, audit RPC, orphan, and concurrency expansion
 - [x] E2E: revenue budget + BVA export (closure patch)
-- [ ] E2E: no placeholder routes
-- [x] Final verification run (dual-theme redesign phase)
+- [x] E2E: six-persona route authorization matrix
+- [x] E2E: deterministic no-placeholder route inventory
+- [x] Final closure verification run (checkpoint; dependency audit remains non-zero)
 
 ### Final deliverables
-- [ ] Push `feat/mega-finish-platform`
-- [ ] Open PR to P5 branch
+- [ ] Push `feat/mega-finish-platform` (conditional gate not met)
+- [x] Do not open a PR in this closure task
+- [x] `FINAL_PLATFORM_CLOSURE.md`
 - [ ] MEGA_FINISH_REPORT.md
 - [ ] MEGA_CODEX_HANDOFF.md
 - [ ] MEGA_TEST_EVIDENCE.md
@@ -94,3 +96,7 @@
 | afb83dd | feat(governance): replace placeholders with bilingual workspaces | done |
 | 22b6867 | feat(governance): delegation lifecycle, procurement hub, period hard close | done |
 | f87a668 | test(governance): delegation lifecycle integration coverage | done |
+
+## Closure checkpoint
+
+Route authorization, permission-aware navigation, audit search, report catalog, and deterministic route verification are closed. Full platform closure is not claimed: RFQ/quotation/evaluation, PO and contract commands, receipt/service entry, invoice matching, payment workflow, delegated inbox resolution, and several governance breadth items remain. See `FINAL_PLATFORM_CLOSURE.md`.

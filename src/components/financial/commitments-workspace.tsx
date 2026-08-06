@@ -6,15 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
 import { pickLocalized } from "@/lib/i18n/display";
 
-type Tab = "commitments" | "pos" | "contracts" | "invoices" | "payments" | "creditNotes";
+type Tab = "commitments" | "pos";
 
 const TAB_LABEL_KEYS = {
   commitments: "commitments",
   pos: "purchaseOrders",
-  contracts: "contracts",
-  invoices: "invoices",
-  payments: "payments",
-  creditNotes: "creditNotes",
 } as const satisfies Record<Tab, string>;
 
 export function CommitmentsWorkspace({
@@ -83,14 +79,6 @@ export function CommitmentsWorkspace({
             {commitments.filter((c) => c.reference_number.startsWith("PO-")).map((c) => (
               <div key={c.id} className="border-b py-2">{c.reference_number} — {formatMoney(c.original_value, "SAR")}</div>
             ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {tab !== "commitments" && tab !== "pos" && (
-        <Card>
-          <CardContent className="p-4 text-sm text-muted-foreground">
-            {tWorkspace("noRecordsCategory")}
           </CardContent>
         </Card>
       )}

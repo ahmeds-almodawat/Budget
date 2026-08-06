@@ -1,14 +1,13 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { DelegationWorkspace } from "@/components/governance/delegation-workspace";
-import { WorkspaceDenied, WorkspaceError } from "@/components/governance/workspace-state";
+import { WorkspaceError } from "@/components/governance/workspace-state";
 import {
   fetchDelegationsAction,
   fetchProfilesForDelegationAction,
 } from "@/app/actions/governance-actions";
-import { getAuthContext } from "@/lib/auth/context";
 import { hasPermission } from "@/domain/auth/permissions";
-import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function DelegationsPage({
   params,
@@ -17,21 +16,11 @@ export default async function DelegationsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const session = await requireRoutePermission("approval", "read");
   const t = await getTranslations("delegation");
-  const ctx = await getAuthContext();
-  const entityId = ctx?.primaryLegalEntityId ?? LEGAL_ENTITY_MODAWAT;
-  const roles = ctx?.roleAssignments ?? [];
-  const canRead = hasPermission(roles, "approval", "read", entityId);
+  const entityId = session.legalEntityId;
+  const roles = session.ctx.roleAssignments;
   const canCreate = hasPermission(roles, "approval", "create", entityId);
-
-  if (!canRead) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title={t("title")} description={t("subtitle")} />
-        <WorkspaceDenied />
-      </div>
-    );
-  }
 
   let delegations: Awaited<ReturnType<typeof fetchDelegationsAction>> = [];
   let profiles: Awaited<ReturnType<typeof fetchProfilesForDelegationAction>> = [];

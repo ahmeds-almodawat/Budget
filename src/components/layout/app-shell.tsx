@@ -10,6 +10,7 @@ import { ActiveEntitySelector } from "@/components/layout/active-entity-selector
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
+import type { RoleAssignment } from "@/domain/auth/permissions";
 
 export interface UserSummary {
   userId: string;
@@ -17,8 +18,11 @@ export interface UserSummary {
   displayName: string;
   displayNameAr: string | null;
   roleCodes: string[];
+  roleAssignments: RoleAssignment[];
   legalEntityIds: string[];
   primaryLegalEntityId: string | null;
+  activeLegalEntityId: string | null;
+  legalEntities: { id: string; code: string; name_en: string; name_ar: string }[];
 }
 
 export function AppShell({

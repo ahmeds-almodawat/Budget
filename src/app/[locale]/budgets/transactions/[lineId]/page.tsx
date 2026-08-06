@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
 import { fetchBudgetLineTransactionsAction } from "@/app/actions/budget-actions";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function BudgetLineTransactionsPage({
   params,
@@ -11,6 +12,7 @@ export default async function BudgetLineTransactionsPage({
 }) {
   const { locale, lineId } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("budget", "read");
   const t = await getTranslations("transactions");
 
   let rows: Awaited<ReturnType<typeof fetchBudgetLineTransactionsAction>> = [];

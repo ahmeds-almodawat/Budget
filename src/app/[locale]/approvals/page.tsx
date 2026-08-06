@@ -1,10 +1,7 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { ApprovalsWorkspace } from "@/components/approvals/approvals-workspace";
 import { fetchApprovalCountsAction, fetchApprovalInboxAction } from "@/app/actions/approval-actions";
-import { getAuthContext } from "@/lib/auth/context";
-import { hasPermission, type RoleAssignment } from "@/domain/auth/permissions";
-import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
-import { redirect } from "next/navigation";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function ApprovalsPage({
   params,
@@ -13,13 +10,8 @@ export default async function ApprovalsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("approval", "read");
   const t = await getTranslations("pages.approvals");
-
-  const ctx = await getAuthContext();
-  const roleAssignments: RoleAssignment[] = ctx?.roleAssignments ?? [];
-  if (!hasPermission(roleAssignments, "approval", "read", LEGAL_ENTITY_MODAWAT)) {
-    redirect(`/${locale}/auth/access-denied`);
-  }
 
   const [items, counts] = await Promise.all([
     fetchApprovalInboxAction("awaiting"),

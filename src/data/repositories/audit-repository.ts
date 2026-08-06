@@ -10,20 +10,20 @@ export interface AuditSearchFilters {
   limit?: number;
 }
 
-export async function searchAuditEvents(db: SupabaseClient, filters: AuditSearchFilters) {
-  let query = db
-    .from("audit_events")
-    .select("*, profiles(full_name_en, full_name_ar, email)")
-    .order("created_at", { ascending: false })
-    .limit(filters.limit ?? 100);
-
-  if (filters.entityType) query = query.eq("entity_type", filters.entityType);
-  if (filters.action) query = query.eq("action", filters.action);
-  if (filters.actorId) query = query.eq("actor_id", filters.actorId);
-  if (filters.fromDate) query = query.gte("created_at", filters.fromDate);
-  if (filters.toDate) query = query.lte("created_at", `${filters.toDate}T23:59:59`);
-
-  const { data, error } = await query;
+export async function searchAuditEvents(
+  db: SupabaseClient,
+  legalEntityId: string,
+  filters: AuditSearchFilters,
+) {
+  const { data, error } = await db.rpc("rpc_search_audit_events", {
+    p_legal_entity_id: legalEntityId,
+    p_entity_type: filters.entityType ?? null,
+    p_action: filters.action ?? null,
+    p_actor_id: filters.actorId ?? null,
+    p_from_date: filters.fromDate ?? null,
+    p_to_date: filters.toDate ?? null,
+    p_limit: filters.limit ?? 100,
+  });
   if (error) throw new DataAccessError(error.message, "DATABASE");
   return data ?? [];
 }

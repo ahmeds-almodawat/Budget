@@ -15,24 +15,65 @@ import { formatMoney } from "@/lib/money";
 const REPORT_TYPES: ReportType[] = [
   "budget_vs_actual",
   "budget_actual_commitments",
+  "forecast_at_completion",
+  "monthly_cash_flow",
   "milestone_performance",
   "restaurant_operational",
+  "project_cost_phase_category",
+  "team_milestone_performance",
+  "variance_explanations",
   "unmapped_actuals",
+  "audit_history",
 ];
 
 const REPORT_KEYS = {
   budget_vs_actual: "budgetVsActual",
   budget_actual_commitments: "budgetActualCommitments",
+  forecast_at_completion: "forecastAtCompletion",
+  monthly_cash_flow: "monthlyCashFlow",
   milestone_performance: "milestonePerformance",
   restaurant_operational: "restaurantOperational",
+  project_cost_phase_category: "projectCostPhaseCategory",
+  team_milestone_performance: "teamMilestonePerformance",
+  variance_explanations: "varianceExplanations",
   unmapped_actuals: "unmappedActuals",
+  audit_history: "auditHistory",
 } as const satisfies Record<ReportType, string>;
 
-export function ReportsWorkspace() {
+const MONEY_COLUMNS = new Set([
+  "current_approved_amount",
+  "actual_amount",
+  "commitment_open",
+  "budget_at_completion",
+  "actual_cost",
+  "cash_outflow",
+  "variance_amount",
+  "financial_impact",
+  "bac",
+  "pv",
+  "ev",
+  "ac",
+  "cv",
+  "sv",
+  "eac",
+  "etc",
+  "vac",
+]);
+
+export function ReportsWorkspace({
+  canExport,
+  canViewAudit,
+}: {
+  canExport: boolean;
+  canViewAudit: boolean;
+}) {
   const t = useTranslations("reports");
   const [selected, setSelected] = useState<ReportType>("budget_vs_actual");
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [pending, startTransition] = useTransition();
+  const reportTypes = canViewAudit
+    ? REPORT_TYPES
+    : REPORT_TYPES.filter((type) => type !== "audit_history");
 
   function loadReport(type: ReportType) {
     setSelected(type);
@@ -78,9 +119,10 @@ export function ReportsWorkspace() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        {REPORT_TYPES.map((type) => (
+        {reportTypes.map((type) => (
           <Button
             key={type}
+            data-testid={`report-type-${type}`}
             variant={selected === type ? "default" : "outline"}
             size="sm"
             disabled={pending}
@@ -91,14 +133,16 @@ export function ReportsWorkspace() {
         ))}
       </div>
 
-      <div className="flex gap-2">
-        <Button size="sm" variant="outline" disabled={pending || rows.length === 0} onClick={downloadCsv}>
-          {t("exportCsv")}
-        </Button>
-        <Button size="sm" variant="outline" disabled={pending || rows.length === 0} onClick={downloadExcel}>
-          {t("exportExcel")}
-        </Button>
-      </div>
+      {canExport ? (
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" disabled={pending || rows.length === 0} onClick={downloadCsv}>
+            {t("exportCsv")}
+          </Button>
+          <Button size="sm" variant="outline" disabled={pending || rows.length === 0} onClick={downloadExcel}>
+            {t("exportExcel")}
+          </Button>
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -119,7 +163,7 @@ export function ReportsWorkspace() {
                   <tr key={i} className="border-b">
                     {headers.map((h) => (
                       <td key={h} className="px-2 py-1">
-                        {typeof row[h] === "number" || (typeof row[h] === "string" && /^\d/.test(String(row[h])))
+                        {MONEY_COLUMNS.has(h) && row[h] != null
                           ? formatMoney(String(row[h] ?? 0), "SAR")
                           : typeof row[h] === "object"
                             ? JSON.stringify(row[h])

@@ -2,11 +2,8 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchExceptionsAction } from "@/app/actions/audit-actions";
-import { getAuthContext } from "@/lib/auth/context";
-import { hasPermission, type RoleAssignment } from "@/domain/auth/permissions";
-import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
-import { redirect } from "next/navigation";
 import { pickLocalized } from "@/lib/i18n/display";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function ExceptionsPage({
   params,
@@ -15,15 +12,10 @@ export default async function ExceptionsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("audit", "read");
   const tPages = await getTranslations("pages.exceptions");
   const tExceptions = await getTranslations("exceptions");
   const tWorkspace = await getTranslations("workspace");
-
-  const ctx = await getAuthContext();
-  const roleAssignments: RoleAssignment[] = ctx?.roleAssignments ?? [];
-  if (!hasPermission(roleAssignments, "audit", "read", LEGAL_ENTITY_MODAWAT)) {
-    redirect(`/${locale}/auth/access-denied`);
-  }
 
   const exceptions = await fetchExceptionsAction();
 

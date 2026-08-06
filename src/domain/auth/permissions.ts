@@ -129,6 +129,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
   },
   budget_owner: {
     budget: ["create", "read", "update"],
+    commitment: ["create", "read", "update"],
     forecast: ["create", "read", "update"],
     variance: ["create", "read", "update"],
   },
@@ -149,6 +150,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
   auditor: {
     budget: ["read"],
     project: ["read"],
+    commitment: ["read"],
     actual: ["read"],
     audit: ["read", "export"],
     report: ["read", "export"],
@@ -162,6 +164,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     project: ["read"],
     milestone: ["read"],
     task: ["read"],
+    commitment: ["read"],
     report: ["read"],
   },
 };

@@ -2,10 +2,10 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchMilestonesAction } from "@/app/actions/project-actions";
-import { getAuthContext } from "@/lib/auth/context";
 import { hasPermission, type RoleAssignment } from "@/domain/auth/permissions";
-import { CONTROL_SCOPE_KM_HOSPITAL, LEGAL_ENTITY_MODAWAT } from "@/types/database";
+import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
 import { pickLocalized } from "@/lib/i18n/display";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function MilestonesPage({
   params,
@@ -14,10 +14,10 @@ export default async function MilestonesPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const session = await requireRoutePermission("milestone", "read");
   const t = await getTranslations("pages.milestones");
-  const ctx = await getAuthContext();
-  const roleAssignments: RoleAssignment[] = ctx?.roleAssignments ?? [];
-  const canApprove = hasPermission(roleAssignments, "milestone", "approve", LEGAL_ENTITY_MODAWAT);
+  const roleAssignments: RoleAssignment[] = session.ctx.roleAssignments;
+  const canApprove = hasPermission(roleAssignments, "milestone", "approve", session.legalEntityId);
 
   const milestones = (await fetchMilestonesAction(CONTROL_SCOPE_KM_HOSPITAL)) ?? [];
 

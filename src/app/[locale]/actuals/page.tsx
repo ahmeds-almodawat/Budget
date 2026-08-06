@@ -6,6 +6,7 @@ import {
   fetchImportBatchesAction,
   fetchUnmappedQueueAction,
 } from "@/app/actions/financial-actions";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function ActualsPage({
   params,
@@ -14,6 +15,7 @@ export default async function ActualsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("actual", "read");
   const t = await getTranslations("pages.actuals");
 
   const [transactions, unmapped, batches, duplicates] = await Promise.all([

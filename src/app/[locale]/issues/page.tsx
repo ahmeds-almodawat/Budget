@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchIssuesAction } from "@/app/actions/governance-actions";
 import { pickLocalized } from "@/lib/i18n/display";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function IssuesPage({
   params,
@@ -11,6 +12,7 @@ export default async function IssuesPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("project", "read");
   const t = await getTranslations("pages.issues");
   const issues = (await fetchIssuesAction()) ?? [];
 

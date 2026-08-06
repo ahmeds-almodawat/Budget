@@ -56,7 +56,6 @@ export function toPublicDataAccessError(
   }
 
   if (isAuthError(error)) {
-    console.error(`[${correlationId}] AuthError`, { code: error.code, message: error.message });
     return new PublicError(correlationId, error.code, AUTH_MESSAGES[error.code]);
   }
 

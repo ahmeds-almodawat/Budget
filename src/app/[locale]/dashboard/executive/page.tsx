@@ -3,9 +3,8 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
 import { fetchHospitalDashboardAction } from "@/app/actions/budget-actions";
-import { createClient } from "@/lib/supabase/server";
-import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
 import { calculateEstimateAtCompletion, calculateOpenCommitment } from "@/domain/financial/calculations";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function ExecutiveDashboardPage({
   params,
@@ -14,16 +13,17 @@ export default async function ExecutiveDashboardPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const session = await requireRoutePermission("budget", "read");
   const t = await getTranslations("dashboard.executive");
   const tLabels = await getTranslations("dashboardLabels");
 
-  const db = await createClient();
+  const db = session.db;
   const hospital = await fetchHospitalDashboardAction().catch(() => null);
 
   const { data: commitments } = await db
     .from("commitments")
     .select("original_value, approved_variations, invoiced_applied, cancelled_amount")
-    .eq("legal_entity_id", LEGAL_ENTITY_MODAWAT);
+    .eq("legal_entity_id", session.legalEntityId);
 
   const committedTotal = (commitments ?? []).reduce((sum, c) => {
     return sum + Number(

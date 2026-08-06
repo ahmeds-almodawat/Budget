@@ -632,7 +632,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
     WHERE n.nspname = 'public'
     ORDER BY p.proname
   `);
-  assert(publicFunctions.length === 43, `Expected 43 public RPC wrappers, found ${publicFunctions.length}`);
+  assert(publicFunctions.length === 44, `Expected 44 public RPC wrappers, found ${publicFunctions.length}`);
   for (const fn of publicFunctions) {
     assert(fn.proname.startsWith("rpc_"), `Unexpected public function ${fn.proname}`);
     assert(fn.prosecdef, `${fn.proname} must be SECURITY DEFINER`);
@@ -791,6 +791,73 @@ test("tenant views isolate both tenants and restaurant totals exclude unposted a
     assert(rows.length === 1 && rows[0].branch_code === "REST-OTHER" && Number(rows[0].revenue) === 12345,
       "Other tenant aggregate was missing or contaminated");
   });
+});
+
+test("DTA-M-001: six REST-POS allocation orphans remain explicit and excluded", async (client) => {
+  const { rows } = await client.query(`
+    SELECT
+      count(*)::int AS orphan_count,
+      count(ata.id)::int AS allocation_count,
+      count(*) FILTER (
+        WHERE private.validate_exact_allocation_reconciliation(atx.id)
+      )::int AS reconciled_count
+    FROM public.actual_transactions AS atx
+    LEFT JOIN public.actual_transaction_allocations AS ata
+      ON ata.actual_transaction_id = atx.id
+    WHERE atx.source_system = 'REST-POS'
+      AND atx.source_transaction_id IN (
+        'REST-B1-FOOD-001', 'REST-B1-LAB-001', 'REST-B1-REV-001',
+        'REST-B2-FOOD-001', 'REST-B2-LAB-001', 'REST-B2-REV-001'
+      )
+  `);
+  assert(rows[0].orphan_count === 6, `Expected six REST-POS orphans, found ${rows[0].orphan_count}`);
+  assert(rows[0].allocation_count === 0, "REST-POS orphan allocations were silently recreated");
+  assert(rows[0].reconciled_count === 0, "REST-POS allocation debt was marked reconciled");
+
+  const { rows: reportDefinition } = await client.query(`
+    SELECT pg_catalog.pg_get_viewdef('public.v_restaurant_branch_performance'::regclass, true) AS definition
+  `);
+  assert(
+    reportDefinition[0].definition.includes("actual_transaction_allocations"),
+    "Restaurant reporting no longer requires an allocation before recognizing an actual",
+  );
+});
+
+test("tenant-scoped audit RPC preserves server-only table access", async (client) => {
+  await asRole(client, "authenticated", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4", async () => {
+    const { rows } = await client.query(`
+      SELECT event
+      FROM public.rpc_search_audit_events(
+        '11111111-1111-1111-1111-111111111102', NULL, NULL, NULL, NULL, NULL, 200
+      ) AS event
+    `);
+    assert(
+      rows.every((row) => row.event.legal_entity_id === "11111111-1111-1111-1111-111111111102"),
+      "Audit RPC returned an event from another legal entity",
+    );
+
+    let directTableDenied = false;
+    try {
+      await client.query("SELECT count(*) FROM public.audit_events");
+    } catch {
+      directTableDenied = true;
+    }
+    assert(directTableDenied, "Auditor received direct Data API access to audit_events");
+  });
+
+  let crossTenantDenied = false;
+  try {
+    await asRole(client, "authenticated", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4", async () => {
+      await client.query(`
+        SELECT * FROM public.rpc_search_audit_events(
+          '12111111-1111-1111-1111-111111111102', NULL, NULL, NULL, NULL, NULL, 1
+        )
+      `);
+    });
+  } catch {
+    crossTenantDenied = true;
+  }
+  assert(crossTenantDenied, "Entity-A auditor invoked the audit RPC for another tenant");
 });
 
 test("write RLS allows the right tenant and denies cross-tenant submissions", async (client) => {

@@ -189,16 +189,11 @@ test.describe("dual theme platform", () => {
   test("representative routes have no document-level horizontal overflow", async ({ page }) => {
     await signIn(page, "finance@modawat.local");
     const errors = browserErrors.get(page) ?? [];
-    await page.waitForTimeout(1_000);
     expect(errors.splice(0), "console errors after sign-in").toEqual([]);
     const routes = ["/en", "/en/cost-control", "/en/budgets", "/en/requisitions", "/en/administration"];
     for (const route of routes) {
       const response = await page.goto(route);
       expect(response?.status(), `HTTP status for ${route}`).toBeLessThan(400);
-      // AppShell resolves entity context through server actions after mount. Let
-      // those requests settle before the next full navigation so an aborted
-      // request cannot be mistaken for a route failure.
-      await page.waitForTimeout(1_000);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2);
       expect(overflow, `overflow on ${route}`).toBe(false);
       expect(errors.splice(0), `console errors on ${route}`).toEqual([]);

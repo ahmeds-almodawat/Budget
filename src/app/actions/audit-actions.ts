@@ -8,7 +8,9 @@ import {
 } from "@/data/repositories/audit-repository";
 
 export async function fetchAuditEventsAction(filters: AuditSearchFilters = {}) {
-  return withActivePermission("audit", "read", async ({ db }) => searchAuditEvents(db, filters));
+  return withActivePermission("audit", "read", async ({ legalEntityId, db }) =>
+    searchAuditEvents(db, legalEntityId, filters),
+  );
 }
 
 export async function fetchExceptionsAction() {

@@ -5,6 +5,7 @@ import { MilestoneDetailWorkflow } from "@/components/project/milestone-detail-w
 import { getAuthContext } from "@/lib/auth/context";
 import { hasPermission, type RoleAssignment } from "@/domain/auth/permissions";
 import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
+import { loadRouteData, requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function MilestoneDetailPage({
   params,
@@ -13,8 +14,9 @@ export default async function MilestoneDetailPage({
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("milestone", "read");
 
-  const detail = await fetchMilestoneDetailAction(id);
+  const detail = await loadRouteData(() => fetchMilestoneDetailAction(id));
   if (!detail) notFound();
 
   const ctx = await getAuthContext();

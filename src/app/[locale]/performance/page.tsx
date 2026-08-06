@@ -2,6 +2,7 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { pickLocalized } from "@/lib/i18n/display";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function EmployeePerformancePage({
   params,
@@ -10,6 +11,7 @@ export default async function EmployeePerformancePage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("task", "read");
   const t = await getTranslations("dashboard.employee");
   const tPages = await getTranslations("pages.performance");
   const db = await createClient();

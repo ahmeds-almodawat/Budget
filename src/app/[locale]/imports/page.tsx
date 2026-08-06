@@ -1,5 +1,6 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { ActualImportWorkflow } from "@/components/imports/actual-import-workflow";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function ImportsPage({
   params,
@@ -8,6 +9,7 @@ export default async function ImportsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("actual", "import");
   const t = await getTranslations("pages.imports");
 
   return (

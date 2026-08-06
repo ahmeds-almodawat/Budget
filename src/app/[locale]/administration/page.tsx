@@ -1,11 +1,9 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { AdministrationWorkspace } from "@/components/admin/administration-workspace";
-import { WorkspaceDenied, WorkspaceError } from "@/components/governance/workspace-state";
+import { WorkspaceError } from "@/components/governance/workspace-state";
 import { fetchAdministrationDataAction } from "@/app/actions/governance-actions";
-import { getAuthContext } from "@/lib/auth/context";
-import { hasPermission } from "@/domain/auth/permissions";
-import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function AdministrationPage({
   params,
@@ -14,21 +12,8 @@ export default async function AdministrationPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("organization", "read");
   const t = await getTranslations("administration");
-  const ctx = await getAuthContext();
-  const entityId = ctx?.primaryLegalEntityId ?? LEGAL_ENTITY_MODAWAT;
-  const roles = ctx?.roleAssignments ?? [];
-  const canRead = hasPermission(roles, "organization", "read", entityId);
-
-  if (!canRead) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title={t("title")} description={t("subtitle")} />
-        <WorkspaceDenied />
-      </div>
-    );
-  }
-
   let data: Awaited<ReturnType<typeof fetchAdministrationDataAction>> | null = null;
   let errorMessage: string | null = null;
   try {

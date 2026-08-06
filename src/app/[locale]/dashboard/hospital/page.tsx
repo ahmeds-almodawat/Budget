@@ -5,6 +5,7 @@ import { formatMoney } from "@/lib/money";
 import { fetchHospitalDashboardAction, createVarianceExplanationAction } from "@/app/actions/budget-actions";
 import { isVarianceExplanationRequired } from "@/domain/financial/calculations";
 import { CONTROL_ACCOUNT_PHARM_INJ } from "@/types/database";
+import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
 export default async function HospitalDashboardPage({
   params,
@@ -13,6 +14,7 @@ export default async function HospitalDashboardPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await requireRoutePermission("budget", "read");
   const t = await getTranslations("dashboard.hospital");
   const tLabels = await getTranslations("dashboardLabels");
 

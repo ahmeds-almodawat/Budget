@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Building2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
-  fetchSelectableLegalEntitiesAction,
-  getActiveLegalEntityIdAction,
   setActiveLegalEntityAction,
 } from "@/app/actions/context-actions";
 import type { UserSummary } from "@/components/layout/app-shell";
@@ -15,20 +13,10 @@ export function ActiveEntitySelector({ user }: { user: UserSummary | null }) {
   const t = useTranslations("shell");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [entities, setEntities] = useState<{ id: string; code: string; name_en: string; name_ar: string }[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(user?.primaryLegalEntityId ?? null);
-
-  useEffect(() => {
-    if (!user) return;
-    void (async () => {
-      const [list, current] = await Promise.all([
-        fetchSelectableLegalEntitiesAction(),
-        getActiveLegalEntityIdAction(),
-      ]);
-      setEntities(list);
-      setActiveId(current ?? list[0]?.id ?? null);
-    })().catch(() => undefined);
-  }, [user]);
+  const entities = user?.legalEntities ?? [];
+  const [activeId, setActiveId] = useState<string | null>(
+    user?.activeLegalEntityId ?? user?.primaryLegalEntityId ?? null,
+  );
 
   if (!user || entities.length <= 1) {
     return null;
