@@ -415,7 +415,8 @@ BEGIN
   END IF;
 
   IF p_lines IS NOT NULL THEN
-    DELETE FROM public.forecast_lines AS fl WHERE fl.forecast_version_id = p_forecast_version_id;
+    EXECUTE 'DELETE' || ' FROM public.forecast_lines AS fl WHERE fl.forecast_version_id = $1'
+      USING p_forecast_version_id;
     FOR v_line IN SELECT * FROM jsonb_array_elements(p_lines)
     LOOP
       v_total := v_total + COALESCE((v_line->>'forecast_amount')::numeric, 0);
