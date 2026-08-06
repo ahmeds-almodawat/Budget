@@ -205,4 +205,153 @@ VALUES
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb301','33333333-3333-3333-3333-3333333333b1','66666666-6666-6666-6666-6666666666b1',12345),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb999','33333333-3333-3333-3333-333333333304','66666666-6666-6666-6666-666666666610',99999);
 
+-- Replace legacy restaurant POS allocations (immutable posted headers) with period-linked
+-- reporting-path allocations so branch and BvA views stay consistent.
+DELETE FROM public.actual_transaction_allocations
+WHERE actual_transaction_id IN (
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb101',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb102',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb103',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb201',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb202',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb203'
+);
+
+-- Revenue reporting-path fixture: additive posted actuals with accounting_period_id and
+-- revenue dimensions so v_budget_vs_actual / v_revenue_budget_vs_actual expose rows via PostgREST.
+-- Period IDs are resolved at insert time because seed migrations may not retain deterministic UUIDs.
+WITH mar_period AS (
+  SELECT fp.id
+  FROM public.fiscal_periods AS fp
+  WHERE fp.fiscal_year_id = '77777777-7777-7777-7777-777777777701'::uuid
+    AND fp.period_number = 3
+  LIMIT 1
+)
+INSERT INTO public.actual_transactions (
+  id, legal_entity_id, source_system, source_transaction_id, transaction_date,
+  amount_ex_vat, amount_inc_vat, original_description, is_posted, transaction_class, accounting_period_id
+)
+SELECT
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb111'::uuid,
+  '11111111-1111-1111-1111-111111111102'::uuid,
+  'FIXTURE',
+  'FIXTURE-REV-B1-MAR',
+  '2027-03-15'::date,
+  85000,
+  85000,
+  'Fixture REST-B1 March external revenue',
+  true,
+  'external'::public.transaction_class,
+  mar_period.id
+FROM mar_period
+UNION ALL
+SELECT
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb112'::uuid,
+  '11111111-1111-1111-1111-111111111102'::uuid,
+  'FIXTURE',
+  'FIXTURE-REV-B2-MAR',
+  '2027-03-15'::date,
+  72000,
+  72000,
+  'Fixture REST-B2 March external revenue',
+  true,
+  'external'::public.transaction_class,
+  mar_period.id
+FROM mar_period
+UNION ALL
+SELECT
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb110'::uuid,
+  '11111111-1111-1111-1111-111111111102'::uuid,
+  'FIXTURE',
+  'FIXTURE-REV-INTERNAL-MAR',
+  '2027-03-15'::date,
+  5000,
+  5000,
+  'Fixture internal intercompany revenue',
+  true,
+  'intercompany'::public.transaction_class,
+  mar_period.id
+FROM mar_period
+ON CONFLICT (id) DO UPDATE SET
+  accounting_period_id = EXCLUDED.accounting_period_id,
+  transaction_class = EXCLUDED.transaction_class,
+  is_posted = EXCLUDED.is_posted,
+  amount_ex_vat = EXCLUDED.amount_ex_vat;
+
+DELETE FROM public.actual_transaction_allocations
+WHERE actual_transaction_id IN (
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb111',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb112',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb110'
+);
+
+INSERT INTO public.actual_transaction_allocations (
+  actual_transaction_id, organization_unit_id, cost_node_id, allocation_amount,
+  revenue_component_type_id, payer_id, service_line_id
+)
+SELECT
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb111'::uuid,
+  '33333333-3333-3333-3333-333333333304'::uuid,
+  '66666666-6666-6666-6666-666666666610'::uuid,
+  85000,
+  rct.id,
+  '88888888-8888-8888-8888-888888888801'::uuid,
+  '99999999-9999-9999-9999-999999999904'::uuid
+FROM public.revenue_component_types AS rct
+WHERE rct.code = 'gross_revenue'
+UNION ALL
+SELECT
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb112'::uuid,
+  '33333333-3333-3333-3333-333333333307'::uuid,
+  '66666666-6666-6666-6666-666666666610'::uuid,
+  72000,
+  rct.id,
+  NULL::uuid,
+  NULL::uuid
+FROM public.revenue_component_types AS rct
+WHERE rct.code = 'gross_revenue'
+UNION ALL
+SELECT
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb110'::uuid,
+  '33333333-3333-3333-3333-333333333304'::uuid,
+  '66666666-6666-6666-6666-666666666610'::uuid,
+  5000,
+  rct.id,
+  NULL::uuid,
+  NULL::uuid
+FROM public.revenue_component_types AS rct
+WHERE rct.code = 'gross_revenue';
+
+INSERT INTO public.actual_transactions (
+  id, legal_entity_id, source_system, source_transaction_id, transaction_date,
+  amount_ex_vat, amount_inc_vat, original_description, is_posted, transaction_class, accounting_period_id
+)
+SELECT
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb113'::uuid,
+  '11111111-1111-1111-1111-111111111102'::uuid,
+  'FIXTURE',
+  'FIXTURE-REST-B1-FOOD-MAR',
+  '2027-03-15'::date,
+  25500,
+  25500,
+  'Fixture REST-B1 March food cost',
+  true,
+  'external'::public.transaction_class,
+  mar_period.id
+FROM (
+  SELECT fp.id
+  FROM public.fiscal_periods AS fp
+  WHERE fp.fiscal_year_id = '77777777-7777-7777-7777-777777777701'::uuid
+    AND fp.period_number = 3
+  LIMIT 1
+) AS mar_period
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.actual_transaction_allocations (
+  actual_transaction_id, organization_unit_id, cost_node_id, allocation_amount
+)
+VALUES
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb113', '33333333-3333-3333-3333-333333333304', '66666666-6666-6666-6666-666666666605', 25500)
+ON CONFLICT DO NOTHING;
+
 COMMIT;

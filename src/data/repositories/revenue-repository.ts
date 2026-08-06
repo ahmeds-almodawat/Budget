@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { DataAccessError } from "@/data/repositories/budget-repository";
+import { DataAccessError, getFiscalPeriods } from "@/data/repositories/budget-repository";
+import { FISCAL_YEAR_2027 } from "@/types/database";
 
 export interface BudgetVsActualRow {
   legal_entity_id: string;
@@ -177,4 +178,36 @@ export async function getPayerCategories(db: SupabaseClient) {
     .order("code");
   if (error) throw new DataAccessError(error.message, "DATABASE");
   return data ?? [];
+}
+
+export async function loadBudgetVsActualWorkspaceData(
+  db: SupabaseClient,
+  legalEntityId: string,
+  fiscalYearId: string = FISCAL_YEAR_2027,
+) {
+  const [revenueRows, allRows, profitabilityRows, payers, serviceLines, fiscalPeriods] =
+    await Promise.all([
+      getRevenueBudgetVsActual(db, legalEntityId),
+      getBudgetVsActualDetail(db, legalEntityId),
+      getProfitabilityPerformance(db, legalEntityId),
+      getPayers(db, legalEntityId),
+      getServiceLines(db, legalEntityId),
+      getFiscalPeriods(db, fiscalYearId),
+    ]);
+
+  const expenseRows = allRows.filter(
+    (r) =>
+      r.financial_reporting_group !== "revenue" &&
+      r.financial_reporting_group !== "internal_transfer" &&
+      r.financial_reporting_group !== "statistical",
+  );
+
+  return {
+    revenueRows,
+    expenseRows,
+    profitabilityRows,
+    payers,
+    serviceLines,
+    fiscalPeriods,
+  };
 }

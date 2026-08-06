@@ -417,15 +417,20 @@ export function registerRevenueDbTests(test, assert, asRole) {
     await asRole(client, "authenticated", FINANCE, async () => {
       const { rows } = await client.query(`
         WITH base AS (
-          SELECT fiscal_year_id, control_scope_id, period_number,
+          SELECT fiscal_year_id, control_scope_id, period_number, organization_unit_id, cost_node_id,
+                 payer_id, service_line_id, revenue_component_type_id, financial_classification,
                  ytd_actual::numeric AS ytd_actual, mtd_actual::numeric AS mtd_actual
           FROM public.v_budget_vs_actual
           WHERE legal_entity_id = $1::uuid AND mtd_actual <> 0
         ),
         rolled AS (
-          SELECT fiscal_year_id, control_scope_id, period_number, ytd_actual,
+          SELECT fiscal_year_id, control_scope_id, period_number, organization_unit_id, cost_node_id,
+                 payer_id, service_line_id, revenue_component_type_id, financial_classification,
+                 ytd_actual,
                  sum(mtd_actual) OVER (
-                   PARTITION BY fiscal_year_id, control_scope_id ORDER BY period_number
+                   PARTITION BY fiscal_year_id, control_scope_id, organization_unit_id, cost_node_id,
+                     payer_id, service_line_id, revenue_component_type_id, financial_classification
+                   ORDER BY period_number
                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                  ) AS expected_ytd
           FROM base

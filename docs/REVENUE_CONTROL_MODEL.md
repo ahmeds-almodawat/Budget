@@ -108,7 +108,7 @@ Dedicated views:
 
 ## Clean install verification
 
-Closure patch ran `npm ci` from committed `package-lock.json`. See closure session verification log for exit code, warnings, and test counts.
+Closure patch ran `npm ci` from committed `package-lock.json`. Revenue repository integration tests (20 cases) execute without conditional skips when local Supabase fixtures are loaded via `npm run db:fixtures:local`.
 
 ## Test coverage (closure patch)
 
