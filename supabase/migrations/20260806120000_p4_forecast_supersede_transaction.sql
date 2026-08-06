@@ -80,7 +80,6 @@ BEGIN
   END IF;
 
   UPDATE public.forecast_versions AS fv SET
-    is_current_approved = false,
     superseded_from_id = p_superseded_forecast_version_id
   WHERE fv.id = p_new_forecast_version_id;
 
