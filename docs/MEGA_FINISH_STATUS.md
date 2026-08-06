@@ -23,7 +23,7 @@
 - [x] Delegation workspace route
 - [x] Full lifecycle UI (submit/approve/activate/revoke/cancel)
 - [ ] Delegated inbox integration
-- [ ] SOD enforcement tests
+- [x] SOD enforcement tests (self-delegation + segregated approve)
 
 ### Procurement
 - [x] Requisition workspace
@@ -79,3 +79,4 @@
 |-----|---------|--------|
 | afb83dd | feat(governance): replace placeholders with bilingual workspaces | done |
 | 22b6867 | feat(governance): delegation lifecycle, procurement hub, period hard close | done |
+| f87a668 | test(governance): delegation lifecycle integration coverage | done |
