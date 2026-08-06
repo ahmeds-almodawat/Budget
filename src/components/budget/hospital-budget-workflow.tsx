@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,7 +41,7 @@ function distributeMonthly(total: string): string[] {
 
 export function HospitalBudgetWorkflow({ permissions }: { permissions: BudgetWorkflowPermissions }) {
   const t = useTranslations("budget");
-  const locale = useLocale();
+  const tWorkflow = useTranslations("budgetWorkflow");
   const [annualAmount, setAnnualAmount] = useState("1020000");
   const [quantity, setQuantity] = useState("12000");
   const [unitRate, setUnitRate] = useState("85");
@@ -88,21 +88,21 @@ export function HospitalBudgetWorkflow({ permissions }: { permissions: BudgetWor
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>{locale === "ar" ? "ميزانية المستشفى 2027" : "2027 Main Hospital Operating Budget"}</CardTitle>
+          <CardTitle>{tWorkflow("title")}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <label className="space-y-1 text-sm">
-            <span>{locale === "ar" ? "الكمية السنوية" : "Annual quantity"}</span>
+            <span>{tWorkflow("annualQuantity")}</span>
             <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} disabled={!permissions.canDraft} />
           </label>
           <label className="space-y-1 text-sm">
-            <span>{locale === "ar" ? "سعر الوحدة" : "Unit rate (SAR)"}</span>
+            <span>{tWorkflow("unitRate")}</span>
             <Input value={unitRate} onChange={(e) => setUnitRate(e.target.value)} disabled={!permissions.canDraft} />
           </label>
           <label className="space-y-1 text-sm md:col-span-2">
-            <span>{locale === "ar" ? "المبلغ السنوي (محسوب أو مباشر)" : "Annual amount (direct or driver)"}</span>
+            <span>{tWorkflow("annualAmount")}</span>
             <Input value={annualAmount} onChange={(e) => setAnnualAmount(e.target.value)} disabled={!permissions.canDraft} />
-            <span className="text-slate-500">{locale === "ar" ? "محسوب" : "Driver"}: {computed} SAR</span>
+            <span className="text-slate-500">{tWorkflow("driver")}: {computed} SAR</span>
           </label>
         </CardContent>
       </Card>
@@ -130,7 +130,7 @@ export function HospitalBudgetWorkflow({ permissions }: { permissions: BudgetWor
               const lineId = await fetchBudgetLineIdAction(version.id);
               if (lineId) setBudgetLineId(lineId);
               return version;
-            }, locale === "ar" ? "تم حفظ المسودة" : "Draft saved")
+            }, tWorkflow("draftSaved"))
           }
         >
           {t("draft")}
@@ -141,7 +141,7 @@ export function HospitalBudgetWorkflow({ permissions }: { permissions: BudgetWor
           onClick={() =>
             run(
               () => submitHospitalBudgetAction(budgetVersionId!),
-              locale === "ar" ? "تم الإرسال" : "Submitted",
+              tWorkflow("submitted"),
             )
           }
         >
@@ -153,18 +153,18 @@ export function HospitalBudgetWorkflow({ permissions }: { permissions: BudgetWor
           onClick={() =>
             run(
               () => reviewHospitalBudgetAction(budgetVersionId!),
-              locale === "ar" ? "قيد المراجعة" : "Under review",
+              tWorkflow("underReview"),
             )
           }
         >
-          {locale === "ar" ? "مراجعة مالية" : "Finance review"}
+          {tWorkflow("financeReview")}
         </Button>
         <Button
           disabled={pending || !budgetVersionId || !permissions.canApprove}
           onClick={() =>
             run(
               () => approveHospitalBudgetAction(budgetVersionId!),
-              locale === "ar" ? "تم الاعتماد والقفل" : "Approved and locked",
+              tWorkflow("approvedLocked"),
             )
           }
         >
@@ -174,7 +174,7 @@ export function HospitalBudgetWorkflow({ permissions }: { permissions: BudgetWor
 
       <Card>
         <CardHeader>
-          <CardTitle>{locale === "ar" ? "طلب تغيير الميزانية" : "Budget change request"}</CardTitle>
+          <CardTitle>{tWorkflow("changeRequestTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button
@@ -193,10 +193,10 @@ export function HospitalBudgetWorkflow({ permissions }: { permissions: BudgetWor
                 });
                 setChangeRequestId(change.id);
                 return change;
-              }, locale === "ar" ? "تم إنشاء طلب التغيير" : "Change request created")
+              }, tWorkflow("changeRequestCreated"))
             }
           >
-            {locale === "ar" ? "طلب زيادة" : "Request increase"}
+            {tWorkflow("requestIncrease")}
           </Button>
           <Button
             disabled={pending || !changeRequestId || !permissions.canApproveChange}
@@ -206,11 +206,11 @@ export function HospitalBudgetWorkflow({ permissions }: { permissions: BudgetWor
                   approveHospitalBudgetChangeAction({
                     changeRequestId: changeRequestId!,
                   }),
-                locale === "ar" ? "تم اعتماد التغيير" : "Change approved",
+                tWorkflow("changeApproved"),
               )
             }
           >
-            {locale === "ar" ? "اعتماد التغيير" : "Approve change"}
+            {tWorkflow("approveChange")}
           </Button>
         </CardContent>
       </Card>

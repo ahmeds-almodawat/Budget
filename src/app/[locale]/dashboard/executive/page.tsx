@@ -15,6 +15,7 @@ export default async function ExecutiveDashboardPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("dashboard.executive");
+  const tLabels = await getTranslations("dashboardLabels");
 
   const db = await createClient();
   const hospital = await fetchHospitalDashboardAction().catch(() => null);
@@ -85,7 +86,7 @@ export default async function ExecutiveDashboardPage({
           <CardHeader><CardTitle>{t("hospitalPerformance")}</CardTitle></CardHeader>
           <CardContent>
             <Link href={`/${locale}/dashboard/hospital`} className="text-teal-700 hover:underline">
-              {locale === "ar" ? "عرض لوحة المستشفى" : "Open hospital dashboard"}
+              {tLabels("openHospitalDashboard")}
             </Link>
             {hospital ? (
               <div className="mt-2 text-sm text-slate-600">
@@ -95,7 +96,7 @@ export default async function ExecutiveDashboardPage({
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>{locale === "ar" ? "المشاريع" : "Projects"}</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{tLabels("projects")}</CardTitle></CardHeader>
           <CardContent>
             <Link href={`/${locale}/projects/cs-khamis-hospital`} className="text-teal-700 hover:underline">
               Khamis Mushait New Hospital

@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
@@ -11,6 +11,7 @@ export default async function BudgetLineTransactionsPage({
 }) {
   const { locale, lineId } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("transactions");
 
   let rows: Awaited<ReturnType<typeof fetchBudgetLineTransactionsAction>> = [];
   let error: string | null = null;
@@ -23,27 +24,25 @@ export default async function BudgetLineTransactionsPage({
   return (
     <div className="space-y-6">
       <Link href={`/${locale}/dashboard/hospital`} className="text-teal-700 hover:underline">
-        ← {locale === "ar" ? "لوحة المستشفى" : "Hospital dashboard"}
+        ← {t("hospitalDashboard")}
       </Link>
-      <h1 className="text-2xl font-bold">
-        {locale === "ar" ? "تفاصيل المعاملات" : "Transaction details"}
-      </h1>
+      <h1 className="text-2xl font-bold">{t("title")}</h1>
       {error ? <p className="text-red-700">{error}</p> : null}
       <Card>
         <CardHeader>
-          <CardTitle>{locale === "ar" ? "المعاملات المرتبطة" : "Linked transactions"}</CardTitle>
+          <CardTitle>{t("linkedTransactions")}</CardTitle>
         </CardHeader>
         <CardContent>
           {rows.length === 0 ? (
-            <p className="text-slate-500">{locale === "ar" ? "لا توجد معاملات" : "No transactions"}</p>
+            <p className="text-slate-500">{t("empty")}</p>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-start">
                   <th className="py-2">ID</th>
-                  <th className="py-2">{locale === "ar" ? "التاريخ" : "Date"}</th>
-                  <th className="py-2">{locale === "ar" ? "المبلغ" : "Amount"}</th>
-                  <th className="py-2">{locale === "ar" ? "الوصف" : "Description"}</th>
+                  <th className="py-2">{t("date")}</th>
+                  <th className="py-2">{t("amount")}</th>
+                  <th className="py-2">{t("description")}</th>
                 </tr>
               </thead>
               <tbody>

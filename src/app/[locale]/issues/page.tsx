@@ -1,7 +1,8 @@
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchIssuesAction } from "@/app/actions/governance-actions";
+import { pickLocalized } from "@/lib/i18n/display";
 
 export default async function IssuesPage({
   params,
@@ -10,14 +11,15 @@ export default async function IssuesPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("pages.issues");
   const issues = (await fetchIssuesAction()) ?? [];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{locale === "ar" ? "القضايا" : "Issues"}</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
         <Link href={`/${locale}/risks`} className="text-sm text-teal-700 hover:underline">
-          {locale === "ar" ? "المخاطر" : "Risks"}
+          {t("risks")}
         </Link>
       </div>
       <div className="grid gap-4">
@@ -25,7 +27,7 @@ export default async function IssuesPage({
           <Card key={issue.id}>
             <CardHeader>
               <CardTitle className="text-base">
-                {locale === "ar" ? issue.title_ar : issue.title_en}
+                {pickLocalized(locale, issue.title_en, issue.title_ar)}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex justify-between text-sm">
@@ -35,7 +37,7 @@ export default async function IssuesPage({
           </Card>
         ))}
         {issues.length === 0 && (
-          <p className="text-slate-500">{locale === "ar" ? "لا توجد قضايا" : "No issues found"}</p>
+          <p className="text-slate-500">{t("empty")}</p>
         )}
       </div>
     </div>

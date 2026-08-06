@@ -1,6 +1,8 @@
+import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
 import { seedExecutiveMetrics } from "@/data/seed/development-seed";
+import { numberLocale } from "@/lib/i18n/display";
 
 interface KpiCardProps {
   title: string;
@@ -30,41 +32,43 @@ export function KpiCard({ title, value, subtitle, variant = "default" }: KpiCard
   );
 }
 
-export function ExecutiveKpiGrid({ locale }: { locale: string }) {
+export async function ExecutiveKpiGrid({ locale }: { locale: string }) {
+  const t = await getTranslations("dashboard.executive");
   const m = seedExecutiveMetrics;
   const variance = (
     Number(m.currentApprovedBudget) - Number(m.estimateAtCompletion)
   ).toFixed(2);
+  const fmtLocale = numberLocale(locale);
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <KpiCard
-        title="Original Approved Budget"
-        value={formatMoney(m.originalApprovedBudget, "SAR", locale === "ar" ? "ar-SA" : "en-SA")}
+        title={t("originalBudget")}
+        value={formatMoney(m.originalApprovedBudget, "SAR", fmtLocale)}
       />
       <KpiCard
-        title="Current Approved Budget"
-        value={formatMoney(m.currentApprovedBudget, "SAR", locale === "ar" ? "ar-SA" : "en-SA")}
+        title={t("currentBudget")}
+        value={formatMoney(m.currentApprovedBudget, "SAR", fmtLocale)}
       />
       <KpiCard
-        title="Actual Cost"
-        value={formatMoney(m.actualCost, "SAR", locale === "ar" ? "ar-SA" : "en-SA")}
+        title={t("actualCost")}
+        value={formatMoney(m.actualCost, "SAR", fmtLocale)}
       />
       <KpiCard
-        title="Committed Cost"
-        value={formatMoney(m.committedCost, "SAR", locale === "ar" ? "ar-SA" : "en-SA")}
+        title={t("committedCost")}
+        value={formatMoney(m.committedCost, "SAR", fmtLocale)}
       />
       <KpiCard
-        title="Estimate at Completion"
-        value={formatMoney(m.estimateAtCompletion, "SAR", locale === "ar" ? "ar-SA" : "en-SA")}
+        title={t("eac")}
+        value={formatMoney(m.estimateAtCompletion, "SAR", fmtLocale)}
       />
       <KpiCard
-        title="Forecast Variance"
-        value={formatMoney(variance, "SAR", locale === "ar" ? "ar-SA" : "en-SA")}
+        title={t("variance")}
+        value={formatMoney(variance, "SAR", fmtLocale)}
         variant={Number(variance) < 0 ? "danger" : "default"}
       />
-      <KpiCard title="Delayed Milestones" value={String(m.delayedMilestones)} variant="warning" />
-      <KpiCard title="Projects at Risk" value={String(m.projectsAtRisk)} variant="danger" />
+      <KpiCard title={t("delayedMilestones")} value={String(m.delayedMilestones)} variant="warning" />
+      <KpiCard title={t("projectsAtRisk")} value={String(m.projectsAtRisk)} variant="danger" />
     </div>
   );
 }

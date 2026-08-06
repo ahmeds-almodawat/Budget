@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import { ApprovalsWorkspace } from "@/components/approvals/approvals-workspace";
 import { fetchApprovalCountsAction, fetchApprovalInboxAction } from "@/app/actions/approval-actions";
 import { getAuthContext } from "@/lib/auth/context";
@@ -13,6 +13,7 @@ export default async function ApprovalsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("pages.approvals");
 
   const ctx = await getAuthContext();
   const roleAssignments: RoleAssignment[] = ctx?.roleAssignments ?? [];
@@ -27,9 +28,7 @@ export default async function ApprovalsPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">
-        {locale === "ar" ? "مساحة الاعتمادات" : "Approvals"}
-      </h1>
+      <h1 className="text-2xl font-bold">{t("title")}</h1>
       <ApprovalsWorkspace
         initialTab="awaiting"
         initialItems={items ?? []}

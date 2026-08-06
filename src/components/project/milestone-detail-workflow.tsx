@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import {
   verifyProgressAction,
   acceptMilestoneAction,
 } from "@/app/actions/project-actions";
+import { pickLocalized } from "@/lib/i18n/display";
 
 interface MilestoneDetailProps {
   milestone: {
@@ -49,6 +50,7 @@ export function MilestoneDetailWorkflow({
   permissions,
 }: MilestoneDetailProps) {
   const locale = useLocale();
+  const t = useTranslations("milestones");
   const [reportedProgress, setReportedProgress] = useState(String(milestone.reported_progress));
   const [notes, setNotes] = useState("");
   const [evidence, setEvidence] = useState("");
@@ -56,7 +58,7 @@ export function MilestoneDetailWorkflow({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const name = locale === "ar" ? milestone.name_ar : milestone.name_en;
+  const name = pickLocalized(locale, milestone.name_en, milestone.name_ar);
   const pendingUpdate = updates.find((u) => u.approval_status === "submitted" && !u.verified_progress);
 
   function run(action: () => Promise<unknown>, ok: string) {
@@ -80,7 +82,7 @@ export function MilestoneDetailWorkflow({
           <p className="text-sm text-slate-500">{milestone.code}</p>
         </div>
         <Link href={`/${locale}/milestones`} className="text-sm text-teal-700 hover:underline">
-          {locale === "ar" ? "العودة للمعالم" : "Back to milestones"}
+          {t("backToMilestones")}
         </Link>
       </div>
 
@@ -89,30 +91,30 @@ export function MilestoneDetailWorkflow({
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader><CardTitle className="text-sm">{locale === "ar" ? "خط الأساس" : "Baseline"}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{t("baseline")}</CardTitle></CardHeader>
           <CardContent>{milestone.baseline_date ?? "—"}</CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm">{locale === "ar" ? "التوقع" : "Forecast"}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{t("forecast")}</CardTitle></CardHeader>
           <CardContent>{milestone.forecast_date ?? "—"}</CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm">{locale === "ar" ? "التقدم المعتمد" : "Approved progress"}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{t("approvedProgress")}</CardTitle></CardHeader>
           <CardContent>{milestone.approved_progress}%</CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm">{locale === "ar" ? "الخطوات المرجحة" : "Weighted steps"}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{t("weightedSteps")}</CardTitle></CardHeader>
           <CardContent>{weightedProgress.toFixed(1)}%</CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardHeader><CardTitle>{locale === "ar" ? "خطوات المعلم" : "Milestone steps"}</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("milestoneSteps")}</CardTitle></CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm">
             {steps.map((s) => (
               <li key={s.id} className="flex justify-between border-b py-2">
-                <span>{locale === "ar" ? s.name_ar : s.name_en}</span>
+                <span>{pickLocalized(locale, s.name_en, s.name_ar)}</span>
                 <span>{s.weight_percent}% — {s.completed ? "✓" : "—"}</span>
               </li>
             ))}
@@ -122,18 +124,18 @@ export function MilestoneDetailWorkflow({
 
       {permissions.canSubmit && (
         <Card>
-          <CardHeader><CardTitle>{locale === "ar" ? "تقديم التقدم" : "Submit progress"}</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("submitProgress")}</CardTitle></CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1 text-sm">
-              <span>{locale === "ar" ? "نسبة التقدم المبلغ عنها" : "Reported progress %"}</span>
+              <span>{t("reportedProgress")}</span>
               <Input value={reportedProgress} onChange={(e) => setReportedProgress(e.target.value)} />
             </label>
             <label className="space-y-1 text-sm">
-              <span>{locale === "ar" ? "ملاحظات" : "Notes"}</span>
+              <span>{t("notes")}</span>
               <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
             </label>
             <label className="space-y-1 text-sm md:col-span-2">
-              <span>{locale === "ar" ? "وصف الدليل" : "Evidence description"}</span>
+              <span>{t("evidenceDescription")}</span>
               <Input value={evidence} onChange={(e) => setEvidence(e.target.value)} />
             </label>
             <Button
@@ -147,11 +149,11 @@ export function MilestoneDetailWorkflow({
                       notes: notes || undefined,
                       evidenceDescription: evidence || undefined,
                     }),
-                  locale === "ar" ? "تم تقديم التقدم" : "Progress submitted",
+                  t("progressSubmitted"),
                 )
               }
             >
-              {locale === "ar" ? "تقديم" : "Submit"}
+              {t("submit")}
             </Button>
           </CardContent>
         </Card>
@@ -159,7 +161,7 @@ export function MilestoneDetailWorkflow({
 
       {permissions.canVerify && pendingUpdate && (
         <Card>
-          <CardHeader><CardTitle>{locale === "ar" ? "التحقق من التقدم" : "Verify progress"}</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("verifyProgress")}</CardTitle></CardHeader>
           <CardContent className="flex gap-4">
             <Button
               disabled={pending}
@@ -170,11 +172,11 @@ export function MilestoneDetailWorkflow({
                       progressUpdateId: pendingUpdate.id,
                       verifiedProgress: pendingUpdate.reported_progress,
                     }),
-                  locale === "ar" ? "تم التحقق" : "Progress verified",
+                  t("progressVerified"),
                 )
               }
             >
-              {locale === "ar" ? "اعتماد التقدم المبلغ" : "Verify reported progress"}
+              {t("verifyReported")}
             </Button>
           </CardContent>
         </Card>
@@ -187,16 +189,16 @@ export function MilestoneDetailWorkflow({
           onClick={() =>
             run(
               () => acceptMilestoneAction(milestone.id),
-              locale === "ar" ? "تم قبول المعلم" : "Milestone accepted",
+              t("milestoneAccepted"),
             )
           }
         >
-          {locale === "ar" ? "قبول المعلم" : "Accept milestone"}
+          {t("acceptMilestone")}
         </Button>
       )}
 
       <Card>
-        <CardHeader><CardTitle>{locale === "ar" ? "سجل التحديثات" : "Update history"}</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("updateHistory")}</CardTitle></CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm">
             {updates.map((u) => (
@@ -209,7 +211,7 @@ export function MilestoneDetailWorkflow({
               </li>
             ))}
             {updates.length === 0 && (
-              <li className="text-slate-500">{locale === "ar" ? "لا توجد تحديثات" : "No updates yet"}</li>
+              <li className="text-slate-500">{t("noUpdates")}</li>
             )}
           </ul>
         </CardContent>

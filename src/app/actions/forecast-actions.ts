@@ -2,6 +2,17 @@
 
 import { withActivePermission } from "@/lib/auth/action-guard";
 import { DataAccessError } from "@/data/repositories/budget-repository";
+import {
+  forecastApproveAndLock,
+  forecastApproveAndSupersede,
+  forecastCancel,
+  forecastCreateDraft,
+  forecastReject,
+  forecastStartReview,
+  forecastSubmit,
+  forecastUpdateDraft,
+  type ForecastLineInput,
+} from "@/lib/commands";
 import { FISCAL_YEAR_2027 } from "@/types/database";
 
 export async function fetchForecastsAction() {
@@ -19,90 +30,137 @@ export async function fetchForecastsAction() {
 export async function createForecastDraftAction(params: {
   controlScopeId: string;
   versionLabel: string;
-  lines: { costNodeId: string; organizationUnitId: string; fiscalPeriodId: string; forecastAmount: string }[];
+  lines: ForecastLineInput[];
+  projectId?: string;
+  controlAccountId?: string;
+  assumptions?: string;
 }) {
-  return withActivePermission("budget", "create", async ({ ctx, legalEntityId, db }) => {
-    const { data: version, error } = await db
+  return withActivePermission("budget", "create", async ({ legalEntityId, db }) => {
+    const result = await forecastCreateDraft(db, {
+      legalEntityId,
+      controlScopeId: params.controlScopeId,
+      fiscalYearId: FISCAL_YEAR_2027,
+      versionLabel: params.versionLabel,
+      projectId: params.projectId,
+      controlAccountId: params.controlAccountId,
+      assumptions: params.assumptions,
+      lines: params.lines,
+    });
+    const { data, error } = await db
       .from("forecast_versions")
-      .insert({
-        legal_entity_id: legalEntityId,
-        control_scope_id: params.controlScopeId,
-        fiscal_year_id: FISCAL_YEAR_2027,
-        version_label: params.versionLabel,
-        approval_status: "draft",
-        is_current_approved: false,
-        created_by: ctx.userId,
-      })
-      .select("*")
+      .select("*, forecast_lines(*)")
+      .eq("id", result.entity_id as string)
       .single();
-    if (error) throw new DataAccessError(error.message, "DATABASE");
+    if (error || !data) throw new DataAccessError("Forecast version not found.", "NOT_FOUND");
+    return data;
+  });
+}
 
-    if (params.lines.length > 0) {
-      const { error: lineError } = await db.from("forecast_lines").insert(
-        params.lines.map((line) => ({
-          forecast_version_id: version.id,
-          cost_node_id: line.costNodeId,
-          organization_unit_id: line.organizationUnitId,
-          fiscal_period_id: line.fiscalPeriodId,
-          forecast_amount: line.forecastAmount,
-        })),
-      );
-      if (lineError) throw new DataAccessError(lineError.message, "DATABASE");
-    }
-
-    return version;
+export async function updateForecastDraftAction(params: {
+  forecastVersionId: string;
+  expectedRowVersion: number;
+  versionLabel?: string;
+  assumptions?: string;
+  lines?: ForecastLineInput[];
+}) {
+  return withActivePermission("budget", "update", async ({ db }) => {
+    const result = await forecastUpdateDraft(db, params);
+    const { data, error } = await db
+      .from("forecast_versions")
+      .select("*, forecast_lines(*)")
+      .eq("id", params.forecastVersionId)
+      .single();
+    if (error || !data) throw new DataAccessError("Forecast version not found.", "NOT_FOUND");
+    return { ...data, row_version: result.row_version };
   });
 }
 
 export async function submitForecastAction(forecastVersionId: string) {
-  return withActivePermission("budget", "update", async ({ ctx, db }) => {
+  return withActivePermission("budget", "update", async ({ db }) => {
+    await forecastSubmit(db, forecastVersionId);
     const { data, error } = await db
       .from("forecast_versions")
-      .update({
-        approval_status: "submitted",
-        submitted_at: new Date().toISOString(),
-        submitted_by: ctx.userId,
-      })
-      .eq("id", forecastVersionId)
       .select("*")
+      .eq("id", forecastVersionId)
       .single();
-    if (error) throw new DataAccessError(error.message, "DATABASE");
+    if (error || !data) throw new DataAccessError("Forecast version not found.", "NOT_FOUND");
+    return data;
+  });
+}
+
+export async function startForecastReviewAction(forecastVersionId: string) {
+  return withActivePermission("budget", "update", async ({ db }) => {
+    await forecastStartReview(db, forecastVersionId);
+    const { data, error } = await db
+      .from("forecast_versions")
+      .select("*")
+      .eq("id", forecastVersionId)
+      .single();
+    if (error || !data) throw new DataAccessError("Forecast version not found.", "NOT_FOUND");
+    return data;
+  });
+}
+
+export async function rejectForecastAction(forecastVersionId: string) {
+  return withActivePermission("budget", "approve", async ({ db }) => {
+    await forecastReject(db, forecastVersionId);
+    const { data, error } = await db
+      .from("forecast_versions")
+      .select("*")
+      .eq("id", forecastVersionId)
+      .single();
+    if (error || !data) throw new DataAccessError("Forecast version not found.", "NOT_FOUND");
+    return data;
+  });
+}
+
+export async function cancelForecastAction(forecastVersionId: string) {
+  return withActivePermission("budget", "update", async ({ db }) => {
+    await forecastCancel(db, forecastVersionId);
+    const { data, error } = await db
+      .from("forecast_versions")
+      .select("*")
+      .eq("id", forecastVersionId)
+      .single();
+    if (error || !data) throw new DataAccessError("Forecast version not found.", "NOT_FOUND");
     return data;
   });
 }
 
 export async function approveForecastAction(forecastVersionId: string) {
-  return withActivePermission("budget", "approve", async ({ ctx, db }) => {
-    const { data: current } = await db
-      .from("forecast_versions")
-      .select("legal_entity_id, control_scope_id, submitted_by")
-      .eq("id", forecastVersionId)
-      .single();
-    if (!current) throw new DataAccessError("Forecast version not found.", "NOT_FOUND");
-    if (current.submitted_by === ctx.userId) {
-      throw new DataAccessError("Requester cannot approve their own forecast.", "FORBIDDEN");
-    }
-
-    await db
-      .from("forecast_versions")
-      .update({ is_current_approved: false })
-      .eq("legal_entity_id", current.legal_entity_id)
-      .eq("control_scope_id", current.control_scope_id)
-      .eq("is_current_approved", true);
-
+  return withActivePermission("budget", "approve", async ({ db }) => {
+    await forecastApproveAndLock(db, forecastVersionId);
     const { data, error } = await db
       .from("forecast_versions")
-      .update({
-        approval_status: "approved",
-        approved_at: new Date().toISOString(),
-        approved_by: ctx.userId,
-        is_current_approved: true,
-        locked_at: new Date().toISOString(),
-      })
-      .eq("id", forecastVersionId)
       .select("*")
+      .eq("id", forecastVersionId)
       .single();
-    if (error) throw new DataAccessError(error.message, "DATABASE");
+    if (error || !data) throw new DataAccessError("Forecast version not found.", "NOT_FOUND");
     return data;
+  });
+}
+
+export async function supersedeForecastAction(params: {
+  newForecastVersionId: string;
+  supersededForecastVersionId: string;
+  approverComment: string;
+  idempotencyKey?: string;
+}) {
+  return withActivePermission("budget", "approve", async ({ db }) => {
+    await forecastApproveAndSupersede(db, {
+      newForecastVersionId: params.newForecastVersionId,
+      supersededForecastVersionId: params.supersededForecastVersionId,
+      approverComment: params.approverComment,
+      idempotencyKey: params.idempotencyKey,
+    });
+
+    const { data: versions, error } = await db
+      .from("forecast_versions")
+      .select("*, forecast_lines(*)")
+      .in("id", [params.newForecastVersionId, params.supersededForecastVersionId]);
+    if (error || !versions || versions.length !== 2) {
+      throw new DataAccessError("Forecast versions not found after supersede.", "NOT_FOUND");
+    }
+    return versions;
   });
 }

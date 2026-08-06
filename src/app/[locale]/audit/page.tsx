@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { AuditSearchWorkspace } from "@/components/audit/audit-search-workspace";
 import { fetchAuditEventsAction } from "@/app/actions/audit-actions";
@@ -14,6 +14,7 @@ export default async function AuditPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("pages.audit");
 
   const ctx = await getAuthContext();
   const roleAssignments: RoleAssignment[] = ctx?.roleAssignments ?? [];
@@ -26,9 +27,9 @@ export default async function AuditPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{locale === "ar" ? "سجل التدقيق" : "Audit log"}</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
         <Link href={`/${locale}/exceptions`} className="text-sm text-teal-700 hover:underline">
-          {locale === "ar" ? "الاستثناءات" : "Exceptions"}
+          {t("exceptions")}
         </Link>
       </div>
       <AuditSearchWorkspace initialEvents={events} />

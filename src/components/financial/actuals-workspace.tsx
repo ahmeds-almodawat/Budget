@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
 
 type Tab = "transactions" | "unmapped" | "batches" | "duplicates" | "reversals";
+
+const TAB_KEYS: Tab[] = ["transactions", "unmapped", "batches", "duplicates", "reversals"];
 
 interface ActualsWorkspaceProps {
   transactions: {
@@ -24,47 +26,40 @@ interface ActualsWorkspaceProps {
 }
 
 export function ActualsWorkspace({ transactions, unmapped, batches, duplicates }: ActualsWorkspaceProps) {
-  const locale = useLocale();
+  const t = useTranslations("actuals");
+  const tWorkspace = useTranslations("workspace");
   const [tab, setTab] = useState<Tab>("transactions");
 
-  const tabs: { key: Tab; en: string; ar: string }[] = [
-    { key: "transactions", en: "Transactions", ar: "المعاملات" },
-    { key: "unmapped", en: "Unmapped", ar: "غير مربوطة" },
-    { key: "batches", en: "Import batches", ar: "دفعات الاستيراد" },
-    { key: "duplicates", en: "Duplicate queue", ar: "قائمة التكرار" },
-    { key: "reversals", en: "Reversals", ar: "العكسيات" },
-  ];
-
-  const reversals = transactions.filter((t) => t.is_reversal);
+  const reversals = transactions.filter((tx) => tx.is_reversal);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
+        {TAB_KEYS.map((key) => (
           <button
-            key={t.key}
+            key={key}
             type="button"
-            onClick={() => setTab(t.key)}
-            className={`rounded-md px-3 py-1.5 text-sm ${tab === t.key ? "bg-teal-800 text-white" : "bg-slate-100"}`}
+            onClick={() => setTab(key)}
+            className={`rounded-md px-3 py-1.5 text-sm ${tab === key ? "bg-teal-800 text-white" : "bg-slate-100"}`}
           >
-            {locale === "ar" ? t.ar : t.en}
+            {t(key)}
           </button>
         ))}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{locale === "ar" ? tabs.find((t) => t.key === tab)?.ar : tabs.find((t) => t.key === tab)?.en}</CardTitle>
+          <CardTitle>{t(tab)}</CardTitle>
         </CardHeader>
         <CardContent>
           {tab === "transactions" && (
             <ul className="space-y-2 text-sm">
-              {transactions.filter((t) => !t.is_reversal).map((t) => (
-                <li key={t.id} className="flex justify-between border-b py-2">
-                  <span>{t.source_transaction_id}</span>
-                  <span>{t.transaction_date}</span>
-                  <span>{formatMoney(t.amount_ex_vat, "SAR")}</span>
-                  <span className="text-slate-500">{t.is_posted ? "posted" : "draft"}</span>
+              {transactions.filter((tx) => !tx.is_reversal).map((tx) => (
+                <li key={tx.id} className="flex justify-between border-b py-2">
+                  <span>{tx.source_transaction_id}</span>
+                  <span>{tx.transaction_date}</span>
+                  <span>{formatMoney(tx.amount_ex_vat, "SAR")}</span>
+                  <span className="text-slate-500">{tx.is_posted ? "posted" : "draft"}</span>
                 </li>
               ))}
             </ul>
@@ -103,21 +98,17 @@ export function ActualsWorkspace({ transactions, unmapped, batches, duplicates }
           )}
           {tab === "reversals" && (
             <ul className="space-y-2 text-sm">
-              {reversals.map((t) => (
-                <li key={t.id} className="flex justify-between border-b py-2">
-                  <span>{t.source_transaction_id}</span>
-                  <span>{formatMoney(t.amount_ex_vat, "SAR")}</span>
+              {reversals.map((tx) => (
+                <li key={tx.id} className="flex justify-between border-b py-2">
+                  <span>{tx.source_transaction_id}</span>
+                  <span>{formatMoney(tx.amount_ex_vat, "SAR")}</span>
                 </li>
               ))}
             </ul>
           )}
         </CardContent>
       </Card>
-      <p className="text-xs text-slate-500">
-        {locale === "ar"
-          ? "لا يمكن تعديل المعاملات المرحّلة مباشرة — استخدم العكسيات فقط."
-          : "Posted actuals cannot be edited directly — reversals only."}
-      </p>
+      <p className="text-xs text-slate-500">{tWorkspace("postedActualsNote")}</p>
     </div>
   );
 }

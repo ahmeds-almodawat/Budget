@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -16,7 +16,7 @@ import {
 } from "@/types/database";
 
 export function ActualImportWorkflow() {
-  const locale = useLocale();
+  const t = useTranslations("imports");
   const [batchId, setBatchId] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ accepted: number; rejected: number; total: string } | null>(null);
   const [unmappedCount, setUnmappedCount] = useState(0);
@@ -41,11 +41,11 @@ export function ActualImportWorkflow() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>{locale === "ar" ? "استيراد التكاليف الفعلية" : "Actual cost import"}</CardTitle>
+          <CardTitle>{t("title")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button variant="outline" onClick={downloadTemplate}>
-            {locale === "ar" ? "تنزيل القالب" : "Download CSV template"}
+            {t("downloadTemplate")}
           </Button>
           <input
             type="file"
@@ -65,7 +65,7 @@ export function ActualImportWorkflow() {
                     rejected: result.totals.rejectedRowCount,
                     total: result.totals.fileTotal,
                   });
-                  setMessage(locale === "ar" ? "تم التحقق من الملف" : "File validated");
+                  setMessage(t("fileValidated"));
                 } catch (e) {
                   setError(e instanceof Error ? e.message : "Import failed");
                 }
@@ -78,9 +78,9 @@ export function ActualImportWorkflow() {
       {preview ? (
         <Card>
           <CardContent className="grid gap-2 p-4 text-sm md:grid-cols-3">
-            <div>{locale === "ar" ? "إجمالي الملف" : "File total"}: {preview.total}</div>
-            <div>{locale === "ar" ? "مقبول" : "Accepted rows"}: {preview.accepted}</div>
-            <div>{locale === "ar" ? "مرفوض" : "Rejected rows"}: {preview.rejected}</div>
+            <div>{t("fileTotal")}: {preview.total}</div>
+            <div>{t("acceptedRows")}: {preview.accepted}</div>
+            <div>{t("rejectedRows")}: {preview.rejected}</div>
           </CardContent>
         </Card>
       ) : null}
@@ -93,9 +93,10 @@ export function ActualImportWorkflow() {
               try {
                 const result = await postImportBatchAction(batchId!);
                 setMessage(
-                  locale === "ar"
-                    ? `تم الترحيل: ${result.postedTotal} (${result.duplicateCount} مكرر)`
-                    : `Posted ${result.postedTotal} SAR (${result.duplicateCount} duplicates queued)`,
+                  t("postedSummary", {
+                    amount: result.postedTotal,
+                    duplicates: result.duplicateCount,
+                  }),
                 );
                 const unmapped = await fetchUnmappedQueueAction();
                 setUnmappedCount(unmapped.length);
@@ -105,15 +106,13 @@ export function ActualImportWorkflow() {
             })
           }
         >
-          {locale === "ar" ? "ترحيل الدفعة" : "Post batch"}
+          {t("postBatch")}
         </Button>
       </div>
 
       {unmappedCount > 0 ? (
         <p className="text-amber-700">
-          {locale === "ar"
-            ? `${unmappedCount} معاملات في قائمة غير المربوطة`
-            : `${unmappedCount} transactions in unmapped queue`}
+          {t("unmappedQueue", { count: unmappedCount })}
         </p>
       ) : null}
       {message ? <p className="text-green-700">{message}</p> : null}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,7 @@ interface AuditEvent {
 
 export function AuditSearchWorkspace({ initialEvents }: { initialEvents: AuditEvent[] }) {
   const locale = useLocale();
+  const t = useTranslations("audit");
   const [entityType, setEntityType] = useState("");
   const [action, setAction] = useState("");
   const [events, setEvents] = useState(initialEvents);
@@ -38,23 +39,23 @@ export function AuditSearchWorkspace({ initialEvents }: { initialEvents: AuditEv
     <div className="space-y-4">
       <div className="flex flex-wrap gap-4">
         <label className="space-y-1 text-sm">
-          <span>{locale === "ar" ? "نوع الكيان" : "Entity type"}</span>
+          <span>{t("entityType")}</span>
           <Input value={entityType} onChange={(e) => setEntityType(e.target.value)} />
         </label>
         <label className="space-y-1 text-sm">
-          <span>{locale === "ar" ? "الإجراء" : "Action"}</span>
+          <span>{t("action")}</span>
           <Input value={action} onChange={(e) => setAction(e.target.value)} />
         </label>
         <div className="flex items-end">
           <Button onClick={search} disabled={pending}>
-            {locale === "ar" ? "بحث" : "Search"}
+            {t("search")}
           </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{locale === "ar" ? "سجل التدقيق" : "Audit log"}</CardTitle>
+          <CardTitle>{t("title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm">
@@ -71,7 +72,7 @@ export function AuditSearchWorkspace({ initialEvents }: { initialEvents: AuditEv
               </li>
             ))}
             {events.length === 0 && (
-              <li className="text-slate-500">{locale === "ar" ? "لا توجد أحداث" : "No events found"}</li>
+              <li className="text-slate-500">{t("noEvents")}</li>
             )}
           </ul>
         </CardContent>

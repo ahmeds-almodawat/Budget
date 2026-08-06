@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
+import { pickLocalized } from "@/lib/i18n/display";
 
 export default async function ProjectsListPage({
   params,
@@ -12,6 +13,7 @@ export default async function ProjectsListPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("project");
+  const tPages = await getTranslations("pages.projects");
 
   const db = await createClient();
   const { data: scopes, error } = await db
@@ -30,7 +32,7 @@ export default async function ProjectsListPage({
           return (
             <Card key={scope.id}>
               <CardHeader>
-                <CardTitle>{locale === "ar" ? scope.name_ar : scope.name_en}</CardTitle>
+                <CardTitle>{pickLocalized(locale, scope.name_en, scope.name_ar)}</CardTitle>
               </CardHeader>
               <CardContent className="flex items-center justify-between text-sm">
                 <span>{type}</span>
@@ -39,11 +41,11 @@ export default async function ProjectsListPage({
                     href={`/${locale}/projects/${scope.id}`}
                     className="text-teal-700 hover:underline"
                   >
-                    {locale === "ar" ? "عرض" : "View"}
+                    {tPages("view")}
                   </Link>
                 ) : type === "operational_budget" ? (
                   <Link href={`/${locale}/dashboard/hospital`} className="text-teal-700 hover:underline">
-                    {locale === "ar" ? "لوحة التشغيل" : "Operational dashboard"}
+                    {tPages("operationalDashboard")}
                   </Link>
                 ) : null}
               </CardContent>

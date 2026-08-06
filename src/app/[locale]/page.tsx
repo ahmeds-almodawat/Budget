@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/money";
 import { fetchHospitalDashboardAction } from "@/app/actions/budget-actions";
+import { pickLocalized } from "@/lib/i18n/display";
 
 export default async function HomePage({
   params,
@@ -16,7 +17,7 @@ export default async function HomePage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("nav");
-  const isAr = locale === "ar";
+  const tPages = await getTranslations("pages.home");
 
   const db = await createClient();
   const { data: entity } = await db
@@ -31,19 +32,19 @@ export default async function HomePage({
     {
       title: t("executiveDashboard"),
       href: `/${locale}/dashboard/executive`,
-      description: isAr ? "مؤشرات الأداء على مستوى المجموعة" : "Group-level performance indicators",
+      description: tPages("executiveDescription"),
       icon: BarChart3,
     },
     {
       title: t("operationalBudgets"),
       href: `/${locale}/budgets`,
-      description: isAr ? "إعداد واعتماد الميزانيات" : "Prepare and approve budgets",
+      description: tPages("budgetsDescription"),
       icon: Wallet,
     },
     {
-      title: isAr ? "لوحة المستشفى" : "Hospital dashboard",
+      title: tPages("hospitalDashboard"),
       href: `/${locale}/dashboard/hospital`,
-      description: isAr ? "الأداء التشغيلي للمستشفى" : "Hospital operational performance",
+      description: tPages("hospitalDescription"),
       icon: Building2,
     },
   ];
@@ -52,18 +53,18 @@ export default async function HomePage({
     <div className="space-y-8">
       <PageHeader
         title={t("home")}
-        description={isAr ? entity?.name_ar : entity?.name_en}
+        description={pickLocalized(locale, entity?.name_en, entity?.name_ar)}
       />
 
       {hospital ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            label={isAr ? "YTD الفعلي" : "YTD Actual"}
+            label={tPages("ytdActual")}
             value={formatMoney(hospital.ytdActual, "SAR")}
             icon={BarChart3}
           />
           <StatCard
-            label={isAr ? "YTD الميزانية" : "YTD Budget"}
+            label={tPages("ytdBudget")}
             value={formatMoney(hospital.ytdBudget, "SAR")}
             icon={Wallet}
           />

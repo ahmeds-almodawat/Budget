@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,16 +12,24 @@ import {
 import type { ReportType } from "@/data/repositories/report-repository";
 import { formatMoney } from "@/lib/money";
 
-const REPORTS: { type: ReportType; en: string; ar: string }[] = [
-  { type: "budget_vs_actual", en: "Budget vs Actual", ar: "الميزانية مقابل الفعلي" },
-  { type: "budget_actual_commitments", en: "Budget vs Actual vs Commitments", ar: "الميزانية والفعلي والالتزامات" },
-  { type: "milestone_performance", en: "Milestone performance", ar: "أداء المعالم" },
-  { type: "restaurant_operational", en: "Restaurant operational", ar: "تشغيل المطاعم" },
-  { type: "unmapped_actuals", en: "Unmapped actuals", ar: "فعلي غير مربوط" },
+const REPORT_TYPES: ReportType[] = [
+  "budget_vs_actual",
+  "budget_actual_commitments",
+  "milestone_performance",
+  "restaurant_operational",
+  "unmapped_actuals",
 ];
 
+const REPORT_KEYS = {
+  budget_vs_actual: "budgetVsActual",
+  budget_actual_commitments: "budgetActualCommitments",
+  milestone_performance: "milestonePerformance",
+  restaurant_operational: "restaurantOperational",
+  unmapped_actuals: "unmappedActuals",
+} as const satisfies Record<ReportType, string>;
+
 export function ReportsWorkspace() {
-  const locale = useLocale();
+  const t = useTranslations("reports");
   const [selected, setSelected] = useState<ReportType>("budget_vs_actual");
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [pending, startTransition] = useTransition();
@@ -70,31 +78,31 @@ export function ReportsWorkspace() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        {REPORTS.map((r) => (
+        {REPORT_TYPES.map((type) => (
           <Button
-            key={r.type}
-            variant={selected === r.type ? "default" : "outline"}
+            key={type}
+            variant={selected === type ? "default" : "outline"}
             size="sm"
             disabled={pending}
-            onClick={() => loadReport(r.type)}
+            onClick={() => loadReport(type)}
           >
-            {locale === "ar" ? r.ar : r.en}
+            {t(REPORT_KEYS[type] as Parameters<typeof t>[0])}
           </Button>
         ))}
       </div>
 
       <div className="flex gap-2">
         <Button size="sm" variant="outline" disabled={pending || rows.length === 0} onClick={downloadCsv}>
-          {locale === "ar" ? "تصدير CSV" : "Export CSV"}
+          {t("exportCsv")}
         </Button>
         <Button size="sm" variant="outline" disabled={pending || rows.length === 0} onClick={downloadExcel}>
-          {locale === "ar" ? "تصدير Excel" : "Export Excel"}
+          {t("exportExcel")}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{locale === "ar" ? "معاينة التقرير" : "Report preview"}</CardTitle>
+          <CardTitle>{t("preview")}</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           {rows.length > 0 ? (
@@ -123,9 +131,7 @@ export function ReportsWorkspace() {
               </tbody>
             </table>
           ) : (
-            <p className="text-slate-500">
-              {locale === "ar" ? "اختر تقريراً للمعاينة" : "Select a report to preview"}
-            </p>
+            <p className="text-slate-500">{t("selectReport")}</p>
           )}
         </CardContent>
       </Card>

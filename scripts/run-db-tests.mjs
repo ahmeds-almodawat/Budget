@@ -33,13 +33,14 @@ const EXPOSED_TABLES = [
   "register_dependencies", "risks", "role_assignments", "roles",
   "schedule_change_requests", "tasks", "teams", "unmapped_transaction_queue",
   "variance_explanations", "vendors", "work_packages", "schedule_baseline_versions",
+  "forecast_versions", "forecast_lines",
 ];
 const EXPOSED_VIEWS = [
   "v_approval_inbox", "v_budget_vs_actual", "v_restaurant_branch_performance",
   "v_hospital_period_performance", "v_project_earned_value",
 ];
 const SERVER_ONLY_TABLES = [
-  "audit_events", "forecast_lines", "forecast_versions", "gl_accounts",
+  "audit_events", "gl_accounts",
   "gl_cost_mappings", "permissions", "role_permissions", "task_dependencies", "team_members",
 ];
 const INSERT_TABLES = [
@@ -501,7 +502,7 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
     WHERE schemaname = 'public'
     ORDER BY tablename, policyname
   `);
-  assert(policies.length === 85, `Expected 85 reviewed policies, found ${policies.length}`);
+  assert(policies.length === 87, `Expected 87 reviewed policies, found ${policies.length}`);
   assert(
     policies.every((policy) => String(policy.roles) === "{authenticated}"),
     "Every policy must explicitly target authenticated",
@@ -617,7 +618,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
     WHERE n.nspname = 'public'
     ORDER BY p.proname
   `);
-  assert(publicFunctions.length === 14, `Expected 14 public RPC wrappers, found ${publicFunctions.length}`);
+  assert(publicFunctions.length === 23, `Expected 23 public RPC wrappers, found ${publicFunctions.length}`);
   for (const fn of publicFunctions) {
     assert(fn.proname.startsWith("rpc_"), `Unexpected public function ${fn.proname}`);
     assert(fn.prosecdef, `${fn.proname} must be SECURITY DEFINER`);
@@ -649,6 +650,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
     "deny_audit_mutation", "enforce_allocation_tenant_consistency", "enforce_leaf_posting",
     "prevent_cost_node_cycle", "prevent_inactive_cost_posting", "prevent_org_unit_cycle",
     "protect_immutable_budget_line", "protect_immutable_budget_monthly", "protect_locked_budget_version",
+    "protect_immutable_forecast_line", "protect_locked_forecast_version",
     "protect_milestone_baseline", "protect_phase_baseline", "protect_posted_actual",
     "protect_project_baseline", "protect_task_baseline", "validate_allocation_reconciliation",
     "validate_exact_allocation_reconciliation",

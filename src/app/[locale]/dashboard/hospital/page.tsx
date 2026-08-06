@@ -14,6 +14,7 @@ export default async function HospitalDashboardPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("dashboard.hospital");
+  const tLabels = await getTranslations("dashboardLabels");
 
   let performance = null;
   let dbError: string | null = null;
@@ -30,14 +31,12 @@ export default async function HospitalDashboardPage({
         <Card>
           <CardContent className="p-6 text-slate-600">
             {dbError
-              ? `${locale === "ar" ? "خطأ قاعدة البيانات" : "Database error"}: ${dbError}`
-              : locale === "ar"
-                ? "لا توجد ميزانية معتمدة بعد. أنشئ واعتمد الميزانية من صفحة الميزانيات."
-                : "No approved budget yet. Create and approve a budget from the Budgets page."}
+              ? `${tLabels("databaseError")}: ${dbError}`
+              : tLabels("noApprovedBudget")}
           </CardContent>
         </Card>
         <Link href={`/${locale}/budgets`} className="text-teal-700 hover:underline">
-          {locale === "ar" ? "الانتقال إلى الميزانيات" : "Go to Budgets"}
+          {tLabels("goToBudgets")}
         </Link>
       </div>
     );
@@ -67,19 +66,19 @@ export default async function HospitalDashboardPage({
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("mtd")}</CardTitle></CardHeader>
           <CardContent className="text-sm space-y-1">
-            <div>{locale === "ar" ? "الميزانية" : "Budget"}: {formatMoney(performance.mtdBudget, "SAR")}</div>
-            <div>{locale === "ar" ? "الفعلي" : "Actual"}: {formatMoney(performance.mtdActual, "SAR")}</div>
+            <div>{tLabels("budget")}: {formatMoney(performance.mtdBudget, "SAR")}</div>
+            <div>{tLabels("actual")}: {formatMoney(performance.mtdActual, "SAR")}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("ytd")}</CardTitle></CardHeader>
           <CardContent className="text-sm space-y-1">
-            <div>{locale === "ar" ? "الميزانية" : "Budget"}: {formatMoney(performance.ytdBudget, "SAR")}</div>
-            <div>{locale === "ar" ? "الفعلي" : "Actual"}: {formatMoney(performance.ytdActual, "SAR")}</div>
+            <div>{tLabels("budget")}: {formatMoney(performance.ytdBudget, "SAR")}</div>
+            <div>{tLabels("actual")}: {formatMoney(performance.ytdActual, "SAR")}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm">{locale === "ar" ? "المعتمدة الحالية" : "Current approved"}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{tLabels("currentApproved")}</CardTitle></CardHeader>
           <CardContent>{formatMoney(performance.currentApproved, "SAR")}</CardContent>
         </Card>
         <Card>
@@ -98,15 +97,15 @@ export default async function HospitalDashboardPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>{locale === "ar" ? "تفاصيل بنود الميزانية" : "Budget line drill-down"}</CardTitle>
+          <CardTitle>{tLabels("budgetLineDrillDown")}</CardTitle>
         </CardHeader>
         <CardContent>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-start">
-                <th className="py-2">{locale === "ar" ? "البند" : "Line"}</th>
-                <th className="py-2">{locale === "ar" ? "الميزانية" : "Budget"}</th>
-                <th className="py-2">{locale === "ar" ? "تفاصيل" : "Details"}</th>
+                <th className="py-2">{tLabels("line")}</th>
+                <th className="py-2">{tLabels("budget")}</th>
+                <th className="py-2">{tLabels("details")}</th>
               </tr>
             </thead>
             <tbody>
@@ -116,7 +115,7 @@ export default async function HospitalDashboardPage({
                   <td className="py-2">{formatMoney(line.planned_amount, "SAR")}</td>
                   <td className="py-2">
                     <Link href={`/${locale}/budgets/transactions/${line.id}`} className="text-teal-700 hover:underline">
-                      {locale === "ar" ? "المعاملات" : "Transactions"}
+                      {tLabels("transactions")}
                     </Link>
                   </td>
                 </tr>

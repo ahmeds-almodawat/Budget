@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
 import { fetchProjectDashboardAction } from "@/app/actions/project-actions";
 import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
+import { pickLocalized } from "@/lib/i18n/display";
 
 export default async function ProjectDashboardPage({
   params,
@@ -12,6 +13,8 @@ export default async function ProjectDashboardPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("dashboard.project");
+  const tPages = await getTranslations("pages.projects");
+  const tLabels = await getTranslations("dashboardLabels");
 
   const scopeId = id === "cs-khamis-hospital" ? CONTROL_SCOPE_KM_HOSPITAL : id;
   const dashboard = await fetchProjectDashboardAction(scopeId);
@@ -20,7 +23,7 @@ export default async function ProjectDashboardPage({
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <p className="text-slate-600">{locale === "ar" ? "المشروع غير موجود" : "Project not found"}</p>
+        <p className="text-slate-600">{tPages("notFound")}</p>
       </div>
     );
   }
@@ -31,25 +34,25 @@ export default async function ProjectDashboardPage({
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t("title")}</h1>
       <p className="text-slate-600">
-        {locale === "ar" ? project.control_scopes?.name_ar : project.control_scopes?.name_en}
+        {pickLocalized(locale, project.control_scopes?.name_en, project.control_scopes?.name_ar)}
       </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("pv")}</CardTitle></CardHeader>
           <CardContent>
-            {metrics ? formatMoney(metrics.plannedValue, "SAR") : (locale === "ar" ? "بيانات غير كافية" : "Insufficient data")}
+            {metrics ? formatMoney(metrics.plannedValue, "SAR") : tPages("insufficientData")}
           </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("ev")}</CardTitle></CardHeader>
           <CardContent>
-            {metrics ? formatMoney(metrics.earnedValue, "SAR") : (locale === "ar" ? "بيانات غير كافية" : "Insufficient data")}
+            {metrics ? formatMoney(metrics.earnedValue, "SAR") : tPages("insufficientData")}
           </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("ac")}</CardTitle></CardHeader>
           <CardContent>
-            {metrics ? formatMoney(metrics.actualCost, "SAR") : (locale === "ar" ? "بيانات غير كافية" : "Insufficient data")}
+            {metrics ? formatMoney(metrics.actualCost, "SAR") : tPages("insufficientData")}
           </CardContent>
         </Card>
         <Card>
@@ -78,20 +81,20 @@ export default async function ProjectDashboardPage({
         </Card>
       </div>
       <Card>
-        <CardHeader><CardTitle>{locale === "ar" ? "خط الأساس" : "Baselines"}</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{tLabels("baselines")}</CardTitle></CardHeader>
         <CardContent className="grid gap-2 text-sm md:grid-cols-2">
-          <div>{locale === "ar" ? "البداية الأصلية" : "Original baseline start"}: {project.baseline_start}</div>
-          <div>{locale === "ar" ? "النهاية الأصلية" : "Original baseline end"}: {project.baseline_end}</div>
-          <div>{locale === "ar" ? "التوقع الحالي" : "Forecast end"}: {project.forecast_end}</div>
+          <div>{tLabels("originalBaselineStart")}: {project.baseline_start}</div>
+          <div>{tLabels("originalBaselineEnd")}: {project.baseline_end}</div>
+          <div>{tLabels("currentForecastEnd")}: {project.forecast_end}</div>
         </CardContent>
       </Card>
       <Card>
-        <CardHeader><CardTitle>{locale === "ar" ? "المعالم" : "Milestones"}</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("timeline")}</CardTitle></CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm">
             {milestones.map((m) => (
               <li key={m.id} className="flex justify-between border-b py-2">
-                <span>{locale === "ar" ? m.name_ar : m.name_en}</span>
+                <span>{pickLocalized(locale, m.name_en, m.name_ar)}</span>
                 <span>{m.approved_progress}% — {m.approval_status}</span>
               </li>
             ))}
