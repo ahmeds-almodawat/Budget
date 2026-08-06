@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import { ActualsWorkspace } from "@/components/financial/actuals-workspace";
 import {
   fetchActualTransactionsAction,
@@ -14,6 +14,7 @@ export default async function ActualsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("pages.actuals");
 
   const [transactions, unmapped, batches, duplicates] = await Promise.all([
     fetchActualTransactionsAction(),
@@ -24,9 +25,7 @@ export default async function ActualsPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">
-        {locale === "ar" ? "التكاليف الفعلية" : "Actual costs"}
-      </h1>
+      <h1 className="text-2xl font-bold">{t("title")}</h1>
       <ActualsWorkspace
         transactions={transactions ?? []}
         unmapped={unmapped ?? []}

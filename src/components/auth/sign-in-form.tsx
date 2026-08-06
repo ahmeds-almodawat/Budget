@@ -10,13 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandMark } from "@/components/layout/brand-mark";
 import { Languages, Lock, Mail } from "lucide-react";
+import { otherLocale } from "@/lib/i18n/display";
 
 export function SignInForm() {
   const t = useTranslations("auth");
+  const tSidebar = useTranslations("sidebar");
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") ?? `/${locale}`;
+  const altLocale = otherLocale(locale);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -106,10 +109,10 @@ export function SignInForm() {
         <div className="mt-6 flex items-center justify-center gap-2 border-t border-slate-100 pt-4 text-sm">
           <Languages className="h-4 w-4 text-slate-400" aria-hidden />
           <Link
-            href={`/${locale === "ar" ? "en" : "ar"}/auth/sign-in`}
+            href={`/${altLocale}/auth/sign-in`}
             className="font-medium text-teal-700 transition-colors hover:text-teal-800"
           >
-            {locale === "ar" ? "English" : "العربية"}
+            {altLocale === "ar" ? tSidebar("switchToArabic") : tSidebar("switchToEnglish")}
           </Link>
         </div>
       </CardContent>

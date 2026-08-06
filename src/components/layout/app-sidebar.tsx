@@ -31,6 +31,7 @@ import { productConfig } from "@/config/product";
 import { BrandMark } from "@/components/layout/brand-mark";
 import type { UserSummary } from "@/components/layout/app-shell";
 import { hasPermission, type RoleAssignment, type RoleCode } from "@/domain/auth/permissions";
+import { otherLocale, pickLocalized } from "@/lib/i18n/display";
 
 type NavItem = { key: string; href: string; icon: LucideIcon };
 
@@ -87,9 +88,10 @@ const navSections: { labelKey?: string; items: NavItem[] }[] = [
 
 export function AppSidebar({ user }: { user: UserSummary | null }) {
   const t = useTranslations("nav");
+  const tSidebar = useTranslations("sidebar");
   const locale = useLocale();
   const pathname = usePathname();
-  const otherLocale = locale === "ar" ? "en" : "ar";
+  const altLocale = otherLocale(locale);
 
   const roleAssignments: RoleAssignment[] = (user?.roleCodes ?? []).map((roleCode) => ({
     roleCode: roleCode as RoleCode,
@@ -113,7 +115,7 @@ export function AppSidebar({ user }: { user: UserSummary | null }) {
       <div className="border-b border-[var(--sidebar-border)] p-4">
         <BrandMark locale={locale as "en" | "ar"} />
         <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-slate-400">
-          {locale === "ar" ? productConfig.workingName.ar : productConfig.workingName.en}
+          {pickLocalized(locale, productConfig.workingName.en, productConfig.workingName.ar)}
         </p>
       </div>
 
@@ -164,11 +166,11 @@ export function AppSidebar({ user }: { user: UserSummary | null }) {
 
       <div className="border-t border-[var(--sidebar-border)] p-3">
         <Link
-          href={pathname.replace(`/${locale}`, `/${otherLocale}`)}
+          href={pathname.replace(`/${locale}`, `/${altLocale}`)}
           className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
         >
           <Languages className="h-4 w-4 shrink-0" aria-hidden />
-          <span>{otherLocale === "ar" ? "العربية" : "English"}</span>
+          <span>{altLocale === "ar" ? tSidebar("switchToArabic") : tSidebar("switchToEnglish")}</span>
         </Link>
       </div>
     </aside>

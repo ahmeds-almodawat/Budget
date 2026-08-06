@@ -2,6 +2,7 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchRestaurantPerformanceAction } from "@/app/actions/restaurant-actions";
 import { formatMoney } from "@/lib/money";
+import { pickLocalized } from "@/lib/i18n/display";
 
 export default async function RestaurantDashboardPage({
   params,
@@ -11,6 +12,7 @@ export default async function RestaurantDashboardPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("dashboard.restaurant");
+  const tLabels = await getTranslations("dashboardLabels");
 
   const branches = (await fetchRestaurantPerformanceAction()) ?? [];
 
@@ -27,17 +29,17 @@ export default async function RestaurantDashboardPage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="py-2">{locale === "ar" ? "الفرع" : "Branch"}</th>
-                  <th>{locale === "ar" ? "الإيرادات" : "Revenue"}</th>
+                  <th className="py-2">{tLabels("branch")}</th>
+                  <th>{tLabels("revenue")}</th>
                   <th>{t("foodCostPercent")}</th>
                   <th>{t("laborCostPercent")}</th>
-                  <th>{locale === "ar" ? "التغطيات" : "Covers"}</th>
+                  <th>{tLabels("covers")}</th>
                 </tr>
               </thead>
               <tbody>
                 {branches.map((b) => (
                   <tr key={b.branch_id} className="border-b">
-                    <td className="py-2">{locale === "ar" ? b.name_ar : b.name_en}</td>
+                    <td className="py-2">{pickLocalized(locale, b.name_en, b.name_ar)}</td>
                     <td>{formatMoney(b.revenue, "SAR")}</td>
                     <td>{b.foodCostPercent?.toFixed(1) ?? "—"}%</td>
                     <td>{b.laborCostPercent?.toFixed(1) ?? "—"}%</td>
@@ -54,14 +56,14 @@ export default async function RestaurantDashboardPage({
         {branches.map((branch) => (
           <Card key={branch.branch_id}>
             <CardHeader>
-              <CardTitle>{locale === "ar" ? branch.name_ar : branch.name_en}</CardTitle>
+              <CardTitle>{pickLocalized(locale, branch.name_en, branch.name_ar)}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-2 text-sm">
-              <div>{locale === "ar" ? "الإيرادات" : "Revenue"}: {formatMoney(branch.revenue, "SAR")}</div>
+              <div>{tLabels("revenue")}: {formatMoney(branch.revenue, "SAR")}</div>
               <div>{t("foodCostPercent")}: {branch.foodCostPercent?.toFixed(1) ?? "—"}%</div>
               <div>{t("laborCostPercent")}: {branch.laborCostPercent?.toFixed(1) ?? "—"}%</div>
-              <div>{locale === "ar" ? "تكلفة الطعام" : "Food cost"}: {formatMoney(branch.food_cost, "SAR")}</div>
-              <div>{locale === "ar" ? "تكلفة العمالة" : "Labor cost"}: {formatMoney(branch.labor_cost, "SAR")}</div>
+              <div>{tLabels("foodCost")}: {formatMoney(branch.food_cost, "SAR")}</div>
+              <div>{tLabels("laborCost")}: {formatMoney(branch.labor_cost, "SAR")}</div>
             </CardContent>
           </Card>
         ))}

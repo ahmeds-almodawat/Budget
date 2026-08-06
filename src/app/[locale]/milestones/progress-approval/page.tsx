@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { fetchPendingProgressUpdatesAction } from "@/app/actions/project-actions";
 import { ProgressApprovalWorkflow } from "@/components/project/progress-approval-workflow";
@@ -14,6 +14,7 @@ export default async function ProgressApprovalPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("pages.progressApproval");
 
   const ctx = await getAuthContext();
   const roleAssignments: RoleAssignment[] = ctx?.roleAssignments ?? [];
@@ -26,11 +27,9 @@ export default async function ProgressApprovalPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">
-          {locale === "ar" ? "اعتماد التقدم" : "Progress approval"}
-        </h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
         <Link href={`/${locale}/milestones`} className="text-sm text-teal-700 hover:underline">
-          {locale === "ar" ? "المعالم" : "Milestones"}
+          {t("milestones")}
         </Link>
       </div>
       <ProgressApprovalWorkflow updates={updates} />

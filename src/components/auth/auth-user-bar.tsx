@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { UserSummary } from "@/components/layout/app-shell";
 import { LogOut, User } from "lucide-react";
+import { pickLocalized } from "@/lib/i18n/display";
 
 function formatRole(code: string) {
   return code.replace(/_/g, " ");
@@ -19,7 +20,7 @@ export function AuthUserBar({ user }: { user: UserSummary | null }) {
     return null;
   }
 
-  const displayName = locale === "ar" && user.displayNameAr ? user.displayNameAr : user.displayName;
+  const displayName = pickLocalized(locale, user.displayName, user.displayNameAr);
   const primaryRole = user.roleCodes[0];
 
   return (

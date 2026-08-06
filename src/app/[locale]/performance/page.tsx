@@ -1,6 +1,7 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { pickLocalized } from "@/lib/i18n/display";
 
 export default async function EmployeePerformancePage({
   params,
@@ -10,6 +11,7 @@ export default async function EmployeePerformancePage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("dashboard.employee");
+  const tPages = await getTranslations("pages.performance");
   const db = await createClient();
 
   const { data: teams } = await db
@@ -32,11 +34,11 @@ export default async function EmployeePerformancePage({
           return (
             <Card key={team.id}>
               <CardHeader>
-                <CardTitle>{locale === "ar" ? team.name_ar : team.name_en}</CardTitle>
+                <CardTitle>{pickLocalized(locale, team.name_en, team.name_ar)}</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-3 text-sm">
                 <div>{t("onTimeCompletion")}: {Math.round((onTime / total) * 100)}%</div>
-                <div>{locale === "ar" ? "المعالم" : "Milestones"}: {teamMilestones.length}</div>
+                <div>{tPages("milestones")}: {teamMilestones.length}</div>
               </CardContent>
             </Card>
           );

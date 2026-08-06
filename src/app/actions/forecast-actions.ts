@@ -4,6 +4,7 @@ import { withActivePermission } from "@/lib/auth/action-guard";
 import { DataAccessError } from "@/data/repositories/budget-repository";
 import {
   forecastApproveAndLock,
+  forecastApproveAndSupersede,
   forecastCancel,
   forecastCreateDraft,
   forecastReject,
@@ -136,5 +137,30 @@ export async function approveForecastAction(forecastVersionId: string) {
       .single();
     if (error || !data) throw new DataAccessError("Forecast version not found.", "NOT_FOUND");
     return data;
+  });
+}
+
+export async function supersedeForecastAction(params: {
+  newForecastVersionId: string;
+  supersededForecastVersionId: string;
+  approverComment: string;
+  idempotencyKey?: string;
+}) {
+  return withActivePermission("budget", "approve", async ({ db }) => {
+    await forecastApproveAndSupersede(db, {
+      newForecastVersionId: params.newForecastVersionId,
+      supersededForecastVersionId: params.supersededForecastVersionId,
+      approverComment: params.approverComment,
+      idempotencyKey: params.idempotencyKey,
+    });
+
+    const { data: versions, error } = await db
+      .from("forecast_versions")
+      .select("*, forecast_lines(*)")
+      .in("id", [params.newForecastVersionId, params.supersededForecastVersionId]);
+    if (error || !versions || versions.length !== 2) {
+      throw new DataAccessError("Forecast versions not found after supersede.", "NOT_FOUND");
+    }
+    return versions;
   });
 }

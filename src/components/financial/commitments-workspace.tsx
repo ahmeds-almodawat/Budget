@@ -1,11 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
+import { pickLocalized } from "@/lib/i18n/display";
 
 type Tab = "commitments" | "pos" | "contracts" | "invoices" | "payments" | "creditNotes";
+
+const TAB_LABEL_KEYS = {
+  commitments: "commitments",
+  pos: "purchaseOrders",
+  contracts: "contracts",
+  invoices: "invoices",
+  payments: "payments",
+  creditNotes: "creditNotes",
+} as const satisfies Record<Tab, string>;
 
 export function CommitmentsWorkspace({
   commitments,
@@ -25,35 +35,28 @@ export function CommitmentsWorkspace({
   vendors: { id: string; code: string; name_en: string; name_ar: string; status: string }[];
 }) {
   const locale = useLocale();
+  const t = useTranslations("commitments");
+  const tWorkspace = useTranslations("workspace");
   const [tab, setTab] = useState<Tab>("commitments");
-
-  const tabs: { key: Tab; en: string; ar: string }[] = [
-    { key: "commitments", en: "Commitments", ar: "الالتزامات" },
-    { key: "pos", en: "Purchase orders", ar: "أوامر الشراء" },
-    { key: "contracts", en: "Contracts", ar: "العقود" },
-    { key: "invoices", en: "Invoices", ar: "الفواتير" },
-    { key: "payments", en: "Payments", ar: "المدفوعات" },
-    { key: "creditNotes", en: "Credit notes", ar: "إشعارات دائنة" },
-  ];
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
+        {(Object.keys(TAB_LABEL_KEYS) as Tab[]).map((key) => (
           <button
-            key={t.key}
+            key={key}
             type="button"
-            onClick={() => setTab(t.key)}
-            className={`rounded-md px-3 py-1.5 text-sm ${tab === t.key ? "bg-teal-800 text-white" : "bg-slate-100"}`}
+            onClick={() => setTab(key)}
+            className={`rounded-md px-3 py-1.5 text-sm ${tab === key ? "bg-teal-800 text-white" : "bg-slate-100"}`}
           >
-            {locale === "ar" ? t.ar : t.en}
+            {t(TAB_LABEL_KEYS[key])}
           </button>
         ))}
       </div>
 
       {tab === "commitments" && (
         <Card>
-          <CardHeader><CardTitle>{locale === "ar" ? "الالتزامات" : "Commitments"}</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("commitments")}</CardTitle></CardHeader>
           <CardContent>
             <ul className="space-y-2 text-sm">
               {commitments.map((c) => (
@@ -65,7 +68,7 @@ export function CommitmentsWorkspace({
                   <div className="text-slate-600">{c.description}</div>
                   <div className="flex justify-between text-slate-500">
                     <span>{formatMoney(c.original_value, "SAR")}</span>
-                    <span>{locale === "ar" ? "مفتوح" : "Open"}: {formatMoney(c.openCommitment, "SAR")}</span>
+                    <span>{tWorkspace("open")}: {formatMoney(c.openCommitment, "SAR")}</span>
                   </div>
                 </li>
               ))}
@@ -87,21 +90,19 @@ export function CommitmentsWorkspace({
       {tab !== "commitments" && tab !== "pos" && (
         <Card>
           <CardContent className="p-4 text-sm text-slate-500">
-            {locale === "ar"
-              ? "لا توجد سجلات في هذه الفئة بعد — الالتزامات والموردون متاحون."
-              : "No records in this category yet — commitments and vendors are available."}
+            {tWorkspace("noRecordsCategory")}
           </CardContent>
         </Card>
       )}
 
       <Card>
-        <CardHeader><CardTitle>{locale === "ar" ? "الموردون" : "Vendors"}</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{tWorkspace("vendors")}</CardTitle></CardHeader>
         <CardContent>
           <ul className="space-y-1 text-sm">
             {vendors.map((v) => (
-              <li key={v.id}>{v.code} — {locale === "ar" ? v.name_ar : v.name_en}</li>
+              <li key={v.id}>{v.code} — {pickLocalized(locale, v.name_en, v.name_ar)}</li>
             ))}
-            {vendors.length === 0 && <li className="text-slate-500">{locale === "ar" ? "لا يوجد" : "None"}</li>}
+            {vendors.length === 0 && <li className="text-slate-500">{tWorkspace("none")}</li>}
           </ul>
         </CardContent>
       </Card>

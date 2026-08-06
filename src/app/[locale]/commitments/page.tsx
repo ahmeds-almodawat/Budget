@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import { CommitmentsWorkspace } from "@/components/financial/commitments-workspace";
 import { fetchCommitmentsAction, fetchVendorsAction } from "@/app/actions/financial-actions";
 
@@ -9,6 +9,7 @@ export default async function CommitmentsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("pages.commitments");
 
   const [commitments, vendors] = await Promise.all([
     fetchCommitmentsAction(),
@@ -17,9 +18,7 @@ export default async function CommitmentsPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">
-        {locale === "ar" ? "الالتزامات" : "Commitments"}
-      </h1>
+      <h1 className="text-2xl font-bold">{t("title")}</h1>
       <CommitmentsWorkspace commitments={commitments ?? []} vendors={vendors ?? []} />
     </div>
   );

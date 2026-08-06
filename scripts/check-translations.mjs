@@ -77,6 +77,7 @@ const inlineViolations = [];
 for (const file of walk(SRC_DIR)) {
   const rel = relative(ROOT, file);
   if (rel.includes(".test.") || rel.includes("messages")) continue;
+  if (rel.replace(/\\/g, "/") === "src/lib/i18n/display.ts") continue;
   const content = readFileSync(file, "utf8");
   if (/locale\s*===\s*["']ar["']/.test(content) || /isArabic\s*\?/.test(content)) {
   inlineViolations.push(rel);

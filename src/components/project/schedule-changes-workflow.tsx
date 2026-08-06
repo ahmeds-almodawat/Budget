@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,7 @@ export function ScheduleChangesWorkflow({
   permissions: { canRequest: boolean; canApprove: boolean };
 }) {
   const locale = useLocale();
+  const t = useTranslations("changes");
   const [requestedDays, setRequestedDays] = useState("14");
   const [grossDelay, setGrossDelay] = useState("20");
   const [excusableDelay, setExcusableDelay] = useState("6");
@@ -63,26 +64,26 @@ export function ScheduleChangesWorkflow({
       {permissions.canRequest && (
         <Card>
           <CardHeader>
-            <CardTitle>{locale === "ar" ? "طلب تمديد الجدول" : "Request schedule extension"}</CardTitle>
+            <CardTitle>{t("requestExtension")}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1 text-sm">
-              <span>{locale === "ar" ? "الأيام المطلوبة" : "Requested days"}</span>
+              <span>{t("requestedDays")}</span>
               <Input value={requestedDays} onChange={(e) => setRequestedDays(e.target.value)} />
             </label>
             <label className="space-y-1 text-sm">
-              <span>{locale === "ar" ? "التأخير الإجمالي" : "Gross delay days"}</span>
+              <span>{t("grossDelayDays")}</span>
               <Input value={grossDelay} onChange={(e) => setGrossDelay(e.target.value)} />
             </label>
             <label className="space-y-1 text-sm">
-              <span>{locale === "ar" ? "أيام التأخير المعذورة" : "Excusable delay days"}</span>
+              <span>{t("excusableDelayDays")}</span>
               <Input value={excusableDelay} onChange={(e) => setExcusableDelay(e.target.value)} />
             </label>
             <div className="flex items-end text-sm">
-              <span>{locale === "ar" ? "صافي التأخير" : "Net delay"}: <strong>{netDelay}</strong></span>
+              <span>{t("netDelay")}: <strong>{netDelay}</strong></span>
             </div>
             <label className="space-y-1 text-sm md:col-span-2">
-              <span>{locale === "ar" ? "السبب" : "Reason"}</span>
+              <span>{t("reason")}</span>
               <Input value={reason} onChange={(e) => setReason(e.target.value)} />
             </label>
             <Button
@@ -98,11 +99,11 @@ export function ScheduleChangesWorkflow({
                       reason,
                       delayReasonClass: "resource_shortage",
                     }),
-                  locale === "ar" ? "تم تقديم الطلب" : "Extension requested",
+                  t("extensionRequested"),
                 )
               }
             >
-              {locale === "ar" ? "تقديم الطلب" : "Submit request"}
+              {t("submitRequest")}
             </Button>
           </CardContent>
         </Card>
@@ -111,7 +112,7 @@ export function ScheduleChangesWorkflow({
       {permissions.canApprove && pendingRequest && (
         <Card>
           <CardHeader>
-            <CardTitle>{locale === "ar" ? "اعتماد التمديد" : "Approve extension"}</CardTitle>
+            <CardTitle>{t("approveExtension")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="mb-4 text-sm">{pendingRequest.reason}</p>
@@ -120,12 +121,11 @@ export function ScheduleChangesWorkflow({
               onClick={() =>
                 run(
                   () => approveScheduleExtensionAction(pendingRequest.id, pendingRequest.requested_days),
-                  locale === "ar" ? "تم الاعتماد" : "Extension approved",
+                  t("extensionApproved"),
                 )
               }
             >
-              {locale === "ar" ? "اعتماد" : "Approve"} ({pendingRequest.requested_days}{" "}
-              {locale === "ar" ? "يوم" : "days"})
+              {t("approve")} ({pendingRequest.requested_days} {t("days")})
             </Button>
           </CardContent>
         </Card>
@@ -133,7 +133,7 @@ export function ScheduleChangesWorkflow({
 
       <Card>
         <CardHeader>
-          <CardTitle>{locale === "ar" ? "سجل التغييرات" : "Change history"}</CardTitle>
+          <CardTitle>{t("changeHistory")}</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm">
@@ -151,7 +151,7 @@ export function ScheduleChangesWorkflow({
               </li>
             ))}
             {scheduleChanges.length === 0 && (
-              <li className="text-slate-500">{locale === "ar" ? "لا توجد طلبات" : "No requests yet"}</li>
+              <li className="text-slate-500">{t("noRequests")}</li>
             )}
           </ul>
         </CardContent>
