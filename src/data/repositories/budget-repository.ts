@@ -2,6 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { money, sumMoney } from "@/lib/money";
 import { calculateCurrentApprovedBudget } from "@/domain/financial/calculations";
 import type { ApprovalStatus, BudgetLineInput, ReportFilters } from "@/types/database";
+import {
+  budgetApproveAndLock,
+  budgetApproveChangeRequest,
+  budgetReject,
+  budgetStartReview,
+  budgetSubmit,
+} from "@/lib/commands";
 
 export class DataAccessError extends Error {
   constructor(
@@ -155,38 +162,41 @@ export async function transitionBudgetVersion(
     nextStatus: ApprovalStatus;
     actorId: string;
     lockOriginalAmount?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+    expectedStatus?: ApprovalStatus;
   },
 ) {
-  const patch: Record<string, unknown> = { approval_status: params.nextStatus };
-  const now = new Date().toISOString();
+  const options = {
+    idempotencyKey: params.idempotencyKey,
+    correlationId: params.correlationId,
+    expectedStatus: params.expectedStatus,
+  };
 
   if (params.nextStatus === "submitted") {
-    patch.submitted_at = now;
-    patch.submitted_by = params.actorId;
-  }
-  if (params.nextStatus === "under_review") {
-    patch.reviewed_at = now;
-    patch.reviewed_by = params.actorId;
-  }
-  if (params.nextStatus === "approved") {
-    patch.approved_at = now;
-    patch.approved_by = params.actorId;
-    patch.is_current_approved = true;
-    if (params.lockOriginalAmount) {
-      patch.original_approved_amount = params.lockOriginalAmount;
+    await budgetSubmit(db, params.budgetVersionId, { ...options, expectedStatus: params.expectedStatus ?? "draft" });
+  } else if (params.nextStatus === "under_review") {
+    await budgetStartReview(db, params.budgetVersionId, { ...options, expectedStatus: params.expectedStatus ?? "submitted" });
+  } else if (params.nextStatus === "rejected") {
+    await budgetReject(db, params.budgetVersionId, { ...options, expectedStatus: params.expectedStatus ?? "under_review" });
+  } else if (params.nextStatus === "approved" || params.nextStatus === "locked") {
+    const { data: current } = await db
+      .from("budget_versions")
+      .select("approval_status")
+      .eq("id", params.budgetVersionId)
+      .single();
+    if (current?.approval_status !== "locked") {
+      await budgetApproveAndLock(db, params.budgetVersionId, { ...options, expectedStatus: params.expectedStatus ?? "under_review" });
     }
-  }
-  if (params.nextStatus === "locked") {
-    patch.locked_at = now;
+  } else {
+    throw new DataAccessError(`Unsupported budget transition: ${params.nextStatus}`, "VALIDATION");
   }
 
   const { data, error } = await db
     .from("budget_versions")
-    .update(patch)
-    .eq("id", params.budgetVersionId)
     .select("*")
+    .eq("id", params.budgetVersionId)
     .single();
-
   if (error) throw new DataAccessError(error.message, "DATABASE");
   return data;
 }
@@ -233,52 +243,28 @@ export async function approveBudgetChangeRequest(
   db: SupabaseClient,
   params: {
     changeRequestId: string;
-    budgetVersionId: string;
-    budgetLineId: string;
-    increaseAmount: string;
     approverId: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+    expectedStatus?: ApprovalStatus;
   },
 ) {
-  const { data: version, error: versionReadError } = await db
+  const result = await budgetApproveChangeRequest(db, params.changeRequestId, {
+    idempotencyKey: params.idempotencyKey,
+    correlationId: params.correlationId,
+    expectedStatus: params.expectedStatus ?? "submitted",
+  });
+
+  const { data: version, error } = await db
     .from("budget_versions")
     .select("*")
-    .eq("id", params.budgetVersionId)
+    .eq("id", result.new_budget_version_id as string)
     .single();
-  if (versionReadError || !version) {
-    throw new DataAccessError("Budget version not found.", "NOT_FOUND");
-  }
-
-  const { data: line, error: lineReadError } = await db
-    .from("budget_lines")
-    .select("*")
-    .eq("id", params.budgetLineId)
-    .single();
-  if (lineReadError || !line) throw new DataAccessError("Budget line not found.", "NOT_FOUND");
-
-  const newLineAmount = money(line.planned_amount).plus(params.increaseAmount).toFixed(4);
-  const newIncreases = money(version.approved_increases).plus(params.increaseAmount).toFixed(4);
-
-  const { error: lineUpdateError } = await db
-    .from("budget_lines")
-    .update({ planned_amount: newLineAmount, version: line.version + 1 })
-    .eq("id", params.budgetLineId);
-  if (lineUpdateError) throw new DataAccessError(lineUpdateError.message, "DATABASE");
-
-  const { error: versionUpdateError } = await db
-    .from("budget_versions")
-    .update({ approved_increases: newIncreases })
-    .eq("id", params.budgetVersionId);
-  if (versionUpdateError) throw new DataAccessError(versionUpdateError.message, "DATABASE");
-
-  const { error: changeError } = await db
-    .from("budget_change_requests")
-    .update({ approval_status: "approved", effective_date: new Date().toISOString().slice(0, 10) })
-    .eq("id", params.changeRequestId);
-  if (changeError) throw new DataAccessError(changeError.message, "DATABASE");
+  if (error || !version) throw new DataAccessError("New budget version not found.", "NOT_FOUND");
 
   return calculateCurrentApprovedBudget({
     originalApproved: version.original_approved_amount,
-    increases: newIncreases,
+    increases: version.approved_increases,
     reductions: version.approved_reductions,
   }).toFixed(2);
 }

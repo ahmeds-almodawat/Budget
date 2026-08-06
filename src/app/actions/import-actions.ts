@@ -8,12 +8,7 @@ import {
   getAuthenticatedDb,
   requirePermission,
 } from "@/lib/auth/context";
-import {
-  createImportBatch,
-  parseImportRows,
-  postImportBatch,
-  getUnmappedQueue,
-} from "@/data/repositories/import-repository";
+import { createImportBatch, parseImportRows, postImportBatch, reviewImportBatch, getUnmappedQueue } from "@/data/repositories/import-repository";
 import { getFiscalPeriods } from "@/data/repositories/budget-repository";
 import { LEGAL_ENTITY_MODAWAT, type ImportRowInput } from "@/types/database";
 import { DataAccessError } from "@/data/repositories/budget-repository";
@@ -108,11 +103,22 @@ export async function parseImportFileAction(formData: FormData) {
   }
 }
 
+export async function reviewImportBatchAction(batchId: string) {
+  try {
+    const { ctx, db } = await getAuthenticatedDb();
+    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
+    requirePermission(ctx, "actual", "approve", LEGAL_ENTITY_MODAWAT);
+    return reviewImportBatch(db, { batchId });
+  } catch (error) {
+    mapActionError(error);
+  }
+}
+
 export async function postImportBatchAction(batchId: string) {
   try {
     const { ctx, db } = await getAuthenticatedDb();
     assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    requirePermission(ctx, "actual", "import", LEGAL_ENTITY_MODAWAT);
+    requirePermission(ctx, "actual", "approve", LEGAL_ENTITY_MODAWAT);
 
     const periods = await getFiscalPeriods(db, "77777777-7777-7777-7777-777777777701");
     const fiscalPeriodMap = new Map(periods.map((p) => [p.period_number, p.id]));

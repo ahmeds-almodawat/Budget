@@ -24,7 +24,7 @@ import {
   LEGAL_ENTITY_MODAWAT,
   type BudgetLineInput,
 } from "@/types/database";
-import { money, sumMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 import { violatesSegregationOfDuties } from "@/domain/auth/permissions";
 
 function mapActionError(error: unknown): never {
@@ -126,27 +126,8 @@ export async function approveHospitalBudgetAction(budgetVersionId: string) {
       throw new AuthError("Requester cannot approve their own budget.", "FORBIDDEN");
     }
 
-    const { data: lines } = await db
-      .from("budget_lines")
-      .select("planned_amount")
-      .eq("budget_version_id", budgetVersionId);
-    const originalAmount = sumMoney((lines ?? []).map((l) => l.planned_amount)).toFixed(4);
-
-    await db
-      .from("budget_versions")
-      .update({ is_current_approved: false })
-      .eq("control_scope_id", CONTROL_SCOPE_HOSPITAL_BUDGET_2027)
-      .eq("is_current_approved", true);
-
-    const approved = await transitionBudgetVersion(db, {
-      budgetVersionId,
-      nextStatus: "approved",
-      actorId: ctx.userId,
-      lockOriginalAmount: originalAmount,
-    });
-
     return transitionBudgetVersion(db, {
-      budgetVersionId: approved.id,
+      budgetVersionId,
       nextStatus: "locked",
       actorId: ctx.userId,
     });
@@ -187,9 +168,6 @@ export async function requestHospitalBudgetChangeAction(params: {
 
 export async function approveHospitalBudgetChangeAction(params: {
   changeRequestId: string;
-  budgetVersionId: string;
-  budgetLineId: string;
-  increaseAmount: string;
 }) {
   try {
     const { ctx, db } = await getAuthenticatedDb();
@@ -207,7 +185,7 @@ export async function approveHospitalBudgetChangeAction(params: {
     }
 
     return approveBudgetChangeRequest(db, {
-      ...params,
+      changeRequestId: params.changeRequestId,
       approverId: ctx.userId,
     });
   } catch (error) {

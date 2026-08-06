@@ -199,15 +199,12 @@ export function HospitalBudgetWorkflow({ permissions }: { permissions: BudgetWor
             {locale === "ar" ? "طلب زيادة" : "Request increase"}
           </Button>
           <Button
-            disabled={pending || !changeRequestId || !budgetVersionId || !budgetLineId || !permissions.canApproveChange}
+            disabled={pending || !changeRequestId || !permissions.canApproveChange}
             onClick={() =>
               run(
                 () =>
                   approveHospitalBudgetChangeAction({
                     changeRequestId: changeRequestId!,
-                    budgetVersionId: budgetVersionId!,
-                    budgetLineId: budgetLineId!,
-                    increaseAmount: "50000",
                   }),
                 locale === "ar" ? "تم اعتماد التغيير" : "Change approved",
               )

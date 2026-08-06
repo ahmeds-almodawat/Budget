@@ -32,8 +32,9 @@ export async function getRestaurantReport(db: SupabaseClient) {
 export async function getUnmappedActualsReport(db: SupabaseClient, legalEntityId: string) {
   const { data, error } = await db
     .from("unmapped_transaction_queue")
-    .select("*")
-    .eq("legal_entity_id", legalEntityId);
+    .select("*, import_batches!inner(legal_entity_id)")
+    .eq("import_batches.legal_entity_id", legalEntityId)
+    .eq("status", "open");
   if (error) throw new DataAccessError(error.message, "DATABASE");
   return data ?? [];
 }
