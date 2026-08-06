@@ -166,7 +166,7 @@ export function ForecastsWorkspace({
     if (status === "locked") return t("locked");
     if (status === "superseded") return t("superseded");
     if (status === "under_review") return tStatus("pending");
-    if (status === "submitted") return t("submit");
+    if (status === "submitted") return tStatus("submitted");
     if (status === "draft") return t("createDraft");
     if (status === "approved") return tStatus("approved");
     if (status === "rejected") return tStatus("rejected");

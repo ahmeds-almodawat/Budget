@@ -176,6 +176,8 @@
   "status": {
     "active": "نشط",
     "inactive": "غير نشط",
+    "draft": "مسودة",
+    "submitted": "مُرسل",
     "pending": "قيد الانتظار",
     "approved": "معتمد",
     "rejected": "مرفوض"

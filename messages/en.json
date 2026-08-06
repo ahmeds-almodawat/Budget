@@ -176,6 +176,8 @@
   "status": {
     "active": "Active",
     "inactive": "Inactive",
+    "draft": "Draft",
+    "submitted": "Submitted",
     "pending": "Pending",
     "approved": "Approved",
     "rejected": "Rejected"
