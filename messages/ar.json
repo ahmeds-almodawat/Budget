@@ -576,5 +576,54 @@
     "emptyInvoices": "لا توجد فواتير موردين بعد.",
     "emptyPayments": "لا توجد طلبات دفع بعد.",
     "loadError": "تعذر تحميل بيانات المشتريات."
+  },
+  "budgetVsActual": {
+    "title": "الميزانية مقابل الفعلي",
+    "subtitle": "الإيرادات والمصروفات والربحية مع انحراف يعتمد على التصنيف.",
+    "loadError": "تعذر تحميل بيانات الميزانية مقابل الفعلي.",
+    "tabs": {
+      "revenue": "الإيرادات",
+      "expense": "المصروفات",
+      "profitability": "الربحية"
+    },
+    "filters": {
+      "allPeriods": "جميع الفترات",
+      "allPayers": "جميع الدافعين",
+      "allServiceLines": "جميع خطوط الخدمة",
+      "period": "الفترة {number}"
+    },
+    "cards": {
+      "revenueBudget": "ميزانية الإيرادات",
+      "actualNetRevenue": "صافي الإيراد الفعلي",
+      "revenueVariance": "انحراف الإيراد",
+      "costBudget": "ميزانية التكلفة",
+      "costVariance": "انحراف التكلفة",
+      "grossProfit": "إجمالي الربح",
+      "grossMargin": "هامش إجمالي الربح",
+      "operatingContribution": "مساهمة التشغيل"
+    },
+    "tables": {
+      "revenue": "تفاصيل الإيراد",
+      "expense": "تفاصيل المصروف",
+      "profitability": "جسر الربحية"
+    },
+    "columns": {
+      "period": "الفترة",
+      "budget": "الميزانية",
+      "gross": "إيراد إجمالي",
+      "rejections": "الرفض",
+      "net": "صافي الإيراد",
+      "variance": "الانحراف",
+      "status": "الحالة",
+      "classification": "التصنيف",
+      "actual": "الفعلي",
+      "commitment": "لقطة الالتزام"
+    }
+  },
+  "varianceStatus": {
+    "favorable": "موات",
+    "unfavorable": "غير موات",
+    "on_target": "وفق الهدف",
+    "unbudgeted": "بدون ميزانية"
   }
 }

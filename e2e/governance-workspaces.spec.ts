@@ -17,7 +17,7 @@ const governanceRoutes: { path: string; heading: string }[] = [
   { path: "/en/purchase-orders", heading: "Procurement" },
   { path: "/en/period-close", heading: "Period Calendar & Close" },
   { path: "/en/approval-rules", heading: "Approval Rules" },
-  { path: "/en/cost-control", heading: "Cost Control" },
+  { path: "/en/cost-control", heading: "Budget vs Actual" },
   { path: "/en/administration", heading: "Administration" },
 ];
 

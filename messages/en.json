@@ -576,5 +576,54 @@
     "emptyInvoices": "No supplier invoices yet.",
     "emptyPayments": "No payment requests yet.",
     "loadError": "Unable to load procurement data."
+  },
+  "budgetVsActual": {
+    "title": "Budget vs Actual",
+    "subtitle": "Revenue, expense, and profitability with classification-aware variance.",
+    "loadError": "Unable to load budget vs actual data.",
+    "tabs": {
+      "revenue": "Revenue",
+      "expense": "Expenses",
+      "profitability": "Profitability"
+    },
+    "filters": {
+      "allPeriods": "All periods",
+      "allPayers": "All payers",
+      "allServiceLines": "All service lines",
+      "period": "Period {number}"
+    },
+    "cards": {
+      "revenueBudget": "Revenue budget",
+      "actualNetRevenue": "Actual net revenue",
+      "revenueVariance": "Revenue variance",
+      "costBudget": "Cost budget",
+      "costVariance": "Cost variance",
+      "grossProfit": "Gross profit",
+      "grossMargin": "Gross margin",
+      "operatingContribution": "Operating contribution"
+    },
+    "tables": {
+      "revenue": "Revenue detail",
+      "expense": "Expense detail",
+      "profitability": "Profitability bridge"
+    },
+    "columns": {
+      "period": "Period",
+      "budget": "Budget",
+      "gross": "Gross revenue",
+      "rejections": "Rejections",
+      "net": "Net revenue",
+      "variance": "Variance",
+      "status": "Status",
+      "classification": "Classification",
+      "actual": "Actual",
+      "commitment": "Commitment snapshot"
+    }
+  },
+  "varianceStatus": {
+    "favorable": "Favorable",
+    "unfavorable": "Unfavorable",
+    "on_target": "On target",
+    "unbudgeted": "Unbudgeted"
   }
 }

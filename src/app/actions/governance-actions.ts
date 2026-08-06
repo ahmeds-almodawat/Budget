@@ -1,5 +1,6 @@
 "use server";
 
+import { DataAccessError, getFiscalPeriods } from "@/data/repositories/budget-repository";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   getDecisions,
@@ -7,7 +8,14 @@ import {
   getRegisterActions,
   getRisks,
 } from "@/data/repositories/governance-repository";
-import { DataAccessError } from "@/data/repositories/budget-repository";
+import {
+  getBudgetVsActualDetail,
+  getPayers,
+  getProfitabilityPerformance,
+  getRevenueBudgetVsActual,
+  getServiceLines,
+} from "@/data/repositories/revenue-repository";
+import { FISCAL_YEAR_2027 } from "@/types/database";
 import {
   delegationActivate,
   delegationApprove,
@@ -447,5 +455,46 @@ export async function fetchPaymentRequestsAction() {
       .order("created_at", { ascending: false });
     if (error) throw new DataAccessError(error.message, "DATABASE");
     return data ?? [];
+  });
+}
+
+export async function fetchBudgetVsActualWorkspaceAction() {
+  return withActivePermission("budget", "read", async ({ legalEntityId, db }) => {
+    const [revenueRows, allRows, profitabilityRows, payers, serviceLines, fiscalPeriods] =
+      await Promise.all([
+        getRevenueBudgetVsActual(db, legalEntityId),
+        getBudgetVsActualDetail(db, legalEntityId),
+        getProfitabilityPerformance(db, legalEntityId),
+        getPayers(db, legalEntityId),
+        getServiceLines(db, legalEntityId),
+        getFiscalPeriods(db, FISCAL_YEAR_2027),
+      ]);
+
+    const expenseRows = allRows.filter(
+      (r) =>
+        r.financial_reporting_group !== "revenue" &&
+        r.financial_reporting_group !== "internal_transfer" &&
+        r.financial_reporting_group !== "statistical",
+    );
+
+    return {
+      revenueRows,
+      expenseRows,
+      profitabilityRows,
+      payers: payers.map((p) => ({
+        id: p.id as string,
+        labelEn: p.name_en as string,
+        labelAr: p.name_ar as string,
+      })),
+      serviceLines: serviceLines.map((s) => ({
+        id: s.id as string,
+        labelEn: s.name_en as string,
+        labelAr: s.name_ar as string,
+      })),
+      fiscalPeriods: fiscalPeriods.map((fp) => ({
+        id: fp.id,
+        period_number: fp.period_number,
+      })),
+    };
   });
 }

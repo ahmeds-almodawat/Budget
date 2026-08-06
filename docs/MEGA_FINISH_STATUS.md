@@ -48,6 +48,7 @@
 
 ### Financial
 - [x] Cost control workspace (replace placeholder)
+- [x] Revenue budget vs actual, gross-to-net, profitability (P6 patch)
 - [ ] Forecast enhancements
 
 ### Admin / evidence / notifications

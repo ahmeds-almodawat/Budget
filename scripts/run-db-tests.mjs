@@ -7,6 +7,7 @@ import pg from "pg";
 import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { registerRevenueDbTests } from "./revenue-db-tests.mjs";
 
 const connectionString =
   process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:56002/postgres";
@@ -36,15 +37,17 @@ const EXPOSED_TABLES = [
   "forecast_versions", "forecast_lines",
   "governed_master_records", "approval_delegations", "fiscal_period_module_controls",
   "purchase_requisitions", "purchase_requisition_lines", "purchase_orders",
-  "supplier_invoices", "payment_requests", "approval_rule_versions",
+  "supplier_invoices",   "payment_requests", "approval_rule_versions",
+  "revenue_component_types", "payer_categories", "payers", "service_lines",
 ];
 const EXPOSED_VIEWS = [
   "v_approval_inbox", "v_budget_vs_actual", "v_restaurant_branch_performance",
   "v_hospital_period_performance", "v_project_earned_value",
+  "v_commitment_current_snapshot", "v_revenue_budget_vs_actual", "v_profitability_period_performance",
 ];
 const SERVER_ONLY_TABLES = [
   "audit_events", "gl_accounts",
-  "gl_cost_mappings", "permissions", "role_permissions", "task_dependencies", "team_members",
+  "gl_cost_mappings", "gl_reporting_rules", "permissions", "role_permissions", "task_dependencies", "team_members",
 ];
 const INSERT_TABLES = [
   "actual_transaction_allocations", "actual_transactions", "approval_requests",
@@ -57,6 +60,7 @@ const INSERT_TABLES = [
   "governed_master_records", "approval_delegations", "fiscal_period_module_controls",
   "purchase_requisitions", "purchase_requisition_lines", "purchase_orders",
   "supplier_invoices", "payment_requests", "approval_rule_versions",
+  "payers", "service_lines",
 ];
 const UPDATE_TABLES = [
   "actual_transactions", "approval_requests", "budget_change_requests", "budget_lines",
@@ -65,6 +69,7 @@ const UPDATE_TABLES = [
   "governed_master_records", "approval_delegations", "fiscal_period_module_controls",
   "purchase_requisitions", "purchase_requisition_lines", "purchase_orders",
   "supplier_invoices", "payment_requests", "approval_rule_versions",
+  "payers", "service_lines",
 ];
 
 async function asRole(client, role, userId, fn) {
@@ -499,8 +504,8 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
   `);
   const tables = objects.filter((row) => row.relkind === "r");
   const views = objects.filter((row) => row.relkind === "v");
-  assert(tables.length === 64, `Expected 64 public tables, found ${tables.length}`);
-  assert(views.length === 5, `Expected 5 public views, found ${views.length}`);
+  assert(tables.length === 69, `Expected 69 public tables, found ${tables.length}`);
+  assert(views.length === 8, `Expected 8 public views, found ${views.length}`);
   assert(tables.every((row) => row.relrowsecurity && row.relforcerowsecurity), "Every table must enable and force RLS");
   assert(objects.every((row) => row.classification?.startsWith("@classification ")), "Every public table/view needs a classification");
   assert(views.every((row) => row.reloptions?.includes("security_invoker=true")), "Every public view must use security_invoker");
@@ -511,7 +516,7 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
     WHERE schemaname = 'public'
     ORDER BY tablename, policyname
   `);
-  assert(policies.length === 114, `Expected 114 reviewed policies, found ${policies.length}`);
+  assert(policies.length === 122, `Expected 122 reviewed policies, found ${policies.length}`);
   assert(
     policies.every((policy) => String(policy.roles) === "{authenticated}"),
     "Every policy must explicitly target authenticated",
@@ -662,7 +667,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
     "protect_immutable_forecast_line", "protect_locked_forecast_version",
     "protect_milestone_baseline", "protect_phase_baseline", "protect_posted_actual",
     "protect_project_baseline", "protect_task_baseline", "validate_allocation_reconciliation",
-    "validate_exact_allocation_reconciliation",
+    "validate_exact_allocation_reconciliation", "validate_allocation_revenue_dimensions",
   ]);
   const pureHelpers = new Set(["command_fail", "command_ok"]);
   assert(functions.length >= 30, `Expected at least 30 private functions, found ${functions.length}`);
@@ -687,8 +692,10 @@ test("all exposed objects are executable for an active member and tenant aggrega
   });
 
   await asRole(client, "authenticated", "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5", async () => {
+    const globalReference = new Set(["revenue_component_types", "payer_categories"]);
     for (const object of [...EXPOSED_TABLES.filter((name) => name !== "profiles"), ...EXPOSED_VIEWS]) {
       const { rows } = await client.query(`SELECT count(*)::int AS count FROM public.${object}`);
+      if (globalReference.has(object)) continue;
       assert(rows[0].count === 0, `No-membership persona saw rows from ${object}`);
     }
   });
@@ -810,6 +817,8 @@ test("write RLS allows the right tenant and denies cross-tenant submissions", as
   }
   assert(denied, "Finance role inserted into another tenant");
 });
+
+registerRevenueDbTests(test, assert, asRole);
 
 async function main() {
   if (tests.length === 0) {
