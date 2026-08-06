@@ -28,6 +28,9 @@ export const TEST_USER_CREDENTIALS = {
   viewer: { email: "viewer@modawat.local", id: TEST_USER_IDS.viewer },
   projectManager: { email: "pm@modawat.local", id: TEST_USER_IDS.projectManager },
   employee: { email: "employee@modawat.local", id: TEST_USER_IDS.employee },
+  otherFinance: { email: "other.finance@modawat.local", id: TEST_USER_IDS.otherFinance },
+  inactiveFinance: { email: "inactive.finance@modawat.local", id: TEST_USER_IDS.inactiveFinance },
+  noMembership: { email: "no.membership@modawat.local", id: TEST_USER_IDS.noMembership },
 } as const;
 
 export const TEST_LEGAL_ENTITY_MODAWAT = "11111111-1111-1111-1111-111111111102";

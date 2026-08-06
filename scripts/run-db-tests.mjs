@@ -617,7 +617,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
     WHERE n.nspname = 'public'
     ORDER BY p.proname
   `);
-  assert(publicFunctions.length === 22, `Expected 22 public RPC wrappers, found ${publicFunctions.length}`);
+  assert(publicFunctions.length === 23, `Expected 23 public RPC wrappers, found ${publicFunctions.length}`);
   for (const fn of publicFunctions) {
     assert(fn.proname.startsWith("rpc_"), `Unexpected public function ${fn.proname}`);
     assert(fn.prosecdef, `${fn.proname} must be SECURITY DEFINER`);
