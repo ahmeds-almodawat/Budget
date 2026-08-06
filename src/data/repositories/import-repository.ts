@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { money, reconcileAllocations, sumMoney } from "@/lib/money";
+import { money, sumMoney } from "@/lib/money";
 import { DataAccessError } from "@/data/repositories/budget-repository";
 import type { ImportRowInput } from "@/types/database";
 import { createHash } from "crypto";
+import { importPostBatch, importReviewBatch } from "@/lib/commands";
 
 export interface ParsedImportRow extends ImportRowInput {
   rowNumber: number;
@@ -95,6 +96,13 @@ export async function createImportBatch(
   return { batch, totals };
 }
 
+export async function reviewImportBatch(
+  db: SupabaseClient,
+  params: { batchId: string; idempotencyKey?: string },
+) {
+  return importReviewBatch(db, params.batchId, { idempotencyKey: params.idempotencyKey });
+}
+
 export async function postImportBatch(
   db: SupabaseClient,
   params: {
@@ -102,6 +110,8 @@ export async function postImportBatch(
     legalEntityId: string;
     fiscalPeriodMap: Map<number, string>;
     approverId?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
   },
 ) {
   const { data: batch, error: batchError } = await db
@@ -110,115 +120,25 @@ export async function postImportBatch(
     .eq("id", params.batchId)
     .single();
   if (batchError || !batch) throw new DataAccessError("Import batch not found.", "NOT_FOUND");
+  if (batch.legal_entity_id !== params.legalEntityId) {
+    throw new DataAccessError("Import batch tenant mismatch.", "FORBIDDEN");
+  }
   if (batch.is_posted) throw new DataAccessError("Import batch already posted.", "CONFLICT");
 
-  const { data: sourceRows, error: sourceError } = await db
-    .from("imported_source_rows")
-    .select("*")
-    .eq("import_batch_id", params.batchId)
-    .order("row_number");
-  if (sourceError) throw new DataAccessError(sourceError.message, "DATABASE");
-
-  let postedTotal = money(0);
-  const duplicateCandidates: { reason: string; sourceId: string }[] = [];
-
-  for (const sourceRow of sourceRows ?? []) {
-    if (sourceRow.parse_status === "error") continue;
-    const row = sourceRow.raw_data as ImportRowInput & { warnings?: string[] };
-
-    const { data: duplicate } = await db
-      .from("actual_transactions")
-      .select("id")
-      .eq("legal_entity_id", params.legalEntityId)
-      .eq("source_system", "CSV_IMPORT")
-      .eq("source_transaction_id", row.sourceTransactionId)
-      .maybeSingle();
-    if (duplicate) {
-      duplicateCandidates.push({
-        reason: `Duplicate source transaction ${row.sourceTransactionId}`,
-        sourceId: row.sourceTransactionId,
-      });
-      continue;
-    }
-
-    const periodId =
-      row.fiscalPeriodNumber != null
-        ? params.fiscalPeriodMap.get(row.fiscalPeriodNumber) ?? null
-        : null;
-
-    const exVat = money(row.amountExVat);
-    const vat = money(row.vatAmount ?? "0");
-    const incVat = exVat.plus(vat);
-
-    const { data: txn, error: txnError } = await db
-      .from("actual_transactions")
-      .insert({
-        legal_entity_id: params.legalEntityId,
-        import_batch_id: params.batchId,
-        source_system: "CSV_IMPORT",
-        source_transaction_id: row.sourceTransactionId,
-        journal_number: row.journalNumber ?? null,
-        invoice_number: row.invoiceNumber ?? null,
-        transaction_date: row.transactionDate,
-        accounting_period_id: periodId,
-        original_description: row.description ?? null,
-        amount_ex_vat: exVat.toFixed(4),
-        vat_amount: vat.toFixed(4),
-        amount_inc_vat: incVat.toFixed(4),
-        invoice_date: row.transactionDate,
-      })
-      .select("id")
-      .single();
-    if (txnError) throw new DataAccessError(txnError.message, "DATABASE");
-
-    if (!row.organizationUnitId || !row.costNodeId) {
-      await db.from("unmapped_transaction_queue").insert({
-        import_batch_id: params.batchId,
-        imported_source_row_id: sourceRow.id,
-        actual_transaction_id: txn.id,
-        reason: "Missing organization unit or cost item mapping",
-      });
-      postedTotal = postedTotal.plus(exVat);
-      continue;
-    }
-
-    const reconciliation = reconcileAllocations(exVat.toFixed(4), [exVat.toFixed(4)]);
-    if (!reconciliation.valid) {
-      throw new DataAccessError("Allocation does not reconcile to source amount.", "VALIDATION");
-    }
-
-    const { error: allocError } = await db.from("actual_transaction_allocations").insert({
-      actual_transaction_id: txn.id,
-      organization_unit_id: row.organizationUnitId,
-      cost_node_id: row.costNodeId,
-      allocation_percent: 100,
-      allocation_amount: exVat.toFixed(4),
-    });
-    if (allocError) throw new DataAccessError(allocError.message, "DATABASE");
-
-    postedTotal = postedTotal.plus(exVat);
+  if (batch.approval_status === "submitted") {
+    await reviewImportBatch(db, { batchId: params.batchId, idempotencyKey: params.idempotencyKey });
   }
 
-  for (const dup of duplicateCandidates) {
-    await db.from("duplicate_review_queue").insert({
-      import_batch_id: params.batchId,
-      match_reason: dup.reason,
-      status: "pending",
-    });
-  }
+  const result = await importPostBatch(db, params.batchId, {
+    idempotencyKey: params.idempotencyKey,
+    correlationId: params.correlationId,
+    expectedStatus: "under_review",
+  });
 
-  const { error: updateError } = await db
-    .from("import_batches")
-    .update({
-      is_posted: true,
-      posted_total: postedTotal.toFixed(4),
-      approval_status: "posted",
-      approved_by: params.approverId ?? null,
-    })
-    .eq("id", params.batchId);
-  if (updateError) throw new DataAccessError(updateError.message, "DATABASE");
-
-  return { postedTotal: postedTotal.toFixed(2), duplicateCount: duplicateCandidates.length };
+  return {
+    postedTotal: String(result.posted_total ?? "0"),
+    duplicateCount: Number(result.duplicate_count ?? 0),
+  };
 }
 
 export async function getUnmappedQueue(db: SupabaseClient, legalEntityId: string) {

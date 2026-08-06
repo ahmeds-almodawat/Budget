@@ -32,7 +32,7 @@ const EXPOSED_TABLES = [
   "progress_evidence", "project_phases", "projects", "register_actions",
   "register_dependencies", "risks", "role_assignments", "roles",
   "schedule_change_requests", "tasks", "teams", "unmapped_transaction_queue",
-  "variance_explanations", "vendors", "work_packages",
+  "variance_explanations", "vendors", "work_packages", "schedule_baseline_versions",
 ];
 const EXPOSED_VIEWS = [
   "v_approval_inbox", "v_budget_vs_actual", "v_restaurant_branch_performance",
@@ -136,7 +136,19 @@ test("non-leaf cost node cannot allow posting", async (client) => {
   }
 });
 
-test("locked budget version amounts are immutable", async (client) => {
+test("audit_events are append-only (COD-H-003)", async (client) => {
+  const { rows } = await client.query(`
+    SELECT count(*)::int AS c FROM pg_catalog.pg_trigger AS t
+    JOIN pg_catalog.pg_class AS c ON c.oid = t.tgrelid
+    JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = 'audit_events'
+      AND t.tgname IN ('trg_audit_events_deny_update', 'trg_audit_events_deny_delete')
+      AND NOT t.tgisinternal
+  `);
+  assert(rows[0].c === 2, "audit_events must have append-only UPDATE/DELETE triggers");
+});
+
+test("approved budget version amounts are immutable (COD-H-004)", async (client) => {
   const { rows } = await client.query(
     `INSERT INTO budget_versions (
       id, legal_entity_id, control_scope_id, fiscal_year_id, version_label, version_type,
@@ -476,7 +488,7 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
   `);
   const tables = objects.filter((row) => row.relkind === "r");
   const views = objects.filter((row) => row.relkind === "v");
-  assert(tables.length === 54, `Expected 54 public tables, found ${tables.length}`);
+  assert(tables.length === 55, `Expected 55 public tables, found ${tables.length}`);
   assert(views.length === 3, `Expected 3 public views, found ${views.length}`);
   assert(tables.every((row) => row.relrowsecurity && row.relforcerowsecurity), "Every table must enable and force RLS");
   assert(objects.every((row) => row.classification?.startsWith("@classification ")), "Every public table/view needs a classification");
@@ -488,7 +500,7 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
     WHERE schemaname = 'public'
     ORDER BY tablename, policyname
   `);
-  assert(policies.length === 84, `Expected 84 reviewed policies, found ${policies.length}`);
+  assert(policies.length === 85, `Expected 85 reviewed policies, found ${policies.length}`);
   assert(
     policies.every((policy) => String(policy.roles) === "{authenticated}"),
     "Every policy must explicitly target authenticated",
@@ -591,11 +603,27 @@ test("local persona loader fails closed without explicit authorization", async (
 
 test("functions have hardened schemas, paths, security modes, and ACLs", async (client) => {
   const { rows: publicFunctions } = await client.query(`
-    SELECT p.proname FROM pg_catalog.pg_proc AS p
+    SELECT p.oid, p.proname, p.prosecdef, p.proconfig,
+      pg_catalog.has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth_execute,
+      pg_catalog.has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_execute,
+      EXISTS (
+        SELECT 1 FROM pg_catalog.aclexplode(
+          COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+        ) AS acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+      ) AS public_execute
+    FROM pg_catalog.pg_proc AS p
     JOIN pg_catalog.pg_namespace AS n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public'
+    ORDER BY p.proname
   `);
-  assert(publicFunctions.length === 0, `Expected no public functions, found ${publicFunctions.length}`);
+  assert(publicFunctions.length === 14, `Expected 14 public RPC wrappers, found ${publicFunctions.length}`);
+  for (const fn of publicFunctions) {
+    assert(fn.proname.startsWith("rpc_"), `Unexpected public function ${fn.proname}`);
+    assert(fn.prosecdef, `${fn.proname} must be SECURITY DEFINER`);
+    assert(fn.proconfig?.includes('search_path=""'), `${fn.proname} must set an empty search_path`);
+    assert(fn.auth_execute, `${fn.proname} must grant authenticated EXECUTE`);
+    assert(!fn.anon_execute && !fn.public_execute, `${fn.proname} has an unintended execute grant`);
+  }
 
   const { rows: functions } = await client.query(`
     SELECT p.oid, p.proname, p.prosecdef, p.proconfig,
@@ -616,11 +644,25 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
     "current_user_has_active_membership", "current_user_is_active",
     "user_can_access_legal_entity", "user_has_any_role", "user_has_role",
   ]);
-  assert(functions.length === 15, `Expected 15 private functions, found ${functions.length}`);
+  const triggerOnly = new Set([
+    "deny_audit_mutation", "enforce_allocation_tenant_consistency", "enforce_leaf_posting",
+    "prevent_cost_node_cycle", "prevent_inactive_cost_posting", "prevent_org_unit_cycle",
+    "protect_immutable_budget_line", "protect_immutable_budget_monthly", "protect_locked_budget_version",
+    "protect_milestone_baseline", "protect_phase_baseline", "protect_posted_actual",
+    "protect_project_baseline", "protect_task_baseline", "validate_allocation_reconciliation",
+    "validate_exact_allocation_reconciliation",
+  ]);
+  const pureHelpers = new Set(["command_fail", "command_ok"]);
+  assert(functions.length >= 30, `Expected at least 30 private functions, found ${functions.length}`);
   for (const fn of functions) {
     assert(fn.proconfig?.includes('search_path=""'), `${fn.proname} must set an empty search_path`);
-    assert(fn.prosecdef === helpers.has(fn.proname), `${fn.proname} has the wrong security mode`);
-    assert(fn.auth_execute === helpers.has(fn.proname), `${fn.proname} authenticated EXECUTE mismatch`);
+    const isHelper = helpers.has(fn.proname);
+    const isTrigger = triggerOnly.has(fn.proname);
+    const isPure = pureHelpers.has(fn.proname);
+    if (!isPure && !isTrigger) {
+      assert(fn.prosecdef, `${fn.proname} must be SECURITY DEFINER`);
+    }
+    assert(fn.auth_execute === isHelper, `${fn.proname} authenticated EXECUTE mismatch`);
     assert(!fn.anon_execute && !fn.service_execute && !fn.public_execute, `${fn.proname} has an unintended execute grant`);
   }
 });

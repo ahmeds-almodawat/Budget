@@ -2,9 +2,18 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, feature/enterprise-control-platform]
+    branches:
+      - main
+      - feature/enterprise-control-platform
+      - fix/audit-p0-authorization
+      - fix/audit-p2-financial-transactions
+      - fix/audit-p3-reporting-ingress
   push:
-    branches: [feature/enterprise-control-platform]
+    branches:
+      - feature/enterprise-control-platform
+      - fix/audit-p0-authorization
+      - fix/audit-p2-financial-transactions
+      - fix/audit-p3-reporting-ingress
   workflow_dispatch:
 
 concurrency:
@@ -72,6 +81,9 @@ jobs:
       - name: Database tests
         run: npm run test:db
 
+      - name: Concurrency tests
+        run: npm run test:concurrency
+
       - name: E2E tests
         run: npm run test:e2e
         env:
@@ -94,6 +106,15 @@ jobs:
         with:
           name: authorization-matrix
           path: artifacts/authorization/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload financial transaction evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: financial-transaction-evidence
+          path: artifacts/financial-transactions/
           if-no-files-found: error
           retention-days: 30
 

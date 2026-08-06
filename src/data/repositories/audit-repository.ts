@@ -45,9 +45,9 @@ export async function getOpenExceptions(db: SupabaseClient, legalEntityId: strin
 
   const { data: unmapped, error: uErr } = await db
     .from("unmapped_transaction_queue")
-    .select("*")
-    .eq("legal_entity_id", legalEntityId)
-    .eq("status", "pending");
+    .select("*, import_batches!inner(legal_entity_id)")
+    .eq("import_batches.legal_entity_id", legalEntityId)
+    .eq("status", "open");
   if (uErr) throw new DataAccessError(uErr.message, "DATABASE");
 
   return {

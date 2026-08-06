@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { ShieldX } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -12,14 +13,17 @@ export default async function AccessDeniedPage({
   const t = await getTranslations({ locale, namespace: "auth" });
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
-      <Card className="w-full max-w-md text-center">
-        <CardHeader>
+    <div className="auth-canvas flex min-h-screen items-center justify-center p-6">
+      <Card className="w-full max-w-md border-slate-200/80 text-center shadow-[var(--shadow-card)]">
+        <CardHeader className="items-center space-y-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600 ring-1 ring-red-100">
+            <ShieldX className="h-7 w-7" aria-hidden />
+          </div>
           <CardTitle>{t("accessDeniedTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-slate-600">{t("accessDeniedMessage")}</p>
-          <Button asChild>
+          <p className="text-sm leading-relaxed text-slate-600">{t("accessDeniedMessage")}</p>
+          <Button asChild className="w-full sm:w-auto">
             <Link href={`/${locale}`}>{t("returnHome")}</Link>
           </Button>
         </CardContent>

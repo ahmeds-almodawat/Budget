@@ -1,6 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { calculateAccountableDelay, calculateProgressPercent } from "@/domain/financial/calculations";
 import { DataAccessError } from "@/data/repositories/budget-repository";
+import {
+  acceptMilestoneCommand,
+  scheduleApproveExtension,
+  submitProgressCommand,
+  verifyProgressCommand,
+} from "@/lib/commands";
 
 export interface ProgressSubmissionInput {
   milestoneId: string;
@@ -8,12 +14,14 @@ export interface ProgressSubmissionInput {
   reportedBy: string;
   notes?: string;
   evidenceDescription?: string;
+  idempotencyKey?: string;
 }
 
 export interface ProgressVerificationInput {
   progressUpdateId: string;
   verifiedProgress: number;
   verifiedBy: string;
+  idempotencyKey?: string;
 }
 
 export interface ScheduleExtensionInput {
@@ -107,93 +115,31 @@ export async function getMilestoneDetail(db: SupabaseClient, milestoneId: string
 }
 
 export async function submitProgress(db: SupabaseClient, input: ProgressSubmissionInput) {
-  const { data: update, error } = await db
-    .from("milestone_progress_updates")
-    .insert({
-      milestone_id: input.milestoneId,
-      reported_by: input.reportedBy,
-      reported_progress: input.reportedProgress,
-      approval_status: "submitted",
+  const result = await submitProgressCommand(
+    db,
+    {
+      milestoneId: input.milestoneId,
+      reportedProgress: input.reportedProgress,
       notes: input.notes,
-    })
-    .select("id")
-    .single();
-  if (error) throw new DataAccessError(error.message, "DATABASE");
-
-  await db
-    .from("milestones")
-    .update({ reported_progress: input.reportedProgress })
-    .eq("id", input.milestoneId);
-
-  if (input.evidenceDescription) {
-    await db.from("progress_evidence").insert({
-      progress_update_id: update.id,
-      file_name: "field-report.txt",
-      description: input.evidenceDescription,
-      uploaded_by: input.reportedBy,
-    });
-  }
-
-  return update;
+      evidenceDescription: input.evidenceDescription,
+    },
+    { idempotencyKey: input.idempotencyKey },
+  );
+  return { id: result.entity_id as string };
 }
 
 export async function verifyProgress(db: SupabaseClient, input: ProgressVerificationInput) {
-  const { data: existing, error: fetchError } = await db
-    .from("milestone_progress_updates")
-    .select("milestone_id, reported_by")
-    .eq("id", input.progressUpdateId)
-    .single();
-  if (fetchError || !existing) throw new DataAccessError("Progress update not found.", "NOT_FOUND");
-
-  if (existing.reported_by === input.verifiedBy) {
-    throw new DataAccessError("Reporter cannot verify own progress.", "FORBIDDEN");
-  }
-
-  const { data: update, error } = await db
-    .from("milestone_progress_updates")
-    .update({
-      verified_by: input.verifiedBy,
-      verified_progress: input.verifiedProgress,
-      approval_status: "approved",
-    })
-    .eq("id", input.progressUpdateId)
-    .select("id, milestone_id")
-    .single();
-  if (error) throw new DataAccessError(error.message, "DATABASE");
-
-  await db
-    .from("milestones")
-    .update({
-      approved_progress: input.verifiedProgress,
-      reported_progress: input.verifiedProgress,
-      approval_status: "approved",
-    })
-    .eq("id", update.milestone_id);
-
-  return update;
+  const result = await verifyProgressCommand(
+    db,
+    { progressUpdateId: input.progressUpdateId, verifiedProgress: input.verifiedProgress },
+    { idempotencyKey: input.idempotencyKey },
+  );
+  return { id: result.entity_id as string, milestone_id: result.milestone_id as string };
 }
 
-export async function acceptMilestone(db: SupabaseClient, milestoneId: string, approverId: string) {
-  const { data: milestone, error } = await db
-    .from("milestones")
-    .update({
-      approval_status: "approved",
-      actual_date: new Date().toISOString().slice(0, 10),
-    })
-    .eq("id", milestoneId)
-    .select("id")
-    .single();
-  if (error) throw new DataAccessError(error.message, "DATABASE");
-
-  await db.from("audit_events").insert({
-    actor_id: approverId,
-    action: "approve",
-    entity_type: "milestone",
-    entity_id: milestoneId,
-    new_value: { status: "accepted" },
-  });
-
-  return milestone;
+export async function acceptMilestone(db: SupabaseClient, milestoneId: string, approverId: string, idempotencyKey?: string) {
+  const result = await acceptMilestoneCommand(db, milestoneId, { idempotencyKey });
+  return { id: result.entity_id as string };
 }
 
 export async function requestScheduleExtension(db: SupabaseClient, input: ScheduleExtensionInput) {
@@ -226,55 +172,14 @@ export async function approveScheduleExtension(
   requestId: string,
   approverId: string,
   approvedDays: number,
+  idempotencyKey?: string,
 ) {
-  const { data: request, error: fetchError } = await db
-    .from("schedule_change_requests")
-    .select("*")
-    .eq("id", requestId)
-    .single();
-  if (fetchError || !request) throw new DataAccessError("Schedule change not found.", "NOT_FOUND");
-
-  if (request.requester_id === approverId) {
-    throw new DataAccessError("Requester cannot approve own schedule extension.", "FORBIDDEN");
-  }
-
-  const { data, error } = await db
-    .from("schedule_change_requests")
-    .update({
-      approved_days: approvedDays,
-      approver_id: approverId,
-      approval_status: "approved",
-      approval_date: new Date().toISOString().slice(0, 10),
-    })
-    .eq("id", requestId)
-    .select("id, project_id")
-    .single();
-  if (error) throw new DataAccessError(error.message, "DATABASE");
-
-  const { data: project } = await db
-    .from("projects")
-    .select("forecast_end, approved_revised_end")
-    .eq("id", request.project_id)
-    .single();
-
-  if (project?.forecast_end) {
-    const end = new Date(project.forecast_end);
-    end.setDate(end.getDate() + approvedDays);
-    const newEnd = end.toISOString().slice(0, 10);
-    await db
-      .from("projects")
-      .update({
-        forecast_end: newEnd,
-        approved_revised_end: newEnd,
-        gross_delay_days: request.gross_delay_days ?? 0,
-        excusable_delay_days: request.excusable_delay_days ?? 0,
-        net_delay_days: request.net_delay_days ?? 0,
-        delay_reason_class: request.delay_reason_class,
-      })
-      .eq("id", request.project_id);
-  }
-
-  return data;
+  const result = await scheduleApproveExtension(
+    db,
+    { requestId, approvedDays },
+    { idempotencyKey },
+  );
+  return { id: result.entity_id as string, project_id: result.project_id as string };
 }
 
 export async function getPendingProgressUpdates(db: SupabaseClient) {
