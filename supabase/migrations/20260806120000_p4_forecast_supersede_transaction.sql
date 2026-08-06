@@ -85,7 +85,7 @@ BEGIN
   WHERE fv.id = p_new_forecast_version_id;
 
   PERFORM private.write_audit_event(
-    v_actor, 'supersede', 'forecast_version', p_new_forecast_version_id,
+    v_actor, 'approve', 'forecast_version', p_new_forecast_version_id,
     v_new.legal_entity_id, v_new.control_scope_id, v_new.project_id,
     p_correlation_id, p_idempotency_key,
     jsonb_build_object(
