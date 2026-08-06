@@ -78,4 +78,4 @@
 | SHA | Message | Status |
 |-----|---------|--------|
 | afb83dd | feat(governance): replace placeholders with bilingual workspaces | done |
-| — | (pending commit 2) | — |
+| 22b6867 | feat(governance): delegation lifecycle, procurement hub, period hard close | done |

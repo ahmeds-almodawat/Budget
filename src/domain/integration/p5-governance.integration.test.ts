@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import {
+  delegationActivate,
+  delegationApprove,
   delegationCreateDraft,
+  delegationSubmit,
   masterRecordCreateDraft,
   periodSoftClose,
   requisitionCreateDraft,
@@ -108,5 +111,25 @@ describe.skipIf(!hasDb)("P5 procurement and governance integration", () => {
         reason: "Self delegation should fail",
       }),
     ).rejects.toThrow();
+  });
+
+  it("runs delegation draft → submit → approve → activate", async () => {
+    const adminDb = await createAuthenticatedTestClient("groupAdmin");
+    const approverDb = await createAuthenticatedTestClient("approver");
+    const suffix = Date.now();
+    const draft = await delegationCreateDraft(adminDb, {
+      legalEntityId: LEGAL_ENTITY_MODAWAT,
+      delegateId: TEST_USER_IDS.finance,
+      workflowType: "budget",
+      permissionCode: "approve",
+      effectiveStart: new Date().toISOString(),
+      effectiveEnd: new Date(Date.now() + 86_400_000).toISOString(),
+      reason: `Coverage delegation ${suffix}`,
+    });
+    const id = draft.entity_id as string;
+    await delegationSubmit(adminDb, id);
+    await delegationApprove(approverDb, id);
+    const active = await delegationActivate(adminDb, id);
+    expect(active.delegation_status).toBe("active");
   });
 });
