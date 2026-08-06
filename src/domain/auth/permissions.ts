@@ -190,7 +190,13 @@ function assignmentMatchesScope(
   if (assignment.scopeType === "legal_entity") {
     return assignment.scopeId === target.legalEntityId;
   }
-  return assignment.scopeType === target.scopeType && assignment.scopeId === target.scopeId;
+  if (target.scopeType && target.scopeId) {
+    return assignment.scopeType === target.scopeType && assignment.scopeId === target.scopeId;
+  }
+  if (target.legalEntityId && assignment.legalEntityIds?.includes(target.legalEntityId)) {
+    return true;
+  }
+  return false;
 }
 
 export function hasPermission(

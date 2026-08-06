@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   hasPermission,
   type AuthorizationScope,
@@ -32,6 +33,65 @@ function mapRoleAssignments(
       };
     })
     .filter((row): row is RoleAssignment => row !== null);
+}
+
+async function resolveAssignmentLegalEntityIds(
+  supabase: SupabaseClient,
+  assignments: RoleAssignment[],
+): Promise<Map<string, string[]>> {
+  const byKey = new Map<string, string[]>();
+  const projectIds = assignments.filter((a) => a.scopeType === "project").map((a) => a.scopeId);
+  const scopeIds = assignments.filter((a) => a.scopeType === "control_scope").map((a) => a.scopeId);
+  const orgUnitIds = assignments
+    .filter((a) => a.scopeType === "organization_unit")
+    .map((a) => a.scopeId);
+  const controlAccountIds = assignments
+    .filter((a) => a.scopeType === "control_account")
+    .map((a) => a.scopeId);
+
+  if (projectIds.length > 0) {
+    const { data } = await supabase
+      .from("projects")
+      .select("id, control_scopes!inner(legal_entity_id)")
+      .in("id", projectIds);
+    for (const row of data ?? []) {
+      const scope = Array.isArray(row.control_scopes) ? row.control_scopes[0] : row.control_scopes;
+      const entityId = scope?.legal_entity_id;
+      if (entityId) byKey.set(`project:${row.id}`, [entityId]);
+    }
+  }
+
+  if (scopeIds.length > 0) {
+    const { data } = await supabase
+      .from("control_scopes")
+      .select("id, legal_entity_id")
+      .in("id", scopeIds);
+    for (const row of data ?? []) {
+      if (row.legal_entity_id) byKey.set(`control_scope:${row.id}`, [row.legal_entity_id]);
+    }
+  }
+
+  if (orgUnitIds.length > 0) {
+    const { data } = await supabase
+      .from("organization_units")
+      .select("id, legal_entity_id")
+      .in("id", orgUnitIds);
+    for (const row of data ?? []) {
+      if (row.legal_entity_id) byKey.set(`organization_unit:${row.id}`, [row.legal_entity_id]);
+    }
+  }
+
+  if (controlAccountIds.length > 0) {
+    const { data } = await supabase
+      .from("control_accounts")
+      .select("id, legal_entity_id")
+      .in("id", controlAccountIds);
+    for (const row of data ?? []) {
+      if (row.legal_entity_id) byKey.set(`control_account:${row.id}`, [row.legal_entity_id]);
+    }
+  }
+
+  return byKey;
 }
 
 export async function getAuthContext(): Promise<AuthenticatedUserContext | null> {
@@ -85,6 +145,7 @@ export async function getAuthContext(): Promise<AuthenticatedUserContext | null>
       (accessibleEntities ?? []).map((entity) => entity.id),
     ),
   ];
+  const nestedEntityMap = await resolveAssignmentLegalEntityIds(supabase, effectiveAssignments);
   const roleAssignments = effectiveAssignments.map((assignment) => ({
     ...assignment,
     legalEntityIds:
@@ -94,7 +155,7 @@ export async function getAuthContext(): Promise<AuthenticatedUserContext | null>
             .map((entity) => entity.id)
         : assignment.scopeType === "legal_entity"
           ? [assignment.scopeId]
-          : undefined,
+          : nestedEntityMap.get(`${assignment.scopeType}:${assignment.scopeId}`),
   }));
   const roleCodes = [...new Set(roleAssignments.map((r) => r.roleCode))];
 
