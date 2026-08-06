@@ -38,7 +38,12 @@
     "imports": "Imports",
     "masterData": "Master Data",
     "administration": "Administration",
-    "auditLog": "Audit Log"
+    "auditLog": "Audit Log",
+    "sectionFinancial": "Financial",
+    "sectionProjects": "Projects",
+    "sectionGovernance": "Governance",
+    "sectionInsights": "Insights",
+    "sectionAdmin": "Administration"
   },
   "dashboard": {
     "executive": {

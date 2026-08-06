@@ -38,7 +38,12 @@
     "imports": "الاستيراد",
     "masterData": "البيانات الرئيسية",
     "administration": "الإدارة",
-    "auditLog": "سجل التدقيق"
+    "auditLog": "سجل التدقيق",
+    "sectionFinancial": "المالية",
+    "sectionProjects": "المشاريع",
+    "sectionGovernance": "الحوكمة",
+    "sectionInsights": "التحليلات",
+    "sectionAdmin": "الإدارة"
   },
   "dashboard": {
     "executive": {
