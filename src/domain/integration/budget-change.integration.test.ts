@@ -61,6 +61,11 @@ describe.skipIf(!hasDb)("budget change integration (COD-H-006)", () => {
     });
     await transitionBudgetVersion(approverDb, {
       budgetVersionId: version.id,
+      nextStatus: "under_review",
+      actorId: TEST_USER_IDS.approver,
+    });
+    await transitionBudgetVersion(approverDb, {
+      budgetVersionId: version.id,
       nextStatus: "locked",
       actorId: TEST_USER_IDS.approver,
       lockOriginalAmount: "120000.0000",
