@@ -265,9 +265,17 @@ export function ForecastsWorkspace({
           </Card>
         ) : (
           forecasts.map((forecast) => (
-            <Card key={forecast.id}>
+            <Card
+              key={forecast.id}
+              as="article"
+              data-testid="forecast-version-card"
+              data-forecast-version-id={forecast.id}
+              aria-labelledby={`forecast-version-title-${forecast.id}`}
+            >
               <CardHeader className="flex flex-row items-center justify-between gap-2">
-                <CardTitle className="text-base">{forecast.version_label}</CardTitle>
+                <CardTitle id={`forecast-version-title-${forecast.id}`} className="text-base">
+                  {forecast.version_label}
+                </CardTitle>
                 <div className="flex items-center gap-2">
                   {forecast.is_current_approved ? (
                     <Badge variant="default">{t("currentApprovedBadge")}</Badge>

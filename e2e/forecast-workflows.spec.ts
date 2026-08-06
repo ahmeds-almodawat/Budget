@@ -26,11 +26,28 @@ async function signOut(page: Page, locale: "en" | "ar" = "en") {
 }
 
 function forecastCard(page: Page, versionLabel: string) {
-  return page.locator("div").filter({ has: page.getByRole("heading", { name: versionLabel }) });
+  return page.getByTestId("forecast-version-card").filter({
+    has: page.getByRole("heading", {
+      name: versionLabel,
+      exact: true,
+    }),
+  });
 }
 
 async function clickForecastAction(page: Page, versionLabel: string, buttonName: string) {
-  await forecastCard(page, versionLabel).getByRole("button", { name: buttonName }).click();
+  const card = forecastCard(page, versionLabel);
+
+  await expect(card).toHaveCount(1);
+  await expect(card).toBeVisible();
+
+  const button = card.getByRole("button", {
+    name: buttonName,
+    exact: true,
+  });
+
+  await expect(button).toHaveCount(1);
+  await expect(button).toBeEnabled();
+  await button.click();
 }
 
 test.describe("forecast governed workflow (English)", () => {

@@ -33,10 +33,10 @@ export default async function ForecastsPage({
   }
 
   const permissions = {
-    canCreate: hasPermission(roleAssignments, "budget", "create", entityId),
-    canSubmit: hasPermission(roleAssignments, "budget", "update", entityId),
-    canReview: hasPermission(roleAssignments, "budget", "update", entityId),
-    canApprove: hasPermission(roleAssignments, "budget", "approve", entityId),
+    canCreate: hasPermission(roleAssignments, "forecast", "create", entityId),
+    canSubmit: hasPermission(roleAssignments, "forecast", "update", entityId),
+    canReview: hasPermission(roleAssignments, "forecast", "update", entityId),
+    canApprove: hasPermission(roleAssignments, "forecast", "approve", entityId),
   };
 
   return (
