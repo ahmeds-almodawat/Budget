@@ -80,13 +80,13 @@ describe.skipIf(!hasDb)("forecast workflow integration", () => {
       .select("id, approval_status, is_current_approved, superseded_from_id")
       .in("id", [v1.entity_id as string, v2.entity_id as string]);
 
-    const oldVersion = versions?.find((v) => v.id === v1.entity_id);
-    const newVersion = versions?.find((v) => v.id === v2.entity_id);
+    const oldVersion = versions?.find((v) => v.id === String(v1.entity_id));
+    const newVersion = versions?.find((v) => v.id === String(v2.entity_id));
     expect(oldVersion?.approval_status).toBe("superseded");
     expect(oldVersion?.is_current_approved).toBe(false);
     expect(newVersion?.approval_status).toBe("locked");
     expect(newVersion?.is_current_approved).toBe(true);
-    expect(newVersion?.superseded_from_id).toBe(v1.entity_id);
+    expect(newVersion?.superseded_from_id).toBe(String(v1.entity_id));
 
     const { count } = await approverDb
       .from("forecast_versions")

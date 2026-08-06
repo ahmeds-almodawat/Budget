@@ -52,8 +52,8 @@ BEGIN
     RETURN private.command_fail('SCOPE_MISMATCH', 'Forecast versions are not in the same uniqueness grain');
   END IF;
 
-  IF v_old.approval_status NOT IN ('approved', 'locked') OR v_old.is_current_approved IS NOT TRUE THEN
-    RETURN private.command_fail('STATE_CONFLICT', 'Superseded version must be current approved and locked');
+  IF v_old.approval_status NOT IN ('approved', 'locked') THEN
+    RETURN private.command_fail('STATE_CONFLICT', 'Superseded version must be approved and locked');
   END IF;
 
   IF v_new.approval_status <> p_expected_new_status THEN
