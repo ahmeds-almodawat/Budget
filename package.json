@@ -17,6 +17,7 @@
     "test:i18n": "node scripts/check-translations.mjs",
     "test:import-security": "vitest run src/lib/import/secure-csv.security.test.ts",
     "db:fixtures:local": "node scripts/seed-local-fixtures.mjs --confirm-local",
+    "db:start-local": "node scripts/start-local-stack.mjs",
     "db:wait-local": "node scripts/wait-for-local-stack.mjs",
     "env:sync": "node scripts/sync-local-env.cjs",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run test:db && npm run build"

@@ -48,7 +48,7 @@ jobs:
           version: 2.111.0
 
       - name: Start Supabase
-        run: supabase start
+        run: node scripts/start-local-stack.mjs
 
       - name: Wait for local services
         run: npm run db:wait-local
