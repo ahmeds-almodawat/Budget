@@ -49,6 +49,8 @@
 ### Financial
 - [x] Cost control workspace (replace placeholder)
 - [x] Revenue budget vs actual, gross-to-net, profitability (P6 patch)
+- [x] Component-based and net-only revenue budget entry (closure patch)
+- [x] Revenue CSV export with formula-injection protection (closure patch)
 - [ ] Forecast enhancements
 
 ### Admin / evidence / notifications
@@ -61,8 +63,10 @@
 - [ ] Full i18n parity
 
 ### Testing
-- [ ] Unit expansion
+- [x] Revenue unit + integration expansion (closure patch)
+- [ ] Unit expansion (non-revenue)
 - [ ] DB / concurrency expansion
+- [x] E2E: revenue budget + BVA export (closure patch)
 - [ ] E2E: no placeholder routes
 - [ ] Final verification run
 

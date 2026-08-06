@@ -18,7 +18,7 @@ test.describe("database-backed workflows", () => {
   test("English navigation and budget workflow page", async ({ page }) => {
     await page.goto("/en/budgets");
     await expect(page.getByRole("heading", { name: "Budgets" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Draft" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Draft", exact: true })).toBeVisible();
   });
 
   test("Import page loads", async ({ page }) => {

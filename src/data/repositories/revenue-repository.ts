@@ -67,7 +67,9 @@ export interface ProfitabilityRow {
 export interface BudgetVsActualFilters {
   fiscalPeriodId?: string;
   controlScopeId?: string;
+  organizationUnitId?: string;
   payerId?: string;
+  payerCategoryId?: string;
   serviceLineId?: string;
   financialReportingGroup?: string;
 }
@@ -79,6 +81,7 @@ function applyFilters<T extends { eq: (col: string, val: string) => T }>(
   let q = query;
   if (filters.fiscalPeriodId) q = q.eq("fiscal_period_id", filters.fiscalPeriodId);
   if (filters.controlScopeId) q = q.eq("control_scope_id", filters.controlScopeId);
+  if (filters.organizationUnitId) q = q.eq("organization_unit_id", filters.organizationUnitId);
   if (filters.payerId) q = q.eq("payer_id", filters.payerId);
   if (filters.serviceLineId) q = q.eq("service_line_id", filters.serviceLineId);
   if (filters.financialReportingGroup) {
@@ -113,7 +116,9 @@ export async function getRevenueBudgetVsActual(
     .eq("legal_entity_id", legalEntityId);
   if (filters.fiscalPeriodId) query = query.eq("fiscal_period_id", filters.fiscalPeriodId);
   if (filters.controlScopeId) query = query.eq("control_scope_id", filters.controlScopeId);
+  if (filters.organizationUnitId) query = query.eq("organization_unit_id", filters.organizationUnitId);
   if (filters.payerId) query = query.eq("payer_id", filters.payerId);
+  if (filters.payerCategoryId) query = query.eq("payer_category_id", filters.payerCategoryId);
   if (filters.serviceLineId) query = query.eq("service_line_id", filters.serviceLineId);
   const { data, error } = await query;
   if (error) throw new DataAccessError(error.message, "DATABASE");
@@ -152,6 +157,24 @@ export async function getServiceLines(db: SupabaseClient, legalEntityId: string)
     .select("id, code, name_en, name_ar")
     .eq("legal_entity_id", legalEntityId)
     .eq("status", "active");
+  if (error) throw new DataAccessError(error.message, "DATABASE");
+  return data ?? [];
+}
+
+export async function getRevenueComponentTypes(db: SupabaseClient) {
+  const { data, error } = await db
+    .from("revenue_component_types")
+    .select("id, code, name_en, name_ar, net_effect_multiplier")
+    .order("code");
+  if (error) throw new DataAccessError(error.message, "DATABASE");
+  return data ?? [];
+}
+
+export async function getPayerCategories(db: SupabaseClient) {
+  const { data, error } = await db
+    .from("payer_categories")
+    .select("id, code, name_en, name_ar")
+    .order("code");
   if (error) throw new DataAccessError(error.message, "DATABASE");
   return data ?? [];
 }

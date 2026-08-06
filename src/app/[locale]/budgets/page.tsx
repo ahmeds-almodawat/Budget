@@ -1,8 +1,9 @@
-import { setRequestLocale, getTranslations } from "next-intl/server";
 import { HospitalBudgetWorkflow } from "@/components/budget/hospital-budget-workflow";
+import { RevenueBudgetWorkflow } from "@/components/budget/revenue-budget-workflow";
 import { getAuthContext } from "@/lib/auth/context";
 import { hasPermission, type RoleAssignment, type RoleCode } from "@/domain/auth/permissions";
 import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 
 export default async function BudgetsPage({
   params,
@@ -36,6 +37,9 @@ export default async function BudgetsPage({
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t("title")}</h1>
       <HospitalBudgetWorkflow permissions={permissions} />
+      <RevenueBudgetWorkflow
+        permissions={{ canDraft: permissions.canDraft, canSubmit: permissions.canSubmit }}
+      />
     </div>
   );
 }

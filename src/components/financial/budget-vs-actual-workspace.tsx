@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatMoney, formatPercent } from "@/lib/money";
 import { pickLocalized } from "@/lib/i18n/display";
+import { exportBudgetVsActualCsvAction } from "@/app/actions/revenue-export-actions";
 import type {
   BudgetVsActualRow,
   ProfitabilityRow,
@@ -42,6 +44,30 @@ export function BudgetVsActualWorkspace({
   const [periodId, setPeriodId] = useState("");
   const [payerId, setPayerId] = useState("");
   const [serviceLineId, setServiceLineId] = useState("");
+  const [exportPending, startExport] = useTransition();
+
+  const exportFilters = useMemo(
+    () => ({
+      fiscalPeriodId: periodId || undefined,
+      payerId: payerId || undefined,
+      serviceLineId: serviceLineId || undefined,
+    }),
+    [periodId, payerId, serviceLineId],
+  );
+
+  function downloadExport() {
+    const reportType = tab === "profitability" ? "profitability" : tab === "expense" ? "expense" : "revenue";
+    startExport(async () => {
+      const result = await exportBudgetVsActualCsvAction(reportType, exportFilters);
+      const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = result.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 
   const filteredRevenue = useMemo(
     () =>
@@ -120,6 +146,9 @@ export function BudgetVsActualWorkspace({
             <option key={s.id} value={s.id}>{pickLocalized(locale, s.labelEn, s.labelAr)}</option>
           ))}
         </select>
+        <Button type="button" variant="outline" size="sm" data-testid="export-bva-csv" disabled={exportPending} onClick={downloadExport}>
+          {t("exportCsv")}
+        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -170,4 +170,14 @@ describe("financial calculations", () => {
     expect(p.operatingContribution.toFixed(2)).toBe("300.00");
     expect(p.grossMarginPercentage?.toFixed(4)).toBe("0.6000");
   });
+
+  it("excludes CAPEX from operating contribution", () => {
+    const p = calculateProfitability({
+      netRevenue: 1000,
+      costOfRevenue: 200,
+      payroll: 100,
+      operatingExpenses: 50,
+    });
+    expect(p.operatingContribution.toFixed(2)).toBe("650.00");
+  });
 });

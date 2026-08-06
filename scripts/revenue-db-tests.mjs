@@ -28,6 +28,15 @@ export function registerRevenueDbTests(test, assert, asRole) {
     return rows[0].id;
   }
 
+  async function revenueComponentTypeId(client, code) {
+    const { rows } = await client.query(
+      `SELECT id FROM public.revenue_component_types WHERE code = $1 LIMIT 1`,
+      [code],
+    );
+    assert(rows.length === 1, `Missing revenue component type ${code}`);
+    return rows[0].id;
+  }
+
   async function insertApprovedBudgetVersion(client, versionId) {
     await client.query(`
       INSERT INTO public.budget_versions (
@@ -79,7 +88,7 @@ export function registerRevenueDbTests(test, assert, asRole) {
     try {
       const gross = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01";
       const reversal = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02";
-      const grossRct = "3ccfdab2-4963-4d37-8c91-2d9c3f7cdb13";
+      const grossRct = await revenueComponentTypeId(client, "gross_revenue");
       await client.query(`
         INSERT INTO public.actual_transactions (
           id, legal_entity_id, source_system, source_transaction_id, transaction_date,
@@ -112,7 +121,7 @@ export function registerRevenueDbTests(test, assert, asRole) {
     try {
       const rej = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb401";
       const rev = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbb402";
-      const rejRct = "98fdd357-44f0-46af-bf82-35b837fb42e5";
+      const rejRct = await revenueComponentTypeId(client, "rejection");
       await client.query(`
         INSERT INTO public.actual_transactions (
           id, legal_entity_id, source_system, source_transaction_id, transaction_date,

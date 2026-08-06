@@ -33,7 +33,7 @@ test.describe("authentication and authorization", () => {
     await signIn(page, USERS.budgetOwner);
     await page.goto("/en/budgets");
     await expect(page.getByRole("heading", { name: "Budgets" })).toBeVisible();
-    await page.getByRole("button", { name: "Draft" }).click();
+    await page.getByRole("button", { name: "Draft", exact: true }).click();
     await expect(page.getByText(/Draft saved/i)).toBeVisible({ timeout: 15000 });
     await page.getByRole("button", { name: "Submitted" }).click();
     await expect(page.getByText(/Submitted/i).first()).toBeVisible({ timeout: 15000 });
@@ -46,7 +46,7 @@ test.describe("authentication and authorization", () => {
     const ownerPage = await ownerContext.newPage();
     await signIn(ownerPage, USERS.budgetOwner);
     await ownerPage.goto("/en/budgets");
-    await ownerPage.getByRole("button", { name: "Draft" }).click();
+    await ownerPage.getByRole("button", { name: "Draft", exact: true }).click();
     await expect(ownerPage.getByText(/Draft saved/i)).toBeVisible({ timeout: 15000 });
     await ownerPage.getByRole("button", { name: "Submitted" }).click();
     await expect(ownerPage.getByText(/Submitted/i).first()).toBeVisible({ timeout: 15000 });
@@ -88,7 +88,7 @@ test.describe("authentication and authorization", () => {
     await signIn(page, USERS.auditor);
     await page.goto("/en/budgets");
     await expect(page.getByRole("heading", { name: "Budgets" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Draft" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Draft", exact: true })).toBeDisabled();
   });
 
   test("Arabic RTL auth path", async ({ page }) => {

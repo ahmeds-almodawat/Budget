@@ -251,6 +251,29 @@
     "changeApproved": "Change approved",
     "approveChange": "Approve change"
   },
+  "revenueBudget": {
+    "title": "2027 Restaurant Revenue Budget",
+    "netOnly": "Net-only",
+    "componentBased": "Component-based",
+    "organizationUnit": "Organization unit",
+    "payer": "Payer",
+    "serviceLine": "Service line",
+    "optional": "Optional",
+    "quantity": "Quantity",
+    "unitRate": "Unit rate (SAR)",
+    "annualAmount": "Annual net revenue amount",
+    "assumptions": "Assumptions",
+    "driverPreview": "Driver amount {driver}; difference from entered amount {diff}",
+    "grossBudget": "Gross budget",
+    "netRevenueBudget": "Net revenue budget",
+    "monthlyPhasing": "Monthly phasing",
+    "saveDraft": "Save draft",
+    "submit": "Submit",
+    "draftSaved": "Revenue budget draft saved",
+    "submitted": "Revenue budget submitted",
+    "saveFailed": "Could not save revenue budget",
+    "readOnly": "Approved or locked budgets are read-only"
+  },
   "modules": {
     "inDevelopment": "In development",
     "expansionNote": "This module is being expanded. Use the sidebar to access completed areas such as budgets, projects, and approvals.",
@@ -581,6 +604,7 @@
     "title": "Budget vs Actual",
     "subtitle": "Revenue, expense, and profitability with classification-aware variance.",
     "loadError": "Unable to load budget vs actual data.",
+    "exportCsv": "Export CSV",
     "tabs": {
       "revenue": "Revenue",
       "expense": "Expenses",

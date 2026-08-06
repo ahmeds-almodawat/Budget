@@ -44,7 +44,7 @@ export async function getOrganizationUnits(db: SupabaseClient, legalEntityId: st
 export async function getLeafCostNodes(db: SupabaseClient, legalEntityId: string) {
   const { data, error } = await db
     .from("cost_nodes")
-    .select("id, code, name_en, name_ar, node_level, parent_id")
+    .select("id, code, name_en, name_ar, node_level, parent_id, classification")
     .eq("legal_entity_id", legalEntityId)
     .eq("allows_posting", true)
     .eq("status", "active")
@@ -131,7 +131,12 @@ export async function createDraftBudgetVersion(
         planned_unit_rate: line.plannedUnitRate ?? null,
         planned_amount: line.plannedAmount,
         assumption: line.assumption ?? null,
+        notes: line.notes ?? null,
         owner_id: params.createdBy,
+        revenue_budget_basis: line.revenueBudgetBasis ?? null,
+        payer_id: line.payerId ?? null,
+        service_line_id: line.serviceLineId ?? null,
+        revenue_component_type_id: line.revenueComponentTypeId ?? null,
       })
       .select("id")
       .single();
