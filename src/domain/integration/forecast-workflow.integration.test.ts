@@ -121,10 +121,7 @@ describe.skipIf(!hasDb)("forecast workflow integration", () => {
       .from("forecast_versions")
       .select("id")
       .eq("legal_entity_id", LEGAL_ENTITY_MODAWAT);
-    if (error) {
-      expect(error.code).toBe("42501");
-    } else {
-      expect(data ?? []).toHaveLength(0);
-    }
+    expect(error).toBeNull();
+    expect(data ?? []).toHaveLength(0);
   });
 });

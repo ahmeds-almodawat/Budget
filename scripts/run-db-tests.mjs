@@ -33,13 +33,14 @@ const EXPOSED_TABLES = [
   "register_dependencies", "risks", "role_assignments", "roles",
   "schedule_change_requests", "tasks", "teams", "unmapped_transaction_queue",
   "variance_explanations", "vendors", "work_packages", "schedule_baseline_versions",
+  "forecast_versions", "forecast_lines",
 ];
 const EXPOSED_VIEWS = [
   "v_approval_inbox", "v_budget_vs_actual", "v_restaurant_branch_performance",
   "v_hospital_period_performance", "v_project_earned_value",
 ];
 const SERVER_ONLY_TABLES = [
-  "audit_events", "forecast_lines", "forecast_versions", "gl_accounts",
+  "audit_events", "gl_accounts",
   "gl_cost_mappings", "permissions", "role_permissions", "task_dependencies", "team_members",
 ];
 const INSERT_TABLES = [
