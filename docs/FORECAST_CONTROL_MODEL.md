@@ -32,7 +32,8 @@ One `is_current_approved = true` row per:
 | Reject | `rpc_forecast_reject` |
 | Cancel | `rpc_forecast_cancel` |
 | Approve + lock | `rpc_forecast_approve_and_lock` |
-| Supersede | `rpc_forecast_supersede` |
+| Approve + supersede (transactional) | `rpc_forecast_approve_and_supersede` |
+| Supersede prior only | `rpc_forecast_supersede` |
 
 ## Immutability
 
