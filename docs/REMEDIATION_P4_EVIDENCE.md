@@ -38,5 +38,6 @@
 
 | Field | Value |
 |-------|-------|
-| Exact head SHA | _pending first green P4 run_ |
-| Run URL | _pending_ |
+| Exact head SHA | `befacab28fd304bd8158d1069ad33409627c9b9e` |
+| Run URL | https://github.com/ahmeds-almodawat/Budget/actions/runs/31082908511 |
+| Result | **success** (first attempt at head) |
