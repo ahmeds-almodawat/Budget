@@ -130,6 +130,16 @@
     "positiveVariance": "انحراف favorable",
     "negativeVariance": "انحراف غير favorable"
   },
+  "forecasts": {
+    "title": "التوقعات",
+    "subtitle": "إصدارات توقعات محكومة مع مسودة وإرسال واعتماد.",
+    "empty": "لا توجد إصدارات توقعات بعد.",
+    "loadError": "تعذر تحميل التوقعات.",
+    "lineCount": "{count} بنود توقع",
+    "currentApproved": "المعتمد الحالي",
+    "yes": "نعم",
+    "no": "لا"
+  },
   "status": {
     "active": "نشط",
     "inactive": "غير نشط",

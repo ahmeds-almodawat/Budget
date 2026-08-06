@@ -26,6 +26,7 @@ export interface ReportFilters {
   fiscalYearId?: string;
   fiscalPeriodId?: string;
   projectId?: string;
+  reportDate?: string;
 }
 
 export interface BudgetLineInput {

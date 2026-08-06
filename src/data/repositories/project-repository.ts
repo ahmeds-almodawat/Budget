@@ -137,7 +137,7 @@ export async function ensureKhamisProjectStructure(db: SupabaseClient, projectMa
 export async function getProjectDashboard(db: SupabaseClient, projectId: string) {
   const { data: project, error } = await db
     .from("projects")
-    .select("*, control_scopes(name_en, name_ar)")
+    .select("*, control_scopes(name_en, name_ar, legal_entity_id)")
     .eq("id", projectId)
     .single();
   if (error || !project) throw new DataAccessError("Project not found.", "NOT_FOUND");
@@ -149,22 +149,31 @@ export async function getProjectDashboard(db: SupabaseClient, projectId: string)
     .eq("is_current_approved", true)
     .maybeSingle();
 
-  const bac = budget?.original_approved_amount ?? "0";
-  const pv = money(bac).times(0.45).toFixed(2);
-  const ev = money(bac).times(0.35).toFixed(2);
+  const { data: evmRows, error: evmError } = await db
+    .from("v_project_earned_value")
+    .select("*")
+    .eq("project_id", projectId);
+  if (evmError) throw new DataAccessError(evmError.message, "DATABASE");
 
-  const { data: allocations } = await db
-    .from("actual_transaction_allocations")
-    .select("allocation_amount")
-    .eq("organization_unit_id", project.responsible_department_id ?? "");
-  const ac = (allocations ?? []).reduce((s, r) => s + Number(r.allocation_amount), 0).toFixed(2) || "3410000";
+  const totals = (evmRows ?? []).reduce(
+    (acc, row) => ({
+      bac: acc.bac.plus(row.bac ?? 0),
+      pv: acc.pv.plus(row.pv ?? 0),
+      ev: acc.ev.plus(row.ev ?? 0),
+      ac: acc.ac.plus(row.ac ?? 0),
+    }),
+    { bac: money(0), pv: money(0), ev: money(0), ac: money(0) },
+  );
 
-  const metrics = calculateEarnedValue({
-    budgetAtCompletion: bac,
-    plannedValue: pv,
-    earnedValue: ev,
-    actualCost: ac,
-  });
+  const hasEvmData = (evmRows ?? []).length > 0;
+  const metrics = hasEvmData
+    ? calculateEarnedValue({
+        budgetAtCompletion: totals.bac.toFixed(2),
+        plannedValue: totals.pv.toFixed(2),
+        earnedValue: totals.ev.toFixed(2),
+        actualCost: totals.ac.toFixed(2),
+      })
+    : null;
 
   const { data: milestones } = await db
     .from("milestones")
@@ -172,5 +181,5 @@ export async function getProjectDashboard(db: SupabaseClient, projectId: string)
     .eq("project_id", projectId)
     .order("baseline_date");
 
-  return { project, budget, metrics, milestones: milestones ?? [] };
+  return { project, budget, metrics, milestones: milestones ?? [], evmRows: evmRows ?? [] };
 }

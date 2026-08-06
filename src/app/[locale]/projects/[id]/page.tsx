@@ -36,28 +36,34 @@ export default async function ProjectDashboardPage({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("pv")}</CardTitle></CardHeader>
-          <CardContent>{formatMoney(metrics.plannedValue, "SAR")}</CardContent>
+          <CardContent>
+            {metrics ? formatMoney(metrics.plannedValue, "SAR") : (locale === "ar" ? "بيانات غير كافية" : "Insufficient data")}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("ev")}</CardTitle></CardHeader>
-          <CardContent>{formatMoney(metrics.earnedValue, "SAR")}</CardContent>
+          <CardContent>
+            {metrics ? formatMoney(metrics.earnedValue, "SAR") : (locale === "ar" ? "بيانات غير كافية" : "Insufficient data")}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("ac")}</CardTitle></CardHeader>
-          <CardContent>{formatMoney(metrics.actualCost, "SAR")}</CardContent>
+          <CardContent>
+            {metrics ? formatMoney(metrics.actualCost, "SAR") : (locale === "ar" ? "بيانات غير كافية" : "Insufficient data")}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("cpi")}</CardTitle></CardHeader>
-          <CardContent>{metrics.costPerformanceIndex?.toFixed(2) ?? "N/A"}</CardContent>
+          <CardContent>{metrics?.costPerformanceIndex?.toFixed(2) ?? "N/A"}</CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("spi")}</CardTitle></CardHeader>
-          <CardContent>{metrics.schedulePerformanceIndex?.toFixed(2) ?? "N/A"}</CardContent>
+          <CardContent>{metrics?.schedulePerformanceIndex?.toFixed(2) ?? "N/A"}</CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm">EAC</CardTitle></CardHeader>
           <CardContent>
-            {metrics.estimateAtCompletion
+            {metrics?.estimateAtCompletion
               ? formatMoney(metrics.estimateAtCompletion, "SAR")
               : "N/A"}
           </CardContent>
@@ -65,7 +71,7 @@ export default async function ProjectDashboardPage({
         <Card>
           <CardHeader><CardTitle className="text-sm">VAC</CardTitle></CardHeader>
           <CardContent>
-            {metrics.varianceAtCompletion
+            {metrics?.varianceAtCompletion
               ? formatMoney(metrics.varianceAtCompletion, "SAR")
               : "N/A"}
           </CardContent>

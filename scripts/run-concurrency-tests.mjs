@@ -62,9 +62,17 @@ async function main() {
     await client.query("BEGIN");
     try {
       const { rows } = await client.query(
-        `SELECT id FROM budget_versions WHERE approval_status = 'locked' LIMIT 1`,
+        `INSERT INTO budget_versions (
+          id, legal_entity_id, control_scope_id, fiscal_year_id, version_label, version_type,
+          approval_status, original_approved_amount, locked_at
+        ) VALUES (
+          'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbc1',
+          '11111111-1111-1111-1111-111111111102',
+          '55555555-5555-5555-5555-555555555501',
+          '77777777-7777-7777-7777-777777777701',
+          'CONC-LOCK', 'operational', 'locked', 1000, NOW()
+        ) RETURNING id`,
       );
-      if (rows.length === 0) throw new Error("No locked budget version in seed data");
       let denied = false;
       try {
         await client.query(

@@ -8,8 +8,11 @@ export type ReportType =
   | "restaurant_operational"
   | "unmapped_actuals";
 
-export async function getBudgetVsActualReport(db: SupabaseClient) {
-  const { data, error } = await db.from("v_budget_vs_actual").select("*");
+export async function getBudgetVsActualReport(db: SupabaseClient, legalEntityId: string) {
+  const { data, error } = await db
+    .from("v_budget_vs_actual")
+    .select("*")
+    .eq("legal_entity_id", legalEntityId);
   if (error) throw new DataAccessError(error.message, "DATABASE");
   return data ?? [];
 }

@@ -36,6 +36,7 @@ const EXPOSED_TABLES = [
 ];
 const EXPOSED_VIEWS = [
   "v_approval_inbox", "v_budget_vs_actual", "v_restaurant_branch_performance",
+  "v_hospital_period_performance", "v_project_earned_value",
 ];
 const SERVER_ONLY_TABLES = [
   "audit_events", "forecast_lines", "forecast_versions", "gl_accounts",
@@ -489,7 +490,7 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
   const tables = objects.filter((row) => row.relkind === "r");
   const views = objects.filter((row) => row.relkind === "v");
   assert(tables.length === 55, `Expected 55 public tables, found ${tables.length}`);
-  assert(views.length === 3, `Expected 3 public views, found ${views.length}`);
+  assert(views.length === 5, `Expected 5 public views, found ${views.length}`);
   assert(tables.every((row) => row.relrowsecurity && row.relforcerowsecurity), "Every table must enable and force RLS");
   assert(objects.every((row) => row.classification?.startsWith("@classification ")), "Every public table/view needs a classification");
   assert(views.every((row) => row.reloptions?.includes("security_invoker=true")), "Every public view must use security_invoker");
@@ -748,6 +749,17 @@ test("tenant views isolate both tenants and restaurant totals exclude unposted a
     const branch = rows.find((row) => row.branch_code === "REST-B1");
     assert(branch && Number(branch.revenue) === 85000, `Unposted revenue leaked into aggregate: ${branch?.revenue}`);
     for (const view of EXPOSED_VIEWS.filter((name) => name !== "v_restaurant_branch_performance")) {
+      if (view === "v_project_earned_value") {
+        const { rows: leaked } = await client.query(`
+          SELECT count(*)::int AS count
+          FROM public.v_project_earned_value AS ev
+          JOIN public.projects AS p ON p.id = ev.project_id
+          JOIN public.control_scopes AS cs ON cs.id = p.control_scope_id
+          WHERE cs.legal_entity_id = '12111111-1111-1111-1111-111111111102'
+        `);
+        assert(leaked[0].count === 0, `${view} leaked other-tenant rows`);
+        continue;
+      }
       const { rows: leaked } = await client.query(`
         SELECT count(*)::int AS count FROM public.${view}
         WHERE legal_entity_id = '12111111-1111-1111-1111-111111111102'

@@ -1,30 +1,24 @@
 "use server";
 
-import Papa from "papaparse";
-import * as XLSX from "xlsx";
-import { isAuthError } from "@/lib/auth/errors";
-import {
-  assertLegalEntityAccess,
-  getAuthenticatedDb,
-  requirePermission,
-} from "@/lib/auth/context";
-import { createImportBatch, parseImportRows, postImportBatch, reviewImportBatch, getUnmappedQueue } from "@/data/repositories/import-repository";
-import { getFiscalPeriods } from "@/data/repositories/budget-repository";
-import { LEGAL_ENTITY_MODAWAT, type ImportRowInput } from "@/types/database";
+import { withActivePermission } from "@/lib/auth/action-guard";
 import { DataAccessError } from "@/data/repositories/budget-repository";
+import {
+  createImportBatch,
+  parseImportRows,
+  postImportBatch,
+  reviewImportBatch,
+  getUnmappedQueue,
+} from "@/data/repositories/import-repository";
+import { getFiscalPeriods } from "@/data/repositories/budget-repository";
+import { FISCAL_YEAR_2027, type ImportRowInput } from "@/types/database";
+import { parseSecureCsv } from "@/lib/import/secure-csv";
+import { DEFAULT_UPLOAD_LIMITS } from "@/lib/import/upload-limits";
 
 const REQUIRED_HEADERS = [
   "source_transaction_id",
   "transaction_date",
   "amount_ex_vat",
 ];
-
-function mapActionError(error: unknown): never {
-  if (isAuthError(error)) {
-    throw new DataAccessError(error.message, "FORBIDDEN");
-  }
-  throw error;
-}
 
 function normalizeRow(raw: Record<string, string>): ImportRowInput {
   return {
@@ -42,107 +36,72 @@ function normalizeRow(raw: Record<string, string>): ImportRowInput {
 }
 
 export async function parseImportFileAction(formData: FormData) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    requirePermission(ctx, "actual", "import", LEGAL_ENTITY_MODAWAT);
-
+  return withActivePermission("actual", "import", async ({ ctx, legalEntityId, db }) => {
     const file = formData.get("file");
     if (!(file instanceof File)) {
       throw new DataAccessError("Import file is required.", "VALIDATION");
     }
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const fileName = file.name;
-    let rows: ImportRowInput[] = [];
 
-    if (fileName.endsWith(".csv")) {
-      const parsed = Papa.parse<Record<string, string>>(buffer.toString("utf8"), {
-        header: true,
-        skipEmptyLines: true,
-      });
-      if (parsed.errors.length > 0) {
-        throw new DataAccessError(parsed.errors[0]?.message ?? "CSV parse error", "VALIDATION");
-      }
-      const headers = parsed.meta.fields ?? [];
-      for (const required of REQUIRED_HEADERS) {
-        if (!headers.includes(required)) {
-          throw new DataAccessError(`Missing required header: ${required}`, "VALIDATION");
-        }
-      }
-      rows = parsed.data.map(normalizeRow);
-    } else if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
-      const workbook = XLSX.read(buffer, { type: "buffer" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
-      if (json.length > 0) {
-        const headers = Object.keys(json[0]);
-        for (const required of REQUIRED_HEADERS) {
-          if (!headers.includes(required)) {
-            throw new DataAccessError(`Missing required header: ${required}`, "VALIDATION");
-          }
-        }
-      }
-      rows = json.map(normalizeRow);
-    } else {
-      throw new DataAccessError("Supported formats: CSV and Excel.", "VALIDATION");
+    const lowerName = file.name.toLowerCase();
+    if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls") || lowerName.endsWith(".xlsm")) {
+      throw new DataAccessError(
+        "Excel import is temporarily disabled for security hardening. Upload a UTF-8 CSV file.",
+        "VALIDATION",
+      );
+    }
+    if (!lowerName.endsWith(".csv")) {
+      throw new DataAccessError("Only CSV uploads are supported.", "VALIDATION");
     }
 
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const parsed = parseSecureCsv(buffer, DEFAULT_UPLOAD_LIMITS, { requiredHeaders: REQUIRED_HEADERS });
+    if (parsed.errors.length > 0) {
+      throw new DataAccessError(parsed.errors[0]?.message ?? "CSV validation failed.", "VALIDATION");
+    }
+
+    const rows = parsed.rows.map((row) => normalizeRow(row as Record<string, string>));
     const parsedRows = parseImportRows(rows);
     const result = await createImportBatch(db, {
-      legalEntityId: LEGAL_ENTITY_MODAWAT,
+      legalEntityId,
       importType: "actual_transactions",
-      fileName,
+      fileName: file.name,
       fileContent: buffer.toString("utf8"),
+      fileHash: parsed.hash,
       rows: parsedRows,
       importedBy: ctx.userId,
     });
 
-    return { batch: result.batch, totals: result.totals, rows: parsedRows };
-  } catch (error) {
-    mapActionError(error);
-  }
+    return {
+      batch: result.batch,
+      totals: result.totals,
+      rows: parsedRows,
+      warnings: parsed.warnings,
+      hash: parsed.hash,
+    };
+  });
 }
 
 export async function reviewImportBatchAction(batchId: string) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    requirePermission(ctx, "actual", "approve", LEGAL_ENTITY_MODAWAT);
-    return reviewImportBatch(db, { batchId });
-  } catch (error) {
-    mapActionError(error);
-  }
+  return withActivePermission("actual", "approve", async ({ db }) => reviewImportBatch(db, { batchId }));
 }
 
 export async function postImportBatchAction(batchId: string) {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    requirePermission(ctx, "actual", "approve", LEGAL_ENTITY_MODAWAT);
-
-    const periods = await getFiscalPeriods(db, "77777777-7777-7777-7777-777777777701");
+  return withActivePermission("actual", "approve", async ({ ctx, legalEntityId, db }) => {
+    const periods = await getFiscalPeriods(db, FISCAL_YEAR_2027);
     const fiscalPeriodMap = new Map(periods.map((p) => [p.period_number, p.id]));
     return postImportBatch(db, {
       batchId,
-      legalEntityId: LEGAL_ENTITY_MODAWAT,
+      legalEntityId,
       fiscalPeriodMap,
       approverId: ctx.userId,
     });
-  } catch (error) {
-    mapActionError(error);
-  }
+  });
 }
 
 export async function fetchUnmappedQueueAction() {
-  try {
-    const { ctx, db } = await getAuthenticatedDb();
-    assertLegalEntityAccess(ctx, LEGAL_ENTITY_MODAWAT);
-    requirePermission(ctx, "actual", "read", LEGAL_ENTITY_MODAWAT);
-
-    return getUnmappedQueue(db, LEGAL_ENTITY_MODAWAT);
-  } catch (error) {
-    mapActionError(error);
-  }
+  return withActivePermission("actual", "read", async ({ legalEntityId, db }) =>
+    getUnmappedQueue(db, legalEntityId),
+  );
 }
 
 export async function getImportTemplateHeaders() {
@@ -166,8 +125,8 @@ export async function getImportTemplateHeaders() {
       "fiscal_period_number",
     ],
     guidanceEn:
-      "Use ISO dates (YYYY-MM-DD). Amounts are SAR excluding VAT. Map organization_unit_id and cost_node_id to seeded UUIDs.",
+      "Upload UTF-8 CSV only. Use ISO dates (YYYY-MM-DD). Amounts are SAR excluding VAT.",
     guidanceAr:
-      "استخدم التاريخ بصيغة YYYY-MM-DD. المبالغ بالريال بدون ضريبة. اربط organization_unit_id و cost_node_id بالمعرفات في قاعدة البيانات.",
+      "حمّل ملف CSV بترميز UTF-8 فقط. استخدم التاريخ بصيغة YYYY-MM-DD. المبالغ بالريال بدون ضريبة.",
   };
 }

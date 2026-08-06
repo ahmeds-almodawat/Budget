@@ -2,6 +2,7 @@
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AuthUserBar } from "@/components/auth/auth-user-bar";
+import { ActiveEntitySelector } from "@/components/layout/active-entity-selector";
 import { usePathname } from "next/navigation";
 
 export interface UserSummary {
@@ -42,6 +43,7 @@ export function AppShell({
                 Project · Budget · Performance
               </p>
             </div>
+            <ActiveEntitySelector user={user} />
             <AuthUserBar user={user} />
           </div>
         </header>
