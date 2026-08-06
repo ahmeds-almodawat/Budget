@@ -40,6 +40,7 @@
     "administration": "Administration",
     "delegations": "Delegations",
     "requisitions": "Requisitions",
+    "purchaseOrders": "Purchase Orders",
     "periodClose": "Period Close",
     "approvalRules": "Approval Rules",
     "auditLog": "Audit Log",
@@ -475,6 +476,13 @@
     "reason": "Reason",
     "effectiveRange": "{start} → {end}",
     "created": "Delegation draft created.",
+    "submitted": "Delegation submitted.",
+    "approved": "Delegation approved.",
+    "activated": "Delegation activated.",
+    "revoked": "Delegation revoked.",
+    "cancelled": "Delegation cancelled.",
+    "activate": "Activate",
+    "revoke": "Revoke",
     "actionError": "Delegation action failed.",
     "loadError": "Unable to load delegations."
   },
@@ -502,6 +510,11 @@
     "allOpen": "All modules open for selected periods.",
     "softCloseModule": "Soft close {module}",
     "softClosed": "{module} module soft closed.",
+    "hardClosed": "{module} module hard closed.",
+    "reopened": "{module} module reopened.",
+    "reopenReason": "Reopen reason",
+    "hardCloseModule": "Hard close {module}",
+    "reopenModule": "Reopen {module}",
     "actionError": "Period control action failed.",
     "loadError": "Unable to load period controls.",
     "modules": {
@@ -547,5 +560,21 @@
     "localDiagnostics": "Local diagnostics",
     "localDiagnosticsNote": "Production identity provider administration is excluded. Local Supabase stack diagnostics are available via npm scripts.",
     "loadError": "Unable to load administration data."
+  },
+  "procurement": {
+    "title": "Procurement",
+    "subtitle": "Purchase orders, supplier invoices, and payment requests.",
+    "purchaseOrders": "Purchase orders",
+    "supplierInvoices": "Supplier invoices",
+    "paymentRequests": "Payment requests",
+    "poNumber": "PO {number}",
+    "invoiceNumber": "Invoice {number}",
+    "vendor": "Vendor",
+    "amount": "Amount",
+    "status": "Status",
+    "emptyOrders": "No purchase orders yet.",
+    "emptyInvoices": "No supplier invoices yet.",
+    "emptyPayments": "No payment requests yet.",
+    "loadError": "Unable to load procurement data."
   }
 }

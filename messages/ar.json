@@ -40,6 +40,7 @@
     "administration": "الإدارة",
     "delegations": "التفويضات",
     "requisitions": "طلبات الشراء",
+    "purchaseOrders": "أوامر الشراء",
     "periodClose": "إغلاق الفترة",
     "approvalRules": "قواعد الاعتماد",
     "auditLog": "سجل التدقيق",
@@ -475,6 +476,13 @@
     "reason": "السبب",
     "effectiveRange": "{start} → {end}",
     "created": "تم إنشاء مسودة التفويض.",
+    "submitted": "تم إرسال التفويض.",
+    "approved": "تم اعتماد التفويض.",
+    "activated": "تم تفعيل التفويض.",
+    "revoked": "تم إلغاء التفويض.",
+    "cancelled": "تم إلغاء مسودة التفويض.",
+    "activate": "تفعيل",
+    "revoke": "إلغاء",
     "actionError": "فشل إجراء التفويض.",
     "loadError": "تعذر تحميل التفويضات."
   },
@@ -502,6 +510,11 @@
     "allOpen": "جميع الوحدات مفتوحة.",
     "softCloseModule": "إغلاق ناعم — {module}",
     "softClosed": "تم الإغلاق الناعم لوحدة {module}.",
+    "hardClosed": "تم الإغلاق الصارم لوحدة {module}.",
+    "reopened": "تم إعادة فتح وحدة {module}.",
+    "reopenReason": "سبب إعادة الفتح",
+    "hardCloseModule": "إغلاق صارم — {module}",
+    "reopenModule": "إعادة فتح — {module}",
     "actionError": "فشل إجراء التحكم بالفترة.",
     "loadError": "تعذر تحميل ضوابط الفترة.",
     "modules": {
@@ -547,5 +560,21 @@
     "localDiagnostics": "تشخيص محلي",
     "localDiagnosticsNote": "إدارة موفر الهوية للإنتاج مستثناة. استخدم npm scripts للتشخيص المحلي.",
     "loadError": "تعذر تحميل بيانات الإدارة."
+  },
+  "procurement": {
+    "title": "المشتريات",
+    "subtitle": "أوامر الشراء وفواتير الموردين وطلبات الدفع.",
+    "purchaseOrders": "أوامر الشراء",
+    "supplierInvoices": "فواتير الموردين",
+    "paymentRequests": "طلبات الدفع",
+    "poNumber": "أمر {number}",
+    "invoiceNumber": "فاتورة {number}",
+    "vendor": "المورد",
+    "amount": "المبلغ",
+    "status": "الحالة",
+    "emptyOrders": "لا توجد أوامر شراء بعد.",
+    "emptyInvoices": "لا توجد فواتير موردين بعد.",
+    "emptyPayments": "لا توجد طلبات دفع بعد.",
+    "loadError": "تعذر تحميل بيانات المشتريات."
   }
 }

@@ -69,6 +69,7 @@ const navSections: { labelKey?: string; items: NavItem[] }[] = [
       { key: "approvals", href: "approvals", icon: ClipboardCheck },
       { key: "delegations", href: "delegations", icon: Users },
       { key: "requisitions", href: "requisitions", icon: HandCoins },
+      { key: "purchaseOrders", href: "purchase-orders", icon: Receipt },
       { key: "periodClose", href: "period-close", icon: ScrollText },
       { key: "approvalRules", href: "approval-rules", icon: ClipboardCheck },
       { key: "auditLog", href: "audit", icon: ScrollText },

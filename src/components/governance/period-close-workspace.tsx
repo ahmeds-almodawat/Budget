@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { softClosePeriodAction } from "@/app/actions/governance-actions";
+import { softClosePeriodAction, hardClosePeriodAction, reopenPeriodAction } from "@/app/actions/governance-actions";
 
 const MODULES = ["budgets", "actuals", "procurement", "forecasts", "projects", "reporting"] as const;
 
@@ -29,6 +29,7 @@ export function PeriodCloseWorkspace({
   const t = useTranslations("periodClose");
   const [controls, setControls] = useState(initialControls);
   const [selectedPeriod, setSelectedPeriod] = useState(fiscalPeriods[0]?.id ?? "");
+  const [reopenReason, setReopenReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -43,7 +44,42 @@ export function PeriodCloseWorkspace({
           module,
         })) as PeriodControlRow[];
         setControls(updated);
-        setMessage(t("softClosed", { module }));
+        setMessage(t("softClosed", { module: t(`modules.${module}`) }));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t("actionError"));
+      }
+    });
+  };
+
+  const handleHardClose = (module: string) => {
+    startTransition(async () => {
+      setError(null);
+      setMessage(null);
+      try {
+        const updated = (await hardClosePeriodAction({
+          fiscalPeriodId: selectedPeriod,
+          module,
+        })) as PeriodControlRow[];
+        setControls(updated);
+        setMessage(t("hardClosed", { module: t(`modules.${module}`) }));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t("actionError"));
+      }
+    });
+  };
+
+  const handleReopen = (module: string) => {
+    startTransition(async () => {
+      setError(null);
+      setMessage(null);
+      try {
+        const updated = (await reopenPeriodAction({
+          fiscalPeriodId: selectedPeriod,
+          module,
+          reason: reopenReason,
+        })) as PeriodControlRow[];
+        setControls(updated);
+        setMessage(t("reopened", { module: t(`modules.${module}`) }));
       } catch (err) {
         setError(err instanceof Error ? err.message : t("actionError"));
       }
@@ -75,13 +111,46 @@ export function PeriodCloseWorkspace({
             </select>
           </div>
           {canClose ? (
-            <div className="flex flex-wrap gap-2">
-              {MODULES.map((mod) => (
-                <Button key={mod} size="sm" variant="secondary" disabled={pending} onClick={() => handleSoftClose(mod)}>
-                  {t("softCloseModule", { module: t(`modules.${mod}`) })}
-                </Button>
-              ))}
-            </div>
+            <>
+              <div className="space-y-1">
+                <label htmlFor="reopen-reason" className="text-xs font-medium text-slate-600">
+                  {t("reopenReason")}
+                </label>
+                <input
+                  id="reopen-reason"
+                  className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+                  value={reopenReason}
+                  onChange={(e) => setReopenReason(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {MODULES.map((mod) => (
+                  <Button key={`soft-${mod}`} size="sm" variant="secondary" disabled={pending} onClick={() => handleSoftClose(mod)}>
+                    {t("softCloseModule", { module: t(`modules.${mod}`) })}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {MODULES.map((mod) => (
+                  <Button key={`hard-${mod}`} size="sm" variant="destructive" disabled={pending} onClick={() => handleHardClose(mod)}>
+                    {t("hardCloseModule", { module: t(`modules.${mod}`) })}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {MODULES.map((mod) => (
+                  <Button
+                    key={`reopen-${mod}`}
+                    size="sm"
+                    variant="outline"
+                    disabled={pending || !reopenReason.trim()}
+                    onClick={() => handleReopen(mod)}
+                  >
+                    {t("reopenModule", { module: t(`modules.${mod}`) })}
+                  </Button>
+                ))}
+              </div>
+            </>
           ) : null}
         </CardContent>
       </Card>

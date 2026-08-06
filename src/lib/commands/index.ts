@@ -542,3 +542,104 @@ export async function periodSoftClose(
   );
 }
 
+async function delegationTransition(
+  db: SupabaseClient,
+  delegationId: string,
+  rpc: string,
+  expectedStatus: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, rpc, {
+      p_delegation_id: delegationId,
+      p_expected_status: expectedStatus,
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function delegationSubmit(
+  db: SupabaseClient,
+  delegationId: string,
+  options: CommandOptions = {},
+) {
+  return delegationTransition(db, delegationId, "rpc_delegation_submit", options.expectedStatus ?? "draft", options);
+}
+
+export async function delegationApprove(
+  db: SupabaseClient,
+  delegationId: string,
+  options: CommandOptions = {},
+) {
+  return delegationTransition(db, delegationId, "rpc_delegation_approve", options.expectedStatus ?? "submitted", options);
+}
+
+export async function delegationActivate(
+  db: SupabaseClient,
+  delegationId: string,
+  options: CommandOptions = {},
+) {
+  return delegationTransition(db, delegationId, "rpc_delegation_activate", options.expectedStatus ?? "approved", options);
+}
+
+export async function delegationRevoke(
+  db: SupabaseClient,
+  delegationId: string,
+  options: CommandOptions = {},
+) {
+  return delegationTransition(db, delegationId, "rpc_delegation_revoke", options.expectedStatus ?? "active", options);
+}
+
+export async function delegationCancel(
+  db: SupabaseClient,
+  delegationId: string,
+  options: CommandOptions = {},
+) {
+  return delegationTransition(db, delegationId, "rpc_delegation_cancel", options.expectedStatus ?? "draft", options);
+}
+
+export async function periodHardClose(
+  db: SupabaseClient,
+  params: {
+    fiscalPeriodId: string;
+    legalEntityId: string;
+    module: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_period_hard_close", {
+      p_fiscal_period_id: params.fiscalPeriodId,
+      p_legal_entity_id: params.legalEntityId,
+      p_module: params.module,
+      p_expected_state: "soft_close",
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function periodReopen(
+  db: SupabaseClient,
+  params: {
+    fiscalPeriodId: string;
+    legalEntityId: string;
+    module: string;
+    reason: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_period_reopen", {
+      p_fiscal_period_id: params.fiscalPeriodId,
+      p_legal_entity_id: params.legalEntityId,
+      p_module: params.module,
+      p_reason: params.reason,
+      p_expected_state: "hard_close",
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+

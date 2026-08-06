@@ -1,5 +1,6 @@
 "use server";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   getDecisions,
   getIssues,
@@ -8,8 +9,15 @@ import {
 } from "@/data/repositories/governance-repository";
 import { DataAccessError } from "@/data/repositories/budget-repository";
 import {
+  delegationActivate,
+  delegationApprove,
+  delegationCancel,
   delegationCreateDraft,
+  delegationRevoke,
+  delegationSubmit,
   masterRecordCreateDraft,
+  periodHardClose,
+  periodReopen,
   periodSoftClose,
   requisitionCreateDraft,
   requisitionSubmit,
@@ -316,5 +324,128 @@ export async function fetchProfilesForDelegationAction() {
       .order("full_name_en");
     if (error) throw new DataAccessError(error.message, "DATABASE");
     return (data ?? []).filter((p) => p.id);
+  });
+}
+
+async function reloadDelegation(db: SupabaseClient, delegationId: string) {
+  const { data, error } = await db
+    .from("approval_delegations")
+    .select("*")
+    .eq("id", delegationId)
+    .single();
+  if (error || !data) throw new DataAccessError("Delegation not found.", "NOT_FOUND");
+  return data;
+}
+
+export async function submitDelegationAction(delegationId: string) {
+  return withActivePermission("approval", "update", async ({ db }) => {
+    await delegationSubmit(db, delegationId);
+    return reloadDelegation(db, delegationId);
+  });
+}
+
+export async function approveDelegationAction(delegationId: string) {
+  return withActivePermission("approval", "approve", async ({ db }) => {
+    await delegationApprove(db, delegationId);
+    return reloadDelegation(db, delegationId);
+  });
+}
+
+export async function activateDelegationAction(delegationId: string) {
+  return withActivePermission("approval", "approve", async ({ db }) => {
+    await delegationActivate(db, delegationId);
+    return reloadDelegation(db, delegationId);
+  });
+}
+
+export async function revokeDelegationAction(delegationId: string) {
+  return withActivePermission("approval", "update", async ({ db }) => {
+    await delegationRevoke(db, delegationId);
+    return reloadDelegation(db, delegationId);
+  });
+}
+
+export async function cancelDelegationAction(delegationId: string) {
+  return withActivePermission("approval", "update", async ({ db }) => {
+    await delegationCancel(db, delegationId);
+    return reloadDelegation(db, delegationId);
+  });
+}
+
+export async function hardClosePeriodAction(params: {
+  fiscalPeriodId: string;
+  module: string;
+}) {
+  return withActivePermission("budget", "approve", async ({ legalEntityId, db }) => {
+    await periodHardClose(db, {
+      fiscalPeriodId: params.fiscalPeriodId,
+      legalEntityId,
+      module: params.module,
+    });
+    const { data, error } = await db
+      .from("fiscal_period_module_controls")
+      .select("*, fiscal_periods(period_number, start_date, end_date, fiscal_year_id)")
+      .eq("legal_entity_id", legalEntityId)
+      .order("updated_at", { ascending: false });
+    if (error) throw new DataAccessError(error.message, "DATABASE");
+    return data ?? [];
+  });
+}
+
+export async function reopenPeriodAction(params: {
+  fiscalPeriodId: string;
+  module: string;
+  reason: string;
+}) {
+  return withActivePermission("budget", "approve", async ({ legalEntityId, db }) => {
+    await periodReopen(db, {
+      fiscalPeriodId: params.fiscalPeriodId,
+      legalEntityId,
+      module: params.module,
+      reason: params.reason,
+    });
+    const { data, error } = await db
+      .from("fiscal_period_module_controls")
+      .select("*, fiscal_periods(period_number, start_date, end_date, fiscal_year_id)")
+      .eq("legal_entity_id", legalEntityId)
+      .order("updated_at", { ascending: false });
+    if (error) throw new DataAccessError(error.message, "DATABASE");
+    return data ?? [];
+  });
+}
+
+export async function fetchPurchaseOrdersAction() {
+  return withActivePermission("commitment", "read", async ({ legalEntityId, db }) => {
+    const { data, error } = await db
+      .from("purchase_orders")
+      .select("*, vendors(name_en, name_ar)")
+      .eq("legal_entity_id", legalEntityId)
+      .order("created_at", { ascending: false });
+    if (error) throw new DataAccessError(error.message, "DATABASE");
+    return data ?? [];
+  });
+}
+
+export async function fetchSupplierInvoicesAction() {
+  return withActivePermission("commitment", "read", async ({ legalEntityId, db }) => {
+    const { data, error } = await db
+      .from("supplier_invoices")
+      .select("*, purchase_orders(po_number), vendors(name_en, name_ar)")
+      .eq("legal_entity_id", legalEntityId)
+      .order("created_at", { ascending: false });
+    if (error) throw new DataAccessError(error.message, "DATABASE");
+    return data ?? [];
+  });
+}
+
+export async function fetchPaymentRequestsAction() {
+  return withActivePermission("commitment", "read", async ({ legalEntityId, db }) => {
+    const { data, error } = await db
+      .from("payment_requests")
+      .select("*, supplier_invoices(invoice_number)")
+      .eq("legal_entity_id", legalEntityId)
+      .order("created_at", { ascending: false });
+    if (error) throw new DataAccessError(error.message, "DATABASE");
+    return data ?? [];
   });
 }

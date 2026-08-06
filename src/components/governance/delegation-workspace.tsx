@@ -6,7 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { createDelegationDraftAction } from "@/app/actions/governance-actions";
+import {
+  activateDelegationAction,
+  approveDelegationAction,
+  cancelDelegationAction,
+  createDelegationDraftAction,
+  revokeDelegationAction,
+  submitDelegationAction,
+} from "@/app/actions/governance-actions";
 
 export interface DelegationRow {
   id: string;
@@ -32,10 +39,16 @@ export function DelegationWorkspace({
   initialDelegations,
   profiles,
   canCreate,
+  canSubmit,
+  canApprove,
+  canRevoke,
 }: {
   initialDelegations: DelegationRow[];
   profiles: ProfileOption[];
   canCreate: boolean;
+  canSubmit: boolean;
+  canApprove: boolean;
+  canRevoke: boolean;
 }) {
   const t = useTranslations("delegation");
   const tCommon = useTranslations("common");
@@ -49,6 +62,28 @@ export function DelegationWorkspace({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const updateDelegation = (updated: DelegationRow) => {
+    setDelegations((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+  };
+
+  const runTransition = (
+    id: string,
+    action: (id: string) => Promise<DelegationRow>,
+    successKey: "submitted" | "approved" | "activated" | "revoked" | "cancelled",
+  ) => {
+    startTransition(async () => {
+      setError(null);
+      setMessage(null);
+      try {
+        const updated = (await action(id)) as DelegationRow;
+        updateDelegation(updated);
+        setMessage(t(successKey));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t("actionError"));
+      }
+    });
+  };
 
   const handleCreate = () => {
     startTransition(async () => {
@@ -152,10 +187,37 @@ export function DelegationWorkspace({
                 <CardTitle className="text-base">{d.workflow_type}</CardTitle>
                 <Badge variant="outline">{d.delegation_status}</Badge>
               </CardHeader>
-              <CardContent className="text-sm text-slate-600 space-y-1">
+              <CardContent className="text-sm text-slate-600 space-y-2">
                 <p>{t("permissionCode")}: {d.permission_code}</p>
                 <p>{t("reason")}: {d.reason}</p>
                 <p>{t("effectiveRange", { start: d.effective_start, end: d.effective_end })}</p>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {canSubmit && d.delegation_status === "draft" ? (
+                    <Button size="sm" disabled={pending} onClick={() => runTransition(d.id, submitDelegationAction, "submitted")}>
+                      {tCommon("submit")}
+                    </Button>
+                  ) : null}
+                  {canApprove && d.delegation_status === "submitted" ? (
+                    <Button size="sm" disabled={pending} onClick={() => runTransition(d.id, approveDelegationAction, "approved")}>
+                      {tCommon("approve")}
+                    </Button>
+                  ) : null}
+                  {canApprove && d.delegation_status === "approved" ? (
+                    <Button size="sm" disabled={pending} onClick={() => runTransition(d.id, activateDelegationAction, "activated")}>
+                      {t("activate")}
+                    </Button>
+                  ) : null}
+                  {canRevoke && d.delegation_status === "active" ? (
+                    <Button size="sm" variant="secondary" disabled={pending} onClick={() => runTransition(d.id, revokeDelegationAction, "revoked")}>
+                      {t("revoke")}
+                    </Button>
+                  ) : null}
+                  {canSubmit && d.delegation_status === "draft" ? (
+                    <Button size="sm" variant="outline" disabled={pending} onClick={() => runTransition(d.id, cancelDelegationAction, "cancelled")}>
+                      {tCommon("cancel")}
+                    </Button>
+                  ) : null}
+                </div>
               </CardContent>
             </Card>
           ))

@@ -21,7 +21,7 @@
 
 ### Delegated approvals
 - [x] Delegation workspace route
-- [ ] Full lifecycle UI
+- [x] Full lifecycle UI (submit/approve/activate/revoke/cancel)
 - [ ] Delegated inbox integration
 - [ ] SOD enforcement tests
 
@@ -30,15 +30,16 @@
 - [ ] RFQ / quotation schema + UI
 - [ ] Evaluation criteria
 - [ ] PO / contract commands
+- [x] PO / invoice / payment read workspace
 - [ ] Receipt / service entry
 - [ ] Invoice matching
-- [ ] Payment request
+- [ ] Payment request workflow
 
 ### Period close
 - [x] Period calendar workspace
-- [x] Module controls UI (soft close)
+- [x] Module controls UI (soft/hard close + reopen)
 - [ ] Checklist blockers
-- [ ] Reopen workflow
+- [ ] Reopen workflow (senior approver gate — partial)
 
 ### Approval rules
 - [x] Rule versioning UI
@@ -76,4 +77,5 @@
 
 | SHA | Message | Status |
 |-----|---------|--------|
-| — | (pending) | — |
+| afb83dd | feat(governance): replace placeholders with bilingual workspaces | done |
+| — | (pending commit 2) | — |

@@ -1,28 +1,28 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/layout/page-header";
-import { DelegationWorkspace } from "@/components/governance/delegation-workspace";
+import { ProcurementWorkspace } from "@/components/governance/procurement-workspace";
 import { WorkspaceDenied, WorkspaceError } from "@/components/governance/workspace-state";
 import {
-  fetchDelegationsAction,
-  fetchProfilesForDelegationAction,
+  fetchPaymentRequestsAction,
+  fetchPurchaseOrdersAction,
+  fetchSupplierInvoicesAction,
 } from "@/app/actions/governance-actions";
 import { getAuthContext } from "@/lib/auth/context";
 import { hasPermission } from "@/domain/auth/permissions";
 import { LEGAL_ENTITY_MODAWAT } from "@/types/database";
 
-export default async function DelegationsPage({
+export default async function PurchaseOrdersPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations("delegation");
+  const t = await getTranslations("procurement");
   const ctx = await getAuthContext();
   const entityId = ctx?.primaryLegalEntityId ?? LEGAL_ENTITY_MODAWAT;
   const roles = ctx?.roleAssignments ?? [];
-  const canRead = hasPermission(roles, "approval", "read", entityId);
-  const canCreate = hasPermission(roles, "approval", "create", entityId);
+  const canRead = hasPermission(roles, "commitment", "read", entityId);
 
   if (!canRead) {
     return (
@@ -33,13 +33,15 @@ export default async function DelegationsPage({
     );
   }
 
-  let delegations: Awaited<ReturnType<typeof fetchDelegationsAction>> = [];
-  let profiles: Awaited<ReturnType<typeof fetchProfilesForDelegationAction>> = [];
+  let purchaseOrders: Awaited<ReturnType<typeof fetchPurchaseOrdersAction>> = [];
+  let invoices: Awaited<ReturnType<typeof fetchSupplierInvoicesAction>> = [];
+  let payments: Awaited<ReturnType<typeof fetchPaymentRequestsAction>> = [];
   let errorMessage: string | null = null;
   try {
-    [delegations, profiles] = await Promise.all([
-      fetchDelegationsAction(),
-      fetchProfilesForDelegationAction(),
+    [purchaseOrders, invoices, payments] = await Promise.all([
+      fetchPurchaseOrdersAction(),
+      fetchSupplierInvoicesAction(),
+      fetchPaymentRequestsAction(),
     ]);
   } catch (e) {
     errorMessage = e instanceof Error ? e.message : t("loadError");
@@ -51,13 +53,10 @@ export default async function DelegationsPage({
       {errorMessage ? (
         <WorkspaceError message={errorMessage} />
       ) : (
-        <DelegationWorkspace
-          initialDelegations={delegations}
-          profiles={profiles}
-          canCreate={canCreate}
-          canSubmit={hasPermission(roles, "approval", "update", entityId)}
-          canApprove={hasPermission(roles, "approval", "approve", entityId)}
-          canRevoke={hasPermission(roles, "approval", "update", entityId)}
+        <ProcurementWorkspace
+          purchaseOrders={purchaseOrders}
+          invoices={invoices}
+          payments={payments}
         />
       )}
     </div>
