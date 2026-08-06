@@ -419,3 +419,126 @@ export async function forecastApproveAndSupersede(
 }
 
 export type { ApprovalStatus, CommandOptions, CommandResult };
+
+export async function masterRecordCreateDraft(
+  db: SupabaseClient,
+  params: {
+    legalEntityId: string;
+    recordType: string;
+    code: string;
+    nameEn: string;
+    nameAr: string;
+    description?: string;
+    parentId?: string;
+    attributes?: Record<string, unknown>;
+    changeReason?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_master_record_create_draft", {
+      p_legal_entity_id: params.legalEntityId,
+      p_record_type: params.recordType,
+      p_code: params.code,
+      p_name_en: params.nameEn,
+      p_name_ar: params.nameAr,
+      p_description: params.description ?? null,
+      p_parent_id: params.parentId ?? null,
+      p_attributes: params.attributes ?? {},
+      p_change_reason: params.changeReason ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function delegationCreateDraft(
+  db: SupabaseClient,
+  params: {
+    legalEntityId: string;
+    delegateId: string;
+    workflowType: string;
+    permissionCode: string;
+    effectiveStart: string;
+    effectiveEnd: string;
+    reason: string;
+    controlScopeId?: string;
+    financialThreshold?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_delegation_create_draft", {
+      p_legal_entity_id: params.legalEntityId,
+      p_delegate_id: params.delegateId,
+      p_control_scope_id: params.controlScopeId ?? null,
+      p_workflow_type: params.workflowType,
+      p_permission_code: params.permissionCode,
+      p_financial_threshold: params.financialThreshold ?? null,
+      p_effective_start: params.effectiveStart,
+      p_effective_end: params.effectiveEnd,
+      p_reason: params.reason,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function requisitionCreateDraft(
+  db: SupabaseClient,
+  params: {
+    legalEntityId: string;
+    requisitionNumber: string;
+    titleEn: string;
+    titleAr: string;
+    controlScopeId?: string;
+    fiscalPeriodId?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_requisition_create_draft", {
+      p_legal_entity_id: params.legalEntityId,
+      p_requisition_number: params.requisitionNumber,
+      p_title_en: params.titleEn,
+      p_title_ar: params.titleAr,
+      p_control_scope_id: params.controlScopeId ?? null,
+      p_cost_node_id: null,
+      p_fiscal_period_id: params.fiscalPeriodId ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function requisitionSubmit(
+  db: SupabaseClient,
+  requisitionId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_requisition_submit", {
+      p_requisition_id: requisitionId,
+      p_expected_status: options.expectedStatus ?? "draft",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function periodSoftClose(
+  db: SupabaseClient,
+  params: { fiscalPeriodId: string; legalEntityId: string; module: string; idempotencyKey?: string },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_period_soft_close", {
+      p_fiscal_period_id: params.fiscalPeriodId,
+      p_legal_entity_id: params.legalEntityId,
+      p_module: params.module,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
