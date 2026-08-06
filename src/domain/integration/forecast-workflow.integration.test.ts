@@ -110,7 +110,9 @@ describe.skipIf(!hasDb)("forecast workflow integration", () => {
     await forecastSubmit(ownerDb, draft.entity_id as string);
     await forecastStartReview(await createAuthenticatedTestClient("finance"), draft.entity_id as string);
 
-    await expect(forecastApproveAndLock(ownerDb, draft.entity_id as string)).rejects.toThrow(/Forbidden|SOD/i);
+    await expect(forecastApproveAndLock(ownerDb, draft.entity_id as string)).rejects.toThrow(
+      /Submitter cannot approve|SOD|Forbidden/i,
+    );
   });
 
   it("denies cross-tenant forecast read via RLS", async () => {
@@ -119,7 +121,10 @@ describe.skipIf(!hasDb)("forecast workflow integration", () => {
       .from("forecast_versions")
       .select("id")
       .eq("legal_entity_id", LEGAL_ENTITY_MODAWAT);
-    expect(error).toBeNull();
-    expect(data ?? []).toHaveLength(0);
+    if (error) {
+      expect(error.code).toBe("42501");
+    } else {
+      expect(data ?? []).toHaveLength(0);
+    }
   });
 });

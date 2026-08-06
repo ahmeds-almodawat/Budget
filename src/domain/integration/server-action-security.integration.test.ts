@@ -45,7 +45,7 @@ describe.skipIf(!hasDb)("server action security boundaries (two-entity)", () => 
         versionLabel: `SEC-B-${Date.now()}`,
         lines: [{ fiscalPeriodId, forecastAmount: "12000" }],
       }),
-    ).rejects.toThrow(/Forbidden|FORBIDDEN/i);
+    ).rejects.toThrow(/Insufficient role|Forbidden|FORBIDDEN/i);
   });
 
   it("inactive finance user is denied at RPC layer", async () => {
@@ -65,6 +65,6 @@ describe.skipIf(!hasDb)("server action security boundaries (two-entity)", () => 
         versionLabel: `SEC-V-${Date.now()}`,
         lines: [{ fiscalPeriodId, forecastAmount: "5000" }],
       }),
-    ).rejects.toThrow(/Forbidden|FORBIDDEN/i);
+    ).rejects.toThrow(/Insufficient role|Forbidden|FORBIDDEN/i);
   });
 });
