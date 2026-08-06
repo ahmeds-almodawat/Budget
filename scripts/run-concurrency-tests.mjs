@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /**
  * Concurrency and idempotency probes for P2 financial transaction commands.
- * Run: node scripts/run-concurrency-tests.mjs
+ * Run: npm run test:concurrency
  */
 import pg from "pg";
+import { mkdir, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 const connectionString =
   process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:56002/postgres";
 
 const LEGAL_ENTITY = "11111111-1111-1111-1111-111111111102";
-const APPROVER = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2";
 const FINANCE = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3";
 
 async function asUser(client, userId, fn) {
@@ -139,6 +140,30 @@ async function main() {
   });
 
   console.log(`\nConcurrency tests: ${passed} passed, ${failed} failed`);
+
+  const artifactDir = fileURLToPath(new URL("../artifacts/financial-transactions/", import.meta.url));
+  await mkdir(artifactDir, { recursive: true });
+  const artifactPath = fileURLToPath(new URL("../artifacts/financial-transactions/concurrency-evidence.json", import.meta.url));
+  await writeFile(
+    artifactPath,
+    JSON.stringify(
+      {
+        generated_at: new Date().toISOString(),
+        passed,
+        failed,
+        total: passed + failed,
+        probes: [
+          "COD-H-003 audit append-only triggers",
+          "COD-H-004 approved budget immutability",
+          "COD-H-010 idempotent reversal",
+          "COD-M-005 cross-tenant allocation rejection",
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
   await client.end();
   if (failed > 0) process.exit(1);
 }
