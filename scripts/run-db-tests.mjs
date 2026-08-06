@@ -649,6 +649,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
     "deny_audit_mutation", "enforce_allocation_tenant_consistency", "enforce_leaf_posting",
     "prevent_cost_node_cycle", "prevent_inactive_cost_posting", "prevent_org_unit_cycle",
     "protect_immutable_budget_line", "protect_immutable_budget_monthly", "protect_locked_budget_version",
+    "protect_immutable_forecast_line", "protect_locked_forecast_version",
     "protect_milestone_baseline", "protect_phase_baseline", "protect_posted_actual",
     "protect_project_baseline", "protect_task_baseline", "validate_allocation_reconciliation",
     "validate_exact_allocation_reconciliation",
