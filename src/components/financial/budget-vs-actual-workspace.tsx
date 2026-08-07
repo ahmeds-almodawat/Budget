@@ -227,7 +227,6 @@ export function BudgetVsActualWorkspace({
       const series: ChartSeriesDef[] = [
         { key: "budget", label: tAnalytics("series.budget"), token: "chart-2" },
         { key: "actual", label: tAnalytics("series.actual"), token: "chart-1" },
-        { key: "commitment", label: tAnalytics("series.commitment"), token: "chart-4" },
       ];
       return { data: expenseTrend, series, title: tAnalytics("sections.expenseTrend") };
     }
@@ -277,7 +276,7 @@ export function BudgetVsActualWorkspace({
   const profitabilityBridge = useMemo(
     () =>
       buildProfitabilityBridge({
-        netRevenue: summary.profitTotals.net || summary.revActualNet,
+        netRevenue: filteredProfitability.length > 0 ? summary.profitTotals.net : summary.revActualNet,
         costOfRevenue: summary.profitTotals.cor,
         grossProfit: summary.profitTotals.gp,
         payroll: summary.profitTotals.payroll,
@@ -292,7 +291,7 @@ export function BudgetVsActualWorkspace({
           operatingContribution: tAnalytics("kpi.operatingContribution"),
         },
       }),
-    [summary, tAnalytics],
+    [summary, filteredProfitability.length, tAnalytics],
   );
 
   const varianceItems = useMemo(() => {
@@ -351,6 +350,7 @@ export function BudgetVsActualWorkspace({
                 size="sm"
                 variant={trendMode === mode ? "default" : "outline"}
                 onClick={() => setTrendMode(mode)}
+                aria-label={`${tAnalytics("common.chartData")}: ${tAnalytics(`modes.${mode}`)}`}
               >
                 {tAnalytics(`modes.${mode}`)}
               </Button>
@@ -369,17 +369,14 @@ export function BudgetVsActualWorkspace({
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartCard
           title={tAnalytics("sections.grossToNet")}
-          empty={grossToNet.length < 2 || summary.gross === 0}
+          empty={filteredRevenue.length === 0 || grossToNet.length < 2}
           emptyTitle={tAnalytics("empty.period")}
         >
           <WaterfallChart steps={grossToNet} locale={moneyLocale} />
         </ChartCard>
         <ChartCard
           title={tAnalytics("sections.profitabilityBridge")}
-          empty={
-            profitabilityBridge.length < 2 ||
-            (summary.profitTotals.net === 0 && summary.profitTotals.gp === 0)
-          }
+          empty={filteredProfitability.length === 0 || profitabilityBridge.length < 2}
           emptyTitle={tAnalytics("empty.period")}
         >
           <WaterfallChart steps={profitabilityBridge} locale={moneyLocale} />

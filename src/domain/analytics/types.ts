@@ -39,6 +39,7 @@ export interface ChartSeriesDef {
   label: string;
   token: ChartToken;
   type?: "line" | "area" | "bar";
+  valueKind?: "money" | "percent" | "number" | "ratio";
 }
 
 export interface WaterfallStep {
@@ -74,7 +75,7 @@ export interface PipelineStage {
   id: string;
   label: string;
   count: number;
-  amount: number;
+  amount: number | null;
 }
 
 export interface VarianceItem {

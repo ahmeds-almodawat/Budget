@@ -5,7 +5,7 @@ import { fetchProjectTimelineAction } from "@/app/actions/project-actions";
 import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
 import { pickLocalized } from "@/lib/i18n/display";
 import { loadRouteData, requireRoutePermission } from "@/lib/auth/route-authorization";
-import { buildProjectGanttItems } from "@/domain/analytics/timeline";
+import { buildProjectGanttItems, dateInTimeZone } from "@/domain/analytics/timeline";
 import { ProjectTimelineAnalytics } from "@/components/dashboard/project-timeline-analytics";
 
 export default async function ProjectTimelinePage({
@@ -39,6 +39,7 @@ export default async function ProjectTimelinePage({
     project.control_scopes?.name_ar,
   );
 
+  const today = dateInTimeZone();
   const ganttItems = buildProjectGanttItems({
     projectId: project.id,
     projectLabel: scopeName,
@@ -67,6 +68,7 @@ export default async function ProjectTimelinePage({
       actual_date: m.actual_date,
       approved_progress: m.approved_progress,
     })),
+    today,
   });
 
   return (
@@ -91,6 +93,7 @@ export default async function ProjectTimelinePage({
 
       <ProjectTimelineAnalytics
         items={ganttItems}
+        today={today}
         titles={{
           timeline: tAnalytics("sections.timeline"),
           roadmap: tAnalytics("sections.roadmap"),

@@ -103,6 +103,11 @@ export function PerformanceWorkspace({
     return p ? pickLocalized(locale, p.full_name_en, p.full_name_ar) : id.slice(0, 8);
   };
 
+  const appraisalStatusLabel = (status: string) =>
+    tAnalytics.has(`appraisalStatuses.${status}`)
+      ? tAnalytics(`appraisalStatuses.${status}`)
+      : tAnalytics("common.statusUnavailable");
+
   return (
     <div className="space-y-6">
       <ChartCard
@@ -119,7 +124,7 @@ export function PerformanceWorkspace({
           <ul className="grid gap-2 sm:grid-cols-2 text-sm text-text-secondary">
             {Object.entries(completionStats.statusCounts).map(([status, count]) => (
               <li key={status} className="flex justify-between gap-2 rounded-md border border-border px-3 py-2">
-                <span>{status}</span>
+                <span>{appraisalStatusLabel(status)}</span>
                 <span className="tabular-nums text-foreground">{formatInteger(count, locale)}</span>
               </li>
             ))}

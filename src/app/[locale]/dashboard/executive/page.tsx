@@ -6,6 +6,7 @@ import { calculateOpenCommitment } from "@/domain/financial/calculations";
 import { requireRoutePermission } from "@/lib/auth/route-authorization";
 import { loadBudgetVsActualWorkspaceData } from "@/data/repositories/revenue-repository";
 import { buildExecutiveAnalyticsModel } from "@/lib/analytics/executive-view-model";
+import { dateInTimeZone } from "@/domain/analytics/timeline";
 import { FISCAL_YEAR_2027 } from "@/types/database";
 
 export default async function ExecutiveDashboardPage({
@@ -23,55 +24,68 @@ export default async function ExecutiveDashboardPage({
   const localePrefix = `/${locale}`;
   const arabicCurrency = locale.startsWith("ar");
 
-  const workspace = await loadBudgetVsActualWorkspaceData(db, session.legalEntityId, FISCAL_YEAR_2027).catch(
-    () => null,
-  );
+  let model: ReturnType<typeof buildExecutiveAnalyticsModel> | null = null;
+  try {
+    const today = dateInTimeZone();
+    const [workspace, commitmentsResult, delayedResult, matchResult, unmappedResult, blockingResult] =
+      await Promise.all([
+        loadBudgetVsActualWorkspaceData(db, session.legalEntityId, FISCAL_YEAR_2027),
+        db
+          .from("commitments")
+          .select("original_value, approved_variations, invoiced_applied, cancelled_amount")
+          .eq("legal_entity_id", session.legalEntityId),
+        db
+          .from("milestones")
+          .select("id, projects!inner(control_scopes!inner(legal_entity_id))", { count: "exact", head: true })
+          .eq("projects.control_scopes.legal_entity_id", session.legalEntityId)
+          .lt("forecast_date", today)
+          .is("actual_date", null),
+        db
+          .from("invoice_match_exceptions")
+          .select("id, supplier_invoices!inner(legal_entity_id)", { count: "exact", head: true })
+          .eq("supplier_invoices.legal_entity_id", session.legalEntityId)
+          .eq("is_resolved", false),
+        db
+          .from("unmapped_transaction_queue")
+          .select("id, import_batches!inner(legal_entity_id)", { count: "exact", head: true })
+          .eq("import_batches.legal_entity_id", session.legalEntityId),
+        db
+          .from("period_close_item_results")
+          .select("id, item_status, period_close_checklist_items!inner(is_blocking), period_close_instances!inner(legal_entity_id)")
+          .eq("period_close_instances.legal_entity_id", session.legalEntityId)
+          .eq("period_close_checklist_items.is_blocking", true)
+          .in("item_status", ["pending", "failed", "in_progress"]),
+      ]);
 
-  const { data: commitments } = await db
-    .from("commitments")
-    .select("original_value, approved_variations, invoiced_applied, cancelled_amount")
-    .eq("legal_entity_id", session.legalEntityId);
+    const queryErrors = [
+      commitmentsResult.error,
+      delayedResult.error,
+      matchResult.error,
+      unmappedResult.error,
+      blockingResult.error,
+    ].filter(Boolean);
+    if (queryErrors.length > 0) throw queryErrors[0];
 
-  const openCommitments = (commitments ?? []).reduce((sum, c) => {
-    return (
-      sum +
-      Number(
-        calculateOpenCommitment({
-          totalCommitted: (Number(c.original_value) + Number(c.approved_variations)).toFixed(4),
-          invoicedApplied: c.invoiced_applied,
-          cancelled: c.cancelled_amount,
-        }),
-      )
-    );
-  }, 0);
+    const openCommitments = (commitmentsResult.data ?? []).reduce((sum, commitment) => {
+      return (
+        sum +
+        Number(
+          calculateOpenCommitment({
+            totalCommitted: (
+              Number(commitment.original_value) + Number(commitment.approved_variations)
+            ).toFixed(4),
+            invoicedApplied: commitment.invoiced_applied,
+            cancelled: commitment.cancelled_amount,
+          }),
+        )
+      );
+    }, 0);
+    const delayedMilestones = delayedResult.count ?? 0;
+    const matchExceptions = matchResult.count ?? 0;
+    const unmappedActuals = unmappedResult.count ?? 0;
+    const periodBlockers = blockingResult.data?.length ?? 0;
 
-  const { count: delayedMilestones } = await db
-    .from("milestones")
-    .select("*", { count: "exact", head: true })
-    .lt("forecast_date", new Date().toISOString().slice(0, 10))
-    .is("actual_date", null);
-
-  const { count: matchExceptions } = await db
-    .from("invoice_match_exceptions")
-    .select("id, supplier_invoices!inner(legal_entity_id)", { count: "exact", head: true })
-    .eq("supplier_invoices.legal_entity_id", session.legalEntityId)
-    .eq("is_resolved", false);
-
-  const { count: unmappedActuals } = await db
-    .from("unmapped_transaction_queue")
-    .select("id, import_batches!inner(legal_entity_id)", { count: "exact", head: true })
-    .eq("import_batches.legal_entity_id", session.legalEntityId);
-
-  const { data: blockingResults } = await db
-    .from("period_close_item_results")
-    .select("id, item_status, period_close_checklist_items!inner(is_blocking), period_close_instances!inner(legal_entity_id)")
-    .eq("period_close_instances.legal_entity_id", session.legalEntityId)
-    .eq("period_close_checklist_items.is_blocking", true)
-    .in("item_status", ["pending", "failed", "in_progress"]);
-  const periodBlockers = blockingResults?.length ?? 0;
-
-  const model = workspace
-    ? buildExecutiveAnalyticsModel({
+    model = buildExecutiveAnalyticsModel({
         locale,
         localePrefix,
         arabicCurrency,
@@ -92,6 +106,7 @@ export default async function ExecutiveDashboardPage({
           actualOperatingCost: tAnalytics("kpi.actualOperatingCost"),
           openCommitments: tAnalytics("kpi.openCommitments"),
           capex: tAnalytics("kpi.capex"),
+          capexSubtitle: tAnalytics("notes.capexSeparate"),
           budget: tAnalytics("series.budget"),
           actual: tAnalytics("series.actual"),
           commitment: tAnalytics("series.commitment"),
@@ -122,9 +137,15 @@ export default async function ExecutiveDashboardPage({
             unmapped: tAnalytics("exceptions.unmapped"),
             periodBlockers: tAnalytics("exceptions.periodBlockers"),
           },
+          insights: {
+            matchExceptions: tAnalytics("insights.matchExceptions", { count: matchExceptions }),
+            delayedMilestones: tAnalytics("insights.delayedMilestones", { count: delayedMilestones }),
+          },
         },
-      })
-    : null;
+      });
+  } catch {
+    model = null;
+  }
 
   return (
     <div className="space-y-6">

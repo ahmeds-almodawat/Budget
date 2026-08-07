@@ -378,7 +378,9 @@
     "exportCsv": "تصدير CSV",
     "exportExcel": "تصدير Excel",
     "preview": "معاينة التقرير",
-    "selectReport": "اختر تقريراً للمعاينة"
+    "selectReport": "اختر تقريراً للمعاينة",
+    "visualPreview": "معاينة مرئية",
+    "loadError": "تعذر تحميل التقرير المحدد."
   },
   "imports": {
     "title": "استيراد التكاليف الفعلية",
@@ -863,6 +865,13 @@
     "invoiceMatched": "تمت مطابقة الفاتورة.",
     "matchVisualTitle": "حالة مطابقة الفاتورة",
     "emptyMatchVisual": "لا توجد استثناءات مطابقة للمشتريات.",
+    "matchStatuses": {
+      "matched": "مطابقة",
+      "matchedWithinTolerance": "مطابقة ضمن حد السماح",
+      "exception": "استثناء مطابقة",
+      "overridden": "تم تجاوز المطابقة",
+      "unknown": "الحالة غير متاحة"
+    },
     "overrideMatch": "تجاوز المطابقة",
     "overrideReason": "سبب التجاوز",
     "matchOverridden": "تم تجاوز المطابقة.",
@@ -1034,6 +1043,7 @@
       "approvalAge": "عمر الاعتماد",
       "branchComparison": "مقارنة الفروع",
       "forecastTrend": "الميزانية / الفعلي / التوقع",
+      "forecastProfile": "التوقع المعتمد حسب الفترة",
       "favorableVariances": "أعلى الفروقات الإيجابية",
       "unfavorableVariances": "أعلى الفروقات السلبية",
       "appraisalCompletion": "إنجاز التقييمات",
@@ -1059,6 +1069,10 @@
       "fac": "التوقع عند الإنجاز",
       "cpi": "مؤشر أداء التكلفة",
       "spi": "مؤشر أداء الجدول",
+      "cv": "فرق التكلفة (CV)",
+      "sv": "فرق الجدول (SV)",
+      "eac": "التقدير عند الإنجاز (EAC)",
+      "vac": "الفرق عند الإنجاز (VAC)",
       "currentApprovedFac": "التوقع المعتمد الحالي",
       "underReviewFac": "التوقع قيد المراجعة",
       "draftFac": "إجمالي مسودة التوقع",
@@ -1077,6 +1091,7 @@
       "pv": "القيمة المخططة",
       "ev": "القيمة المكتسبة",
       "ac": "التكلفة الفعلية"
+      ,"count": "العدد"
     },
     "bridge": {
       "gross": "إجمالي الإيراد",
@@ -1096,11 +1111,49 @@
       "payroll": "الرواتب",
       "operatingExpenses": "المصروفات التشغيلية",
       "capex": "النفقات الرأسمالية"
+      ,"revenue": "الإيراد",
+      "internalTransfer": "تحويل داخلي",
+      "workingCapital": "رأس المال العامل",
+      "statistical": "إحصائي",
+      "other": "أخرى"
     },
     "exceptions": {
       "matchExceptions": "استثناءات مطابقة الفواتير",
       "unmapped": "فعليات غير مربوطة",
       "periodBlockers": "معوّقات إغلاق الفترة"
+    },
+    "notes": {
+      "capexSeparate": "منفصلة عن المساهمة التشغيلية",
+      "pipelineLimit": "أحدث 200 مستند لكل مرحلة معروضة"
+    },
+    "insights": {
+      "matchExceptions": "توجد استثناءات مطابقة غير معالجة في {count} من فواتير المشتريات",
+      "delayedMilestones": "يوجد {count} من المعالم بعد تاريخ التوقع"
+    },
+    "statuses": {
+      "completed": "مكتمل",
+      "delayed": "متأخر",
+      "inProgress": "قيد التنفيذ"
+    },
+    "appraisalStatuses": {
+      "employee_self_review": "المراجعة الذاتية للموظف",
+      "self_submitted": "تم تقديم المراجعة الذاتية",
+      "manager_review": "مراجعة المدير",
+      "manager_submitted": "تم تقديم مراجعة المدير",
+      "reviewer_review": "مراجعة المعايرة",
+      "finalized": "معتمد نهائياً",
+      "employee_acknowledged": "إقرار الموظف"
+    },
+    "common": {
+      "item": "البند",
+      "baseline": "خط الأساس",
+      "forecast": "التوقع",
+      "riskMatrix": "مصفوفة المخاطر",
+      "lifecycle": "دورة الحالة",
+      "chartData": "بيانات الرسم",
+      "statusUnavailable": "الحالة غير متاحة",
+      "toggleItem": "توسيع أو طي {item}",
+      "ageDays": "{value} ي"
     },
     "empty": {
       "period": "لا تتوفر بيانات للفترة المحددة",

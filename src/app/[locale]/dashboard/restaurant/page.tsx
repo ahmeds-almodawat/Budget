@@ -39,7 +39,13 @@ export default async function RestaurantDashboardPage({
     { key: "revenue", label: tLabels("revenue"), token: "chart-1", type: "bar" },
   ];
   const foodCostSeries: ChartSeriesDef[] = [
-    { key: "foodCostPercent", label: t("foodCostPercent"), token: "chart-3", type: "bar" },
+    {
+      key: "foodCostPercent",
+      label: t("foodCostPercent"),
+      token: "chart-3",
+      type: "bar",
+      valueKind: "percent",
+    },
   ];
 
   return (

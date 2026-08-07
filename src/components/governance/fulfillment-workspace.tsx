@@ -34,7 +34,7 @@ import { formatMoney } from "@/lib/money";
 import { lineTotal } from "@/domain/procurement/calculations";
 import { pickLocalized } from "@/lib/i18n/display";
 import { ChartCard, ExceptionSummary } from "@/components/analytics";
-import { toNumber } from "@/domain/analytics/format";
+import { invoiceMatchStatusKey } from "@/domain/analytics/status";
 
 function firstRel<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
@@ -548,6 +548,8 @@ export function SupplierInvoiceWorkspace({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const matchStatusLabel = (status: string | null | undefined) =>
+    t(`matchStatuses.${invoiceMatchStatusKey(status)}`);
   const selectedPo = poOptions.find((p) => p.id === poId);
   const selectedLine = selectedPo?.lines.find((line) => line.id === poLineId);
   const gross = selectedLine ? lineTotal(invoiceQuantity || "0", selectedLine.unitPrice).toFixed(4) : "0.0000";
@@ -656,25 +658,25 @@ export function SupplierInvoiceWorkspace({
           items={[
             {
               id: "matched",
-              label: "matched",
+              label: t("matchStatuses.matched"),
               count: rows.filter((r) => r.match_status === "matched").length,
               tone: "neutral",
             },
             {
               id: "tolerance",
-              label: "matched_within_tolerance",
+              label: t("matchStatuses.matchedWithinTolerance"),
               count: rows.filter((r) => r.match_status === "matched_within_tolerance").length,
               tone: "warning",
             },
             {
               id: "exception",
-              label: "exception",
+              label: t("matchStatuses.exception"),
               count: rows.filter((r) => r.match_status === "exception").length,
               tone: "danger",
             },
             {
               id: "overridden",
-              label: "overridden",
+              label: t("matchStatuses.overridden"),
               count: rows.filter((r) => r.match_status === "overridden").length,
               tone: "warning",
             },
@@ -693,9 +695,9 @@ export function SupplierInvoiceWorkspace({
                     {po ? ` · PO ${po.po_number}` : ""}
                   </span>
                   <span className="tabular-nums">
-                    {inv.match_status} · {formatMoney(inv.gross_amount, "SAR")}
+                    {matchStatusLabel(inv.match_status)} · {formatMoney(inv.gross_amount, "SAR")}
                   </span>
-                  <span className="sr-only">amount {toNumber(inv.gross_amount)}</span>
+                  <span className="sr-only">{t("amount")} {formatMoney(inv.gross_amount, "SAR")}</span>
                 </li>
               );
             })}
@@ -713,7 +715,7 @@ export function SupplierInvoiceWorkspace({
                 <p className="text-muted-foreground">
                   {vendor ? pickLocalized(locale, vendor.name_en, vendor.name_ar) : "—"}
                   {po ? ` · PO ${po.po_number}` : ""}
-                  {inv.match_status ? ` · ${inv.match_status}` : ""}
+                  {inv.match_status ? ` · ${matchStatusLabel(inv.match_status)}` : ""}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">

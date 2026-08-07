@@ -17,13 +17,23 @@ import {
   approvalAgeBuckets,
   buildGanttRange,
   buildProcurementPipeline,
+  dateInTimeZone,
   daysBetween,
   ganttBarOffset,
   periodCloseProgress,
   sortTimelineEvents,
 } from "@/domain/analytics/timeline";
+import { invoiceMatchStatusKey } from "@/domain/analytics/status";
 
 describe("analytics format", () => {
+  it("maps invoice match identifiers to localized message keys", () => {
+    expect(invoiceMatchStatusKey("matched")).toBe("matched");
+    expect(invoiceMatchStatusKey("matched_within_tolerance")).toBe("matchedWithinTolerance");
+    expect(invoiceMatchStatusKey("exception")).toBe("exception");
+    expect(invoiceMatchStatusKey("overridden")).toBe("overridden");
+    expect(invoiceMatchStatusKey("future_status")).toBe("unknown");
+  });
+
   it("formats compact money", () => {
     expect(formatCompactMoney(4_700_000)).toContain("4.7");
     expect(formatCompactMoney(4_700_000)).toContain("M");
@@ -173,6 +183,13 @@ describe("timeline helpers", () => {
     expect(pipeline.find((p) => p.id === "rfq")?.count).toBe(2);
     expect(pipeline.find((p) => p.id === "rfq")?.amount).toBe(150);
 
+    const unknownAmount = buildProcurementPipeline(
+      [{ stage: "rfq", amount: null }, { stage: "rfq", amount: 50 }],
+      ["rfq"],
+      { rfq: "RFQ" },
+    );
+    expect(unknownAmount[0].amount).toBeNull();
+
     const progress = periodCloseProgress({
       automaticPassed: 2,
       automaticTotal: 4,
@@ -182,6 +199,10 @@ describe("timeline helpers", () => {
     });
     expect(progress.readinessPercent).toBe(60);
     expect(progress.blocked).toBe(true);
+  });
+
+  it("uses the configured business timezone for calendar dates", () => {
+    expect(dateInTimeZone(new Date("2027-01-01T21:30:00Z"), "Asia/Riyadh")).toBe("2027-01-02");
   });
 
   it("buckets approval ages from timestamps", () => {

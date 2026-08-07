@@ -98,19 +98,19 @@ export default async function ProjectDashboardPage({
         },
         {
           id: "cv",
-          label: "CV",
+          label: tAnalytics("kpi.cv"),
           value: cv,
           formattedValue: cv == null ? "—" : fmt(cv),
         },
         {
           id: "sv",
-          label: "SV",
+          label: tAnalytics("kpi.sv"),
           value: sv,
           formattedValue: sv == null ? "—" : fmt(sv),
         },
         {
           id: "eac",
-          label: "EAC",
+          label: tAnalytics("kpi.eac"),
           value: eac,
           formattedValue: eac == null ? "—" : fmt(eac),
         },
@@ -152,26 +152,26 @@ export default async function ProjectDashboardPage({
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("cpi")}</CardTitle></CardHeader>
-          <CardContent>{metrics?.costPerformanceIndex?.toFixed(2) ?? "N/A"}</CardContent>
+          <CardContent>{metrics?.costPerformanceIndex?.toFixed(2) ?? tPages("insufficientData")}</CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("spi")}</CardTitle></CardHeader>
-          <CardContent>{metrics?.schedulePerformanceIndex?.toFixed(2) ?? "N/A"}</CardContent>
+          <CardContent>{metrics?.schedulePerformanceIndex?.toFixed(2) ?? tPages("insufficientData")}</CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm">EAC</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{tAnalytics("kpi.eac")}</CardTitle></CardHeader>
           <CardContent>
-            {metrics?.estimateAtCompletion
+            {metrics?.estimateAtCompletion != null
               ? formatMoney(metrics.estimateAtCompletion, "SAR")
-              : "N/A"}
+              : tPages("insufficientData")}
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm">VAC</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{tAnalytics("kpi.vac")}</CardTitle></CardHeader>
           <CardContent>
-            {metrics?.varianceAtCompletion
+            {metrics?.varianceAtCompletion != null
               ? formatMoney(metrics.varianceAtCompletion, "SAR")
-              : "N/A"}
+              : tPages("insufficientData")}
           </CardContent>
         </Card>
       </div>

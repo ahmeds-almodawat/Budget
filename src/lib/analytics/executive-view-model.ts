@@ -64,6 +64,7 @@ export function buildExecutiveAnalyticsModel(input: {
     actualOperatingCost: string;
     openCommitments: string;
     capex: string;
+    capexSubtitle: string;
     budget: string;
     actual: string;
     commitment: string;
@@ -88,6 +89,10 @@ export function buildExecutiveAnalyticsModel(input: {
       matchExceptions: string;
       unmapped: string;
       periodBlockers: string;
+    };
+    insights: {
+      matchExceptions: string;
+      delayedMilestones: string;
     };
   };
 }): ExecutiveAnalyticsModel {
@@ -158,7 +163,7 @@ export function buildExecutiveAnalyticsModel(input: {
       value: latestProfit?.gross_margin_percentage != null ? toNumber(latestProfit.gross_margin_percentage) : null,
       formattedValue:
         latestProfit?.gross_margin_percentage != null
-          ? formatCompactPercent(toNumber(latestProfit.gross_margin_percentage), input.locale)
+          ? formatCompactPercent(toNumber(latestProfit.gross_margin_percentage) * 100, input.locale)
           : "—",
     },
     {
@@ -189,7 +194,7 @@ export function buildExecutiveAnalyticsModel(input: {
       label: input.labels.capex,
       value: totalProfit.capex,
       formattedValue: fmt(totalProfit.capex),
-      subtitle: "Separate from operating contribution",
+      subtitle: input.labels.capexSubtitle,
     },
   ];
 
@@ -206,7 +211,7 @@ export function buildExecutiveAnalyticsModel(input: {
   if (input.matchExceptions > 0) {
     insights.push({
       id: "match-ex",
-      text: `${input.matchExceptions} procurement invoices have unresolved match exceptions`,
+      text: input.labels.insights.matchExceptions,
       tone: "warning",
       href: `${input.localePrefix}/supplier-invoices`,
     });
@@ -214,7 +219,7 @@ export function buildExecutiveAnalyticsModel(input: {
   if (input.delayedMilestones > 0) {
     insights.push({
       id: "delayed-ms",
-      text: `${input.delayedMilestones} milestones are past forecast date`,
+      text: input.labels.insights.delayedMilestones,
       tone: "warning",
       href: `${input.localePrefix}/milestones`,
     });
@@ -260,7 +265,7 @@ export function buildExecutiveAnalyticsModel(input: {
       },
     }),
     profitabilityBridge: buildProfitabilityBridge({
-      netRevenue: totalProfit.net || revenueActual,
+      netRevenue: input.profitabilityRows.length > 0 ? totalProfit.net : revenueActual,
       costOfRevenue: totalProfit.cor,
       grossProfit: totalProfit.gp,
       payroll: totalProfit.payroll,

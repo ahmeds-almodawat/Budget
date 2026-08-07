@@ -19,7 +19,7 @@ test.describe("budget vs actual revenue semantics", () => {
     await page.goto("/en/cost-control");
     await expect(page.getByRole("heading", { name: "Budget vs Actual", level: 1 })).toBeVisible();
     await expect(page.getByTestId("budget-vs-actual-workspace")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Revenue" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Revenue", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Expenses" })).toBeVisible();
   });
 
@@ -31,11 +31,11 @@ test.describe("budget vs actual revenue semantics", () => {
 
   test("revenue and expense tabs show different sections", async ({ page }) => {
     await page.goto("/en/cost-control");
-    await page.getByRole("button", { name: "Revenue" }).click();
+    await page.getByRole("button", { name: "Revenue", exact: true }).click();
     await expect(page.getByText("Revenue detail")).toBeVisible();
     await page.getByRole("button", { name: "Expenses" }).click();
     await expect(page.getByText("Expense detail")).toBeVisible();
-    await page.getByRole("button", { name: "Profitability" }).click();
+    await page.getByRole("button", { name: "Profitability", exact: true }).click();
     await expect(page.getByTestId("profitability-section")).toBeVisible();
   });
 });

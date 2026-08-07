@@ -1,19 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { GanttItem } from "@/domain/analytics/types";
-import { buildGanttRange, ganttBarOffset } from "@/domain/analytics/timeline";
+import { buildGanttRange, dateInTimeZone, ganttBarOffset } from "@/domain/analytics/timeline";
 
 export function GanttTimeline({
   items,
-  today = new Date().toISOString().slice(0, 10),
+  today = dateInTimeZone(),
   className,
 }: {
   items: GanttItem[];
   today?: string;
   className?: string;
 }) {
+  const t = useTranslations("analytics");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const range = useMemo(() => buildGanttRange(items), [items]);
 
@@ -39,8 +41,8 @@ export function GanttTimeline({
     <div className={cn("overflow-x-auto rounded-xl border border-border", className)} data-testid="gantt-timeline">
       <div className="min-w-[720px]">
         <div className="grid grid-cols-[220px_1fr] border-b border-border bg-surface-muted/50 text-xs font-medium text-text-secondary">
-          <div className="sticky start-0 z-10 bg-surface-muted/50 px-3 py-2">Item</div>
-          <div className="px-3 py-2 tabular-nums">
+          <div className="sticky start-0 z-10 bg-surface-muted/50 px-3 py-2">{t("common.item")}</div>
+          <div className="px-3 py-2 tabular-nums" dir="ltr">
             {range.start} → {range.end}
           </div>
         </div>
@@ -57,6 +59,7 @@ export function GanttTimeline({
                     className="rounded border border-border px-1 text-xs"
                     onClick={() => setCollapsed((c) => ({ ...c, [item.id]: !c[item.id] }))}
                     aria-expanded={!collapsed[item.id]}
+                    aria-label={t("common.toggleItem", { item: item.label })}
                   >
                     {collapsed[item.id] ? "+" : "−"}
                   </button>
@@ -65,7 +68,7 @@ export function GanttTimeline({
                 )}
                 <span className={cn(item.kind === "milestone" && "font-medium")}>{item.label}</span>
               </div>
-              <div className="relative h-10 bg-background">
+              <div className="relative h-10 bg-background" dir="ltr">
                 {todayOffset ? (
                   <div
                     className="absolute inset-y-0 w-px bg-warning"
@@ -75,14 +78,14 @@ export function GanttTimeline({
                 ) : null}
                 {baseline ? (
                   <div
-                    title="Baseline"
+                    title={t("common.baseline")}
                     className="absolute top-2 h-2 rounded bg-[var(--chart-6)]/50"
                     style={{ left: `${baseline.leftPct}%`, width: `${baseline.widthPct}%` }}
                   />
                 ) : null}
                 {forecast ? (
                   <div
-                    title="Forecast"
+                    title={t("common.forecast")}
                     className={cn(
                       "absolute bottom-2 h-2.5 rounded",
                       item.delayed ? "bg-danger" : item.completed ? "bg-success" : "bg-[var(--chart-1)]",
@@ -100,6 +103,7 @@ export function GanttTimeline({
 }
 
 export function RoadmapTimeline({ items }: { items: GanttItem[] }) {
+  const t = useTranslations("analytics");
   const phases = items.filter((i) => i.kind === "phase" || i.kind === "milestone");
   if (!phases.length) return null;
   return (
@@ -111,7 +115,11 @@ export function RoadmapTimeline({ items }: { items: GanttItem[] }) {
             {item.forecastStart ?? item.baselineStart ?? "—"} → {item.forecastEnd ?? item.baselineEnd ?? "—"}
           </p>
           <p className="mt-2 text-xs">
-            {item.completed ? "Completed" : item.delayed ? "Delayed" : "In progress"}
+            {item.completed
+              ? t("statuses.completed")
+              : item.delayed
+                ? t("statuses.delayed")
+                : t("statuses.inProgress")}
             {item.progressPercent != null ? ` · ${item.progressPercent}%` : ""}
           </p>
         </li>

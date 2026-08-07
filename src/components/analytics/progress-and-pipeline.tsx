@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import type { PipelineStage, TimelineEvent } from "@/domain/analytics/types";
 import { formatCompactMoney, formatInteger } from "@/domain/analytics/format";
 import { sortTimelineEvents } from "@/domain/analytics/timeline";
+import { useTranslations } from "next-intl";
 
 export function ProgressBar({
   value,
@@ -84,8 +85,9 @@ export function ProgressStepper({
   steps: Array<{ id: string; label: string }>;
   currentIndex: number;
 }) {
+  const t = useTranslations("analytics");
   return (
-    <ol className="flex flex-wrap gap-2" aria-label="Lifecycle">
+    <ol className="flex flex-wrap gap-2" aria-label={t("common.lifecycle")}>
       {steps.map((step, index) => {
         const done = index < currentIndex;
         const active = index === currentIndex;
@@ -125,7 +127,9 @@ export function PipelineFunnel({
             <span className="font-medium">{stage.label}</span>
             <span className="tabular-nums text-text-secondary">
               {formatInteger(stage.count, locale)} ·{" "}
-              {formatCompactMoney(stage.amount, { locale, arabicCurrency })}
+              {stage.amount == null
+                ? "—"
+                : formatCompactMoney(stage.amount, { locale, arabicCurrency })}
             </span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-surface-muted">

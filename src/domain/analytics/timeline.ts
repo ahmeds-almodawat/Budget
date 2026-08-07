@@ -1,5 +1,6 @@
 import type { GanttItem, PipelineStage, TimelineEvent } from "@/domain/analytics/types";
 import { toNumber } from "@/domain/analytics/format";
+import { financialConfig } from "@/config/product";
 
 /** Map project phases + milestones into presentation Gantt items using real dates only. */
 export function buildProjectGanttItems(input: {
@@ -32,7 +33,7 @@ export function buildProjectGanttItems(input: {
   }>;
   today?: string;
 }): GanttItem[] {
-  const today = input.today ?? new Date().toISOString().slice(0, 10);
+  const today = input.today ?? dateInTimeZone();
   const items: GanttItem[] = [
     {
       id: input.projectId,
@@ -145,6 +146,8 @@ export function buildProcurementPipeline(
   for (const stage of stageOrder) {
     map.set(stage, { id: stage, label: labels[stage] ?? stage, count: 0, amount: 0 });
   }
+  const encountered = new Set(stageOrder);
+  const unknownAmountStages = new Set<string>();
   for (const row of rows) {
     const stage = row.stage;
     const current = map.get(stage) ?? {
@@ -154,10 +157,16 @@ export function buildProcurementPipeline(
       amount: 0,
     };
     current.count += row.count ?? 1;
-    current.amount += toNumber(row.amount ?? 0);
+    if (row.amount == null) {
+      unknownAmountStages.add(stage);
+      current.amount = null;
+    } else if (!unknownAmountStages.has(stage)) {
+      current.amount = (current.amount ?? 0) + toNumber(row.amount);
+    }
     map.set(stage, current);
+    encountered.add(stage);
   }
-  return stageOrder.map((s) => map.get(s)!).filter(Boolean);
+  return Array.from(encountered).map((s) => map.get(s)!).filter(Boolean);
 }
 
 export function periodCloseProgress(input: {
@@ -195,4 +204,17 @@ export function approvalAgeBuckets(
     if (bucket) bucket.count += 1;
   }
   return buckets.map(({ id, label, count }) => ({ id, label, count }));
+}
+export function dateInTimeZone(
+  date = new Date(),
+  timeZone = financialConfig.defaultTimezone,
+): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
 }

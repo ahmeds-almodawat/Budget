@@ -26,23 +26,11 @@ export function readChartColor(token: ChartToken): string {
 }
 
 export function chartThemeColors() {
-  if (typeof window === "undefined") {
-    return {
-      grid: "var(--chart-grid)",
-      axis: "var(--chart-axis)",
-      tooltipBg: "var(--chart-tooltip)",
-      tooltipFg: "var(--chart-tooltip-foreground)",
-      tooltipBorder: "var(--chart-tooltip-border)",
-    };
-  }
-  const root = getComputedStyle(document.documentElement);
   return {
-    grid: root.getPropertyValue("--chart-grid").trim() || "var(--chart-grid)",
-    axis: root.getPropertyValue("--chart-axis").trim() || "var(--chart-axis)",
-    tooltipBg: root.getPropertyValue("--chart-tooltip").trim() || "var(--chart-tooltip)",
-    tooltipFg:
-      root.getPropertyValue("--chart-tooltip-foreground").trim() || "var(--chart-tooltip-foreground)",
-    tooltipBorder:
-      root.getPropertyValue("--chart-tooltip-border").trim() || "var(--chart-tooltip-border)",
+    grid: "var(--chart-grid)",
+    axis: "var(--chart-axis)",
+    tooltipBg: "var(--chart-tooltip)",
+    tooltipFg: "var(--chart-tooltip-foreground)",
+    tooltipBorder: "var(--chart-tooltip-border)",
   };
 }

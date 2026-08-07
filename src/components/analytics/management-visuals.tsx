@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import type { ManagementInsight, RiskPlotPoint, VarianceItem } from "@/domain/analytics/types";
 import { formatCompactMoney } from "@/domain/analytics/format";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 export function RiskMatrix({
   risks,
@@ -12,6 +13,7 @@ export function RiskMatrix({
   risks: RiskPlotPoint[];
   maxScale?: number;
 }) {
+  const t = useTranslations("analytics");
   if (!risks.length) return null;
   const cells: Record<string, RiskPlotPoint[]> = {};
   for (const risk of risks) {
@@ -26,7 +28,7 @@ export function RiskMatrix({
         className="inline-grid gap-1"
         style={{ gridTemplateColumns: `repeat(${maxScale}, minmax(3.5rem, 1fr))` }}
         role="table"
-        aria-label="Risk matrix"
+        aria-label={t("common.riskMatrix")}
       >
         {Array.from({ length: maxScale }, (_, row) =>
           Array.from({ length: maxScale }, (_, col) => {

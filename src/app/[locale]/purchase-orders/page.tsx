@@ -45,7 +45,7 @@ export default async function PurchaseOrdersPage({
     [purchaseOrders, awards, pipelineRows] = await Promise.all([
       fetchPurchaseOrdersWithLinesAction(),
       fetchAwardsAction(),
-      getProcurementPipelineReport(session.db, session.legalEntityId).catch(() => []),
+      getProcurementPipelineReport(session.db, session.legalEntityId),
     ]);
   } catch (e) {
     errorMessage = e instanceof Error ? e.message : t("loadError");

@@ -12,9 +12,11 @@ import type { GanttItem } from "@/domain/analytics/types";
 
 export function ProjectTimelineAnalytics({
   items,
+  today,
   titles,
 }: {
   items: GanttItem[];
+  today: string;
   titles: {
     timeline: string;
     roadmap: string;
@@ -30,7 +32,7 @@ export function ProjectTimelineAnalytics({
         <ChartCard title={titles.timeline} empty={empty} emptyTitle={titles.empty}>
           <div className="space-y-4">
             <div className="hidden md:block">
-              <GanttTimeline items={items} />
+              <GanttTimeline items={items} today={today} />
             </div>
             <CompactChronology items={items} />
           </div>

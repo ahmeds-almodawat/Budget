@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { EmptyChartState } from "@/components/analytics/empty-chart-state";
+import { useTranslations } from "next-intl";
 
 export function ChartCard({
   title,
@@ -23,6 +24,7 @@ export function ChartCard({
   className?: string;
   actions?: React.ReactNode;
 }) {
+  const t = useTranslations("analytics");
   return (
     <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-2">
@@ -35,7 +37,7 @@ export function ChartCard({
       <CardContent>
         {empty ? (
           <EmptyChartState
-            title={emptyTitle ?? "No data available for the selected period"}
+            title={emptyTitle ?? t("empty.period")}
             description={emptyDescription}
           />
         ) : (

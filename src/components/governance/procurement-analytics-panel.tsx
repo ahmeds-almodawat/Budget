@@ -8,14 +8,8 @@ import { buildProcurementPipeline } from "@/domain/analytics/timeline";
 const STAGE_ORDER = [
   "requisition",
   "rfq",
-  "quotation",
-  "evaluation",
   "award",
   "purchase_order",
-  "receipt",
-  "invoice",
-  "matching",
-  "payment_ready",
 ] as const;
 
 export type ProcurementPipelineRow = {
@@ -49,6 +43,7 @@ export function ProcurementAnalyticsPanel({
     <div data-testid="procurement-analytics-panel">
       <ChartCard
         title={tAnalytics("sections.pipeline")}
+        description={tAnalytics("notes.pipelineLimit")}
         empty={!hasData}
         emptyTitle={tAnalytics("empty.pipeline")}
       >

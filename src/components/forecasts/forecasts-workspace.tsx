@@ -98,8 +98,7 @@ export function ForecastsWorkspace({
   const canSupersede = Boolean(canApprove && currentLocked && candidateReview);
 
   const forecastTrend = useMemo(() => {
-    const source = currentLocked ?? forecasts.find((f) => f.forecast_lines && f.forecast_lines.length > 0);
-    const lines = source?.forecast_lines ?? [];
+    const lines = currentLocked?.forecast_lines ?? [];
     if (!lines.length || periodNumberById.size === 0) return [] as ChartPoint[];
     const rows = lines
       .map((line) => {
@@ -112,7 +111,7 @@ export function ForecastsWorkspace({
     return aggregateByPeriod(rows, {
       forecast: (r) => toNumber(r.forecast_amount),
     });
-  }, [currentLocked, forecasts, periodNumberById]);
+  }, [currentLocked, periodNumberById]);
 
   const canShowForecastTrend = forecastTrend.length >= 2;
 
@@ -274,7 +273,7 @@ export function ForecastsWorkspace({
       </AnalyticsSection>
 
       {canShowForecastTrend ? (
-        <ChartCard title={tAnalytics("sections.forecastTrend")} emptyTitle={tAnalytics("empty.period")}>
+        <ChartCard title={tAnalytics("sections.forecastProfile")} emptyTitle={tAnalytics("empty.period")}>
           <FinancialTrendChart data={forecastTrend} series={forecastSeries} locale={moneyLocale} />
         </ChartCard>
       ) : null}

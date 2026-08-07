@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import type { KpiMetric } from "@/domain/analytics/types";
 import { formatCompactPercent, varianceTone } from "@/domain/analytics/format";
 import { MiniSparkline } from "@/components/analytics/mini-sparkline";
+import { useTranslations } from "next-intl";
 
 export function KpiGrid({
   children,
@@ -27,6 +28,7 @@ export function KpiCard({
   locale?: string;
   className?: string;
 }) {
+  const tStatus = useTranslations("varianceStatus");
   const tone = varianceTone(metric.varianceStatus);
   const body = (
     <article
@@ -52,7 +54,9 @@ export function KpiCard({
             tone === "neutral" && "text-text-secondary",
           )}
         >
-          <span className="sr-only">{metric.varianceStatus ?? "neutral"}: </span>
+          {metric.varianceStatus ? (
+            <span className="sr-only">{tStatus(metric.varianceStatus)}: </span>
+          ) : null}
           {metric.variancePercent != null
             ? formatCompactPercent(metric.variancePercent * 100, locale)
             : null}

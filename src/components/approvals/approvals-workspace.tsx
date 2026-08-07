@@ -122,7 +122,7 @@ export function ApprovalsWorkspace({
         <ExceptionSummary
           items={ageBuckets.map((bucket) => ({
             id: bucket.id,
-            label: `${bucket.label}d`,
+            label: tAnalytics("common.ageDays", { value: bucket.label }),
             count: bucket.count,
             tone: bucket.id === "10+" && bucket.count > 0 ? "warning" : "neutral",
           }))}

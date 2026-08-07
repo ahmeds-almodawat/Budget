@@ -43,13 +43,11 @@ export function expenseTrendSeries(
     period_number: number;
     monthly_budget: string | number;
     mtd_actual: string | number;
-    commitment_open_current?: string | number;
   }>,
 ): ChartPoint[] {
   return aggregateByPeriod(rows, {
     budget: (r) => toNumber(r.monthly_budget),
     actual: (r) => toNumber(r.mtd_actual),
-    commitment: (r) => toNumber(r.commitment_open_current ?? 0),
   });
 }
 

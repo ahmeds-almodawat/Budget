@@ -378,7 +378,9 @@
     "exportCsv": "Export CSV",
     "exportExcel": "Export Excel",
     "preview": "Report preview",
-    "selectReport": "Select a report to preview"
+    "selectReport": "Select a report to preview",
+    "visualPreview": "Visual preview",
+    "loadError": "Unable to load the selected report."
   },
   "imports": {
     "title": "Actual cost import",
@@ -863,6 +865,13 @@
     "invoiceMatched": "Invoice matched.",
     "matchVisualTitle": "Invoice match status",
     "emptyMatchVisual": "No procurement match exceptions.",
+    "matchStatuses": {
+      "matched": "Matched",
+      "matchedWithinTolerance": "Matched within tolerance",
+      "exception": "Match exception",
+      "overridden": "Match overridden",
+      "unknown": "Status unavailable"
+    },
     "overrideMatch": "Override match",
     "overrideReason": "Override reason",
     "matchOverridden": "Match overridden.",
@@ -1034,6 +1043,7 @@
       "approvalAge": "Approval age",
       "branchComparison": "Branch comparison",
       "forecastTrend": "Budget / actual / forecast",
+      "forecastProfile": "Approved forecast by period",
       "favorableVariances": "Top favorable variances",
       "unfavorableVariances": "Top unfavorable variances",
       "appraisalCompletion": "Appraisal completion",
@@ -1059,6 +1069,10 @@
       "fac": "Forecast at completion",
       "cpi": "CPI",
       "spi": "SPI",
+      "cv": "Cost variance (CV)",
+      "sv": "Schedule variance (SV)",
+      "eac": "Estimate at completion (EAC)",
+      "vac": "Variance at completion (VAC)",
       "currentApprovedFac": "Current approved FAC",
       "underReviewFac": "Under review forecast",
       "draftFac": "Draft forecast total",
@@ -1077,6 +1091,7 @@
       "pv": "Planned value",
       "ev": "Earned value",
       "ac": "Actual cost"
+      ,"count": "Count"
     },
     "bridge": {
       "gross": "Gross revenue",
@@ -1096,11 +1111,49 @@
       "payroll": "Payroll",
       "operatingExpenses": "Operating expenses",
       "capex": "CAPEX"
+      ,"revenue": "Revenue",
+      "internalTransfer": "Internal transfer",
+      "workingCapital": "Working capital",
+      "statistical": "Statistical",
+      "other": "Other"
     },
     "exceptions": {
       "matchExceptions": "Invoice match exceptions",
       "unmapped": "Unmapped actuals",
       "periodBlockers": "Period-close blockers"
+    },
+    "notes": {
+      "capexSeparate": "Separate from operating contribution",
+      "pipelineLimit": "Latest 200 documents per reported stage"
+    },
+    "insights": {
+      "matchExceptions": "{count, plural, one {# procurement invoice has} other {# procurement invoices have}} unresolved match exceptions",
+      "delayedMilestones": "{count, plural, one {# milestone is} other {# milestones are}} past the forecast date"
+    },
+    "statuses": {
+      "completed": "Completed",
+      "delayed": "Delayed",
+      "inProgress": "In progress"
+    },
+    "appraisalStatuses": {
+      "employee_self_review": "Employee self-review",
+      "self_submitted": "Self-review submitted",
+      "manager_review": "Manager review",
+      "manager_submitted": "Manager review submitted",
+      "reviewer_review": "Calibration review",
+      "finalized": "Finalized",
+      "employee_acknowledged": "Employee acknowledged"
+    },
+    "common": {
+      "item": "Item",
+      "baseline": "Baseline",
+      "forecast": "Forecast",
+      "riskMatrix": "Risk matrix",
+      "lifecycle": "Lifecycle",
+      "chartData": "Chart data",
+      "statusUnavailable": "Status unavailable",
+      "toggleItem": "Toggle {item}",
+      "ageDays": "{value}d"
     },
     "empty": {
       "period": "No data available for the selected period",

@@ -29,11 +29,11 @@ export default async function HospitalDashboardPage({
   const moneyLocale = locale.startsWith("ar") ? "ar-SA" : "en-SA";
 
   let performance = null;
-  let dbError: string | null = null;
+  let dbError = false;
   try {
     performance = await fetchHospitalDashboardAction();
-  } catch (e) {
-    dbError = e instanceof Error ? e.message : "Database unavailable";
+  } catch {
+    dbError = true;
   }
 
   if (!performance) {
@@ -42,9 +42,7 @@ export default async function HospitalDashboardPage({
         <h1 className="text-2xl font-bold">{t("title")}</h1>
         <Card>
           <CardContent className="p-6 text-text-secondary">
-            {dbError
-              ? `${tLabels("databaseError")}: ${dbError}`
-              : tLabels("noApprovedBudget")}
+            {dbError ? tAnalytics("empty.errorHint") : tLabels("noApprovedBudget")}
           </CardContent>
         </Card>
         <Link href={`/${locale}/budgets`} className="text-primary hover:underline">
@@ -117,9 +115,7 @@ export default async function HospitalDashboardPage({
       label: t("fullYearForecast"),
       value: fullYearForecast,
       formattedValue: fmt(fullYearForecast),
-      subtitle: remainingBudget
-        ? `${tAnalytics("series.remaining")}: ${fmt(remainingBudget)}`
-        : undefined,
+      subtitle: `${tAnalytics("series.remaining")}: ${fmt(remainingBudget)}`,
     },
   ];
 
@@ -131,25 +127,22 @@ export default async function HospitalDashboardPage({
     { key: "forecast", label: tAnalytics("series.forecast"), token: "chart-3", type: "line" },
   ];
 
-  const utilization: ChartPoint[] = [];
-  if (mtdBudget !== 0 || mtdActual !== 0) {
-    utilization.push({
+  const utilization: ChartPoint[] = [
+    {
       key: "mtd",
       label: t("mtd"),
       budget: mtdBudget,
       actual: mtdActual,
       remaining: Math.max(0, mtdBudget - mtdActual),
-    });
-  }
-  if (ytdBudget !== 0 || ytdActual !== 0) {
-    utilization.push({
+    },
+    {
       key: "ytd",
       label: t("ytd"),
       budget: ytdBudget,
       actual: ytdActual,
       remaining: Math.max(0, ytdBudget - ytdActual),
-    });
-  }
+    },
+  ];
 
   const utilizationSeries: ChartSeriesDef[] = [
     { key: "budget", label: tAnalytics("series.budget"), token: "chart-1", type: "bar" },
@@ -203,7 +196,7 @@ export default async function HospitalDashboardPage({
       {explanationRequired ? (
         <Card className="border-warning/40 bg-warning-surface">
           <CardContent className="p-4 text-warning">
-            {t("varianceExplanationRequired")} — MTD {formatMoney(String(mtdVariance), "SAR")}
+            {t("varianceExplanationRequired")} — {t("mtd")} {formatMoney(String(mtdVariance), "SAR")}
           </CardContent>
         </Card>
       ) : null}
