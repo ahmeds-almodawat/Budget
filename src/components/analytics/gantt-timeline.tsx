@@ -20,6 +20,16 @@ const KIND_KEY: Record<GanttItem["kind"], string> = {
   milestone: "kinds.milestone",
 };
 
+const STATUS_KEY: Record<string, string> = {
+  not_started: "statuses.notStarted",
+  in_progress: "statuses.inProgress",
+  completed: "statuses.completed",
+  draft: "statuses.draft",
+  submitted: "statuses.submitted",
+  approved: "statuses.approved",
+  rejected: "statuses.rejected",
+};
+
 function itemHasSchedule(item: GanttItem): boolean {
   return Boolean(
     item.baselineStart ||
@@ -36,8 +46,11 @@ function statusLabel(
 ): string {
   if (item.completed) return t("statuses.completed");
   if (item.delayed) return t("statuses.delayed");
-  if (item.status) return item.status.replaceAll("_", " ");
-  if (itemHasSchedule(item)) return t("statuses.inProgress");
+  if (item.status) {
+    const key = STATUS_KEY[item.status];
+    return key ? t(key) : item.status.replaceAll("_", " ");
+  }
+  if (itemHasSchedule(item)) return "—";
   return t("common.noDates");
 }
 
@@ -168,8 +181,8 @@ export function GanttTimeline({
           const forecast = ganttBarOffset(
             range.start!,
             range.end!,
-            item.forecastStart ?? item.baselineStart,
-            item.forecastEnd ?? item.baselineEnd,
+            item.forecastStart,
+            item.forecastEnd,
           );
           const hasChildren = items.some((c) => c.parentId === item.id);
           const depth = ganttItemDepth(items, item);
@@ -180,6 +193,7 @@ export function GanttTimeline({
             `${t("common.baseline")}: ${item.baselineStart ?? "—"}`,
             `${t("common.forecast")}: ${item.forecastStart ?? "—"}`,
             `${t("common.actual")}: ${item.actualDate ?? "—"}`,
+            `${t("common.progress")}: ${item.progressPercent == null ? "—" : `${Math.round(item.progressPercent)}%`}`,
             `${t("common.status")}: ${statusLabel(item, t)}`,
           ].join("\n");
 
@@ -275,7 +289,7 @@ export function GanttTimeline({
 
                 {!isMilestone && forecast ? (
                   <div
-                    title={`${t("common.forecast")}: ${item.forecastStart ?? item.baselineStart} → ${item.forecastEnd ?? item.baselineEnd}`}
+                    title={`${t("common.forecast")}: ${item.forecastStart} → ${item.forecastEnd}`}
                     className={cn(
                       "absolute bottom-1.5 h-2.5 overflow-hidden rounded-sm",
                       item.delayed
@@ -290,7 +304,7 @@ export function GanttTimeline({
                     }}
                     data-testid="gantt-forecast-bar"
                   >
-                    {item.completed || progress > 0 ? (
+                    {progress > 0 ? (
                       <div
                         className={cn(
                           "h-full rounded-sm",
@@ -300,11 +314,33 @@ export function GanttTimeline({
                               ? "bg-success"
                               : "bg-[var(--chart-1)]",
                         )}
-                        style={{ width: `${item.completed ? 100 : progress}%` }}
+                        style={{ width: `${progress}%` }}
                         data-testid="gantt-progress-fill"
-                        title={`${t("common.progress")}: ${Math.round(item.completed ? 100 : progress)}%`}
+                        data-progress-basis="forecast"
+                        title={`${t("common.progress")}: ${Math.round(progress)}%`}
                       />
                     ) : null}
+                  </div>
+                ) : null}
+
+                {!isMilestone && !forecast && baseline && progress > 0 ? (
+                  <div
+                    className="absolute bottom-1.5 h-2.5 overflow-hidden rounded-sm bg-surface-muted ring-1 ring-inset ring-border"
+                    style={{ left: `${baseline.leftPct}%`, width: `${baseline.widthPct}%` }}
+                    data-testid="gantt-progress-track"
+                    data-progress-basis="baseline"
+                    title={`${t("common.progressBasisBaseline")}: ${item.baselineStart} → ${item.baselineEnd}`}
+                  >
+                    <div
+                      className={cn(
+                        "h-full rounded-sm",
+                        item.completed ? "bg-success" : "bg-[var(--chart-1)]",
+                      )}
+                      style={{ width: `${progress}%` }}
+                      data-testid="gantt-progress-fill"
+                      data-progress-basis="baseline"
+                      title={`${t("common.progress")}: ${Math.round(progress)}%`}
+                    />
                   </div>
                 ) : null}
 
@@ -320,7 +356,12 @@ export function GanttTimeline({
                 {isMilestone
                   ? (() => {
                       const markerDate =
-                        item.forecastStart ?? item.actualDate ?? item.baselineStart;
+                        item.actualDate ?? item.forecastStart ?? item.baselineStart;
+                      const markerBasis = item.actualDate
+                        ? "actual"
+                        : item.forecastStart
+                          ? "forecast"
+                          : "baseline";
                       if (!markerDate) {
                         return (
                           <div className="absolute inset-y-0 flex items-center px-2 text-[10px] text-text-secondary">
@@ -361,6 +402,8 @@ export function GanttTimeline({
                             style={{ left: `${mark?.leftPct ?? 0}%` }}
                             title={milestoneTip}
                             data-testid="gantt-milestone-marker"
+                            data-marker-date={markerDate}
+                            data-marker-basis={markerBasis}
                             role="img"
                             aria-label={milestoneTip}
                           />
@@ -386,16 +429,22 @@ export function RoadmapTimeline({ items }: { items: GanttItem[] }) {
       {phases.map((item) => (
         <li key={item.id} className="rounded-xl border border-border bg-card p-4">
           <p className="text-sm font-medium">{item.label}</p>
-          <p className="mt-1 text-xs text-text-secondary tabular-nums">
-            {item.forecastStart ?? item.baselineStart ?? "—"} →{" "}
-            {item.forecastEnd ?? item.baselineEnd ?? "—"}
-          </p>
+          <dl className="mt-1 grid grid-cols-2 gap-2 text-xs text-text-secondary">
+            <div>
+              <dt className="text-[10px] uppercase">{t("common.baseline")}</dt>
+              <dd className="tabular-nums">
+                {item.baselineStart ?? "—"} → {item.baselineEnd ?? "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[10px] uppercase">{t("common.forecast")}</dt>
+              <dd className="tabular-nums">
+                {item.forecastStart ?? "—"} → {item.forecastEnd ?? "—"}
+              </dd>
+            </div>
+          </dl>
           <p className="mt-2 text-xs">
-            {item.completed
-              ? t("statuses.completed")
-              : item.delayed
-                ? t("statuses.delayed")
-                : t("statuses.inProgress")}
+            {statusLabel(item, t)}
             {item.progressPercent != null ? ` · ${item.progressPercent}%` : ""}
           </p>
         </li>

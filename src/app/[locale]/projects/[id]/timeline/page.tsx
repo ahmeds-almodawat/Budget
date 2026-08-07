@@ -120,12 +120,12 @@ export default async function ProjectTimelinePage({
 
   return (
     <div className="space-y-6" data-testid="project-timeline-page">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
           <p className="text-text-secondary">{scopeName}</p>
         </div>
-        <div className="flex gap-4 text-sm">
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
           <Link href={`/${locale}/projects/${id}`} className="text-primary hover:underline">
             {t("projectSummary")}
           </Link>

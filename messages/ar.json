@@ -1138,7 +1138,12 @@
     "statuses": {
       "completed": "مكتمل",
       "delayed": "متأخر",
-      "inProgress": "قيد التنفيذ"
+      "inProgress": "قيد التنفيذ",
+      "notStarted": "لم يبدأ",
+      "draft": "مسودة",
+      "submitted": "مُرسل",
+      "approved": "معتمد",
+      "rejected": "مرفوض"
     },
     "kinds": {
       "project": "مشروع",
@@ -1166,6 +1171,7 @@
       "status": "الحالة",
       "today": "اليوم",
       "noDates": "لا توجد تواريخ",
+      "progressBasisBaseline": "يُعرض التقدم على نطاق خط الأساس المعتمد لعدم وجود تواريخ توقع مسجلة",
       "viewFullTimeline": "عرض الجدول الزمني الكامل",
       "riskMatrix": "مصفوفة المخاطر",
       "lifecycle": "دورة الحالة",

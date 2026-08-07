@@ -1138,7 +1138,12 @@
     "statuses": {
       "completed": "Completed",
       "delayed": "Delayed",
-      "inProgress": "In progress"
+      "inProgress": "In progress",
+      "notStarted": "Not started",
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "approved": "Approved",
+      "rejected": "Rejected"
     },
     "kinds": {
       "project": "Project",
@@ -1166,6 +1171,7 @@
       "status": "Status",
       "today": "Today",
       "noDates": "No dates",
+      "progressBasisBaseline": "Progress plotted on the authoritative baseline span; no forecast dates are recorded",
       "viewFullTimeline": "View full timeline",
       "riskMatrix": "Risk matrix",
       "lifecycle": "Lifecycle",

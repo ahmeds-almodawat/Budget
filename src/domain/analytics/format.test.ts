@@ -14,6 +14,7 @@ import {
   utilizationByClassification,
 } from "@/domain/analytics/series";
 import {
+  addDaysIso,
   approvalAgeBuckets,
   buildGanttCalendarBands,
   buildGanttRange,
@@ -232,8 +233,87 @@ describe("timeline helpers", () => {
       today: "2027-06-01",
     });
     expect(gantt.some((i) => i.kind === "work_package" && i.label === "Foundation Works")).toBe(true);
-    expect(gantt.some((i) => i.kind === "task" && i.label === "Site Excavation")).toBe(true);
-    expect(gantt.find((i) => i.kind === "milestone")?.parentId).toBe("wp1");
+    const task = gantt.find((i) => i.kind === "task" && i.label === "Site Excavation");
+    expect(task).toMatchObject({
+      forecastStart: null,
+      forecastEnd: null,
+      progressPercent: 100,
+      completed: true,
+    });
+    const milestone = gantt.find((i) => i.kind === "milestone");
+    expect(milestone).toMatchObject({
+      parentId: "wp1",
+      forecastStart: "2027-09-15",
+      actualDate: null,
+      progressPercent: 65,
+      completed: false,
+    });
+  });
+
+  it("does not fabricate task forecasts or completion from reported progress", () => {
+    const gantt = buildProjectGanttItems({
+      projectId: "p1",
+      projectLabel: "Hospital",
+      project: {
+        baseline_start: "2027-01-01",
+        baseline_end: "2027-12-31",
+        forecast_start: null,
+        forecast_end: null,
+      },
+      phases: [
+        {
+          id: "ph1",
+          name: "Structural Works",
+          baseline_start: "2027-04-01",
+          baseline_end: "2027-12-31",
+          forecast_start: null,
+          forecast_end: null,
+          work_packages: [
+            {
+              id: "wp1",
+              name: "Foundation Works",
+              tasks: [
+                {
+                  id: "t1",
+                  name: "Rebar Installation",
+                  baseline_start: "2027-05-16",
+                  baseline_end: "2027-07-01",
+                  forecast_start: null,
+                  forecast_end: null,
+                  actual_end: null,
+                  progress_percent: 100,
+                  status: "in_progress",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      milestones: [
+        {
+          id: "ms1",
+          name: "Foundation Completed and Approved",
+          phase_id: "ph1",
+          work_package_id: "wp1",
+          baseline_date: "2027-08-30",
+          forecast_date: "2027-09-15",
+          actual_date: null,
+          approved_progress: 100,
+        },
+      ],
+      today: "2027-06-01",
+    });
+
+    expect(gantt.find((i) => i.id === "t1")).toMatchObject({
+      forecastStart: null,
+      forecastEnd: null,
+      progressPercent: 100,
+      completed: false,
+    });
+    expect(gantt.find((i) => i.id === "ms1")).toMatchObject({
+      progressPercent: 100,
+      completed: false,
+    });
   });
 
   it("builds procurement pipeline and period-close progress presentation", () => {
@@ -269,6 +349,8 @@ describe("timeline helpers", () => {
 
   it("uses the configured business timezone for calendar dates", () => {
     expect(dateInTimeZone(new Date("2027-01-01T21:30:00Z"), "Asia/Riyadh")).toBe("2027-01-02");
+    expect(daysBetween("2027-03-31", "2027-04-01")).toBe(1);
+    expect(addDaysIso("2027-03-31", 1)).toBe("2027-04-01");
   });
 
   it("buckets approval ages from timestamps", () => {

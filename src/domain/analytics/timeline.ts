@@ -115,11 +115,7 @@ export function buildProjectGanttItems(input: {
       for (const task of wp.tasks ?? []) {
         const progress =
           task.progress_percent == null ? null : toNumber(task.progress_percent);
-        const completed =
-          Boolean(task.actual_end) ||
-          task.status === "completed" ||
-          (progress != null && progress >= 100);
-        const forecastEnd = task.forecast_end ?? task.baseline_end;
+        const completed = Boolean(task.actual_end) || task.status === "completed";
         items.push({
           id: task.id,
           parentId: wp.id,
@@ -127,11 +123,11 @@ export function buildProjectGanttItems(input: {
           kind: "task",
           baselineStart: task.baseline_start,
           baselineEnd: task.baseline_end,
-          forecastStart: task.forecast_start ?? task.baseline_start,
-          forecastEnd,
+          forecastStart: task.forecast_start,
+          forecastEnd: task.forecast_end,
           status: task.status ?? null,
           progressPercent: progress,
-          delayed: Boolean(forecastEnd && forecastEnd < today && !completed),
+          delayed: Boolean(task.forecast_end && task.forecast_end < today && !completed),
           completed,
         });
       }
@@ -141,7 +137,7 @@ export function buildProjectGanttItems(input: {
   for (const milestone of input.milestones) {
     const progress =
       milestone.approved_progress == null ? null : toNumber(milestone.approved_progress);
-    const completed = Boolean(milestone.actual_date) || (progress != null && progress >= 100);
+    const completed = Boolean(milestone.actual_date);
     items.push({
       id: milestone.id,
       parentId: milestone.work_package_id ?? milestone.phase_id ?? input.projectId,
