@@ -173,6 +173,10 @@ test.describe("live primary route closure", () => {
       "variance_explanations",
       "unmapped_actuals",
       "audit_history",
+      "procurement_pipeline",
+      "invoice_match_exceptions",
+      "period_close_readiness",
+      "appraisal_cycle_completion",
     ]) {
       const button = page.getByTestId(`report-type-${type}`);
       await button.click();

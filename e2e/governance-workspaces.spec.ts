@@ -14,7 +14,7 @@ const governanceRoutes: { path: string; heading: string }[] = [
   { path: "/en/master-data", heading: "Master Data Governance" },
   { path: "/en/delegations", heading: "Delegated Approvals" },
   { path: "/en/requisitions", heading: "Purchase Requisitions" },
-  { path: "/en/purchase-orders", heading: "Procurement" },
+  { path: "/en/purchase-orders", heading: "Purchase Orders" },
   { path: "/en/period-close", heading: "Period Calendar & Close" },
   { path: "/en/approval-rules", heading: "Approval Rules" },
   { path: "/en/cost-control", heading: "Budget vs Actual" },

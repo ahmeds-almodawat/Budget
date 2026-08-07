@@ -8,6 +8,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { registerRevenueDbTests } from "./revenue-db-tests.mjs";
+import { registerUltraMegaDbTests } from "./ultra-mega-db-tests.mjs";
 
 const connectionString =
   process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:56002/postgres";
@@ -22,12 +23,17 @@ function assert(condition, message) {
 }
 
 const EXPOSED_TABLES = [
-  "actual_transaction_allocations", "actual_transactions", "approval_requests",
+  "actual_transaction_allocations", "actual_transactions",
+  "appraisal_acknowledgements", "appraisal_assignments", "appraisal_cycles",
+  "appraisal_goals", "appraisal_ratings", "appraisal_template_criteria", "appraisal_templates",
+  "approval_decision_audit", "approval_delegations", "approval_requests", "approval_rule_versions",
   "budget_change_lines", "budget_change_requests", "budget_lines",
   "budget_monthly_allocations", "budget_versions", "commitments", "control_accounts",
   "control_scope_types", "control_scopes", "cost_nodes", "decisions",
-  "duplicate_review_queue", "fiscal_periods", "fiscal_years", "import_batches",
-  "imported_source_rows", "issues", "legal_entities", "memberships",
+  "duplicate_review_queue", "evaluation_criteria",
+  "fiscal_period_module_controls", "fiscal_periods", "fiscal_years", "import_batches",
+  "imported_source_rows", "invoice_match_exceptions", "invoice_match_results", "issues",
+  "legal_entities", "memberships",
   "milestone_progress_updates", "milestone_steps", "milestones", "notifications",
   "organization_unit_types", "organization_units", "organizations", "profiles",
   "progress_evidence", "project_phases", "projects", "register_actions",
@@ -35,15 +41,26 @@ const EXPOSED_TABLES = [
   "schedule_change_requests", "tasks", "teams", "unmapped_transaction_queue",
   "variance_explanations", "vendors", "work_packages", "schedule_baseline_versions",
   "forecast_versions", "forecast_lines",
-  "governed_master_records", "approval_delegations", "fiscal_period_module_controls",
-  "purchase_requisitions", "purchase_requisition_lines", "purchase_orders",
-  "supplier_invoices",   "payment_requests", "approval_rule_versions",
+  "governed_master_records",
+  "purchase_requisitions", "purchase_requisition_lines", "purchase_orders", "purchase_order_lines",
+  "supplier_invoices", "supplier_invoice_lines", "payment_requests",
   "revenue_component_types", "payer_categories", "payers", "service_lines",
+  "rfqs", "rfq_lines", "rfq_suppliers",
+  "supplier_quotations", "supplier_quotation_lines",
+  "sourcing_evaluations", "sourcing_evaluation_scores",
+  "sourcing_awards", "sourcing_award_lines",
+  "procurement_policies", "procurement_contracts", "procurement_contract_lines",
+  "goods_receipts", "goods_receipt_lines",
+  "service_entries", "service_entry_lines",
+  "po_number_sequences",
+  "period_close_checklist_templates", "period_close_checklist_items",
+  "period_close_instances", "period_close_item_results", "period_reopen_requests",
 ];
 const EXPOSED_VIEWS = [
   "v_approval_inbox", "v_budget_vs_actual", "v_restaurant_branch_performance",
   "v_hospital_period_performance", "v_project_earned_value",
   "v_commitment_current_snapshot", "v_revenue_budget_vs_actual", "v_profitability_period_performance",
+  "v_delegated_approval_inbox",
 ];
 const SERVER_ONLY_TABLES = [
   "audit_events", "gl_accounts",
@@ -58,18 +75,42 @@ const INSERT_TABLES = [
   "register_actions", "register_dependencies", "risks", "schedule_change_requests",
   "unmapped_transaction_queue", "variance_explanations",
   "governed_master_records", "approval_delegations", "fiscal_period_module_controls",
-  "purchase_requisitions", "purchase_requisition_lines", "purchase_orders",
-  "supplier_invoices", "payment_requests", "approval_rule_versions",
+  "purchase_requisitions", "purchase_requisition_lines", "purchase_orders", "purchase_order_lines",
+  "supplier_invoices", "supplier_invoice_lines", "payment_requests", "approval_rule_versions",
   "payers", "service_lines",
+  "rfqs", "rfq_lines", "rfq_suppliers",
+  "supplier_quotations", "supplier_quotation_lines",
+  "evaluation_criteria", "sourcing_evaluations", "sourcing_evaluation_scores",
+  "sourcing_awards", "sourcing_award_lines",
+  "procurement_policies", "procurement_contracts", "procurement_contract_lines",
+  "goods_receipts", "goods_receipt_lines",
+  "service_entries", "service_entry_lines",
+  "invoice_match_results", "invoice_match_exceptions",
+  "appraisal_acknowledgements", "appraisal_assignments", "appraisal_cycles",
+  "appraisal_goals", "appraisal_ratings", "appraisal_template_criteria", "appraisal_templates",
+  "period_close_checklist_templates", "period_close_checklist_items",
+  "period_close_instances", "period_close_item_results", "period_reopen_requests",
 ];
 const UPDATE_TABLES = [
   "actual_transactions", "approval_requests", "budget_change_requests", "budget_lines",
   "budget_versions", "commitments", "import_batches", "milestone_progress_updates",
   "milestones", "projects", "risks", "schedule_change_requests", "variance_explanations",
   "governed_master_records", "approval_delegations", "fiscal_period_module_controls",
-  "purchase_requisitions", "purchase_requisition_lines", "purchase_orders",
-  "supplier_invoices", "payment_requests", "approval_rule_versions",
+  "purchase_requisitions", "purchase_requisition_lines", "purchase_orders", "purchase_order_lines",
+  "supplier_invoices", "supplier_invoice_lines", "payment_requests", "approval_rule_versions",
   "payers", "service_lines",
+  "rfqs", "rfq_lines", "rfq_suppliers",
+  "supplier_quotations", "supplier_quotation_lines",
+  "evaluation_criteria", "sourcing_evaluations", "sourcing_evaluation_scores",
+  "sourcing_awards", "sourcing_award_lines",
+  "procurement_policies", "procurement_contracts", "procurement_contract_lines",
+  "goods_receipts", "goods_receipt_lines",
+  "service_entries", "service_entry_lines",
+  "invoice_match_results", "invoice_match_exceptions",
+  "appraisal_acknowledgements", "appraisal_assignments", "appraisal_cycles",
+  "appraisal_goals", "appraisal_ratings", "appraisal_template_criteria", "appraisal_templates",
+  "period_close_checklist_templates", "period_close_checklist_items",
+  "period_close_instances", "period_close_item_results", "period_reopen_requests",
 ];
 
 async function asRole(client, role, userId, fn) {
@@ -504,8 +545,8 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
   `);
   const tables = objects.filter((row) => row.relkind === "r");
   const views = objects.filter((row) => row.relkind === "v");
-  assert(tables.length === 69, `Expected 69 public tables, found ${tables.length}`);
-  assert(views.length === 8, `Expected 8 public views, found ${views.length}`);
+  assert(tables.length === 104, `Expected 104 public tables, found ${tables.length}`);
+  assert(views.length === 9, `Expected 9 public views, found ${views.length}`);
   assert(tables.every((row) => row.relrowsecurity && row.relforcerowsecurity), "Every table must enable and force RLS");
   assert(objects.every((row) => row.classification?.startsWith("@classification ")), "Every public table/view needs a classification");
   assert(views.every((row) => row.reloptions?.includes("security_invoker=true")), "Every public view must use security_invoker");
@@ -516,7 +557,7 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
     WHERE schemaname = 'public'
     ORDER BY tablename, policyname
   `);
-  assert(policies.length === 122, `Expected 122 reviewed policies, found ${policies.length}`);
+  assert(policies.length === 206, `Expected 206 reviewed policies, found ${policies.length}`);
   assert(
     policies.every((policy) => String(policy.roles) === "{authenticated}"),
     "Every policy must explicitly target authenticated",
@@ -632,7 +673,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
     WHERE n.nspname = 'public'
     ORDER BY p.proname
   `);
-  assert(publicFunctions.length === 44, `Expected 44 public RPC wrappers, found ${publicFunctions.length}`);
+  assert(publicFunctions.length === 87, `Expected 87 public RPC wrappers, found ${publicFunctions.length}`);
   for (const fn of publicFunctions) {
     assert(fn.proname.startsWith("rpc_"), `Unexpected public function ${fn.proname}`);
     assert(fn.prosecdef, `${fn.proname} must be SECURITY DEFINER`);
@@ -659,6 +700,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
   const helpers = new Set([
     "current_user_has_active_membership", "current_user_is_active",
     "user_can_access_legal_entity", "user_has_any_role", "user_has_role",
+    "resolve_effective_approver",
   ]);
   const triggerOnly = new Set([
     "deny_audit_mutation", "enforce_allocation_tenant_consistency", "enforce_leaf_posting",
@@ -886,6 +928,7 @@ test("write RLS allows the right tenant and denies cross-tenant submissions", as
 });
 
 registerRevenueDbTests(test, assert, asRole);
+registerUltraMegaDbTests(test, assert, asRole);
 
 async function main() {
   if (tests.length === 0) {

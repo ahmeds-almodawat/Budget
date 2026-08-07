@@ -206,6 +206,227 @@ async function main() {
     }
   });
 
+  await test("UM-CONC-01: concurrent PO number allocation is unique", async () => {
+    const clients = await Promise.all(
+      [0, 1, 2, 3].map(async () => {
+        const c = new pg.Client({ connectionString });
+        await c.connect();
+        return c;
+      }),
+    );
+    try {
+      const results = await Promise.all(
+        clients.map((c) => c.query(`SELECT private.next_po_number($1::uuid) AS po_number`, [LEGAL_ENTITY])),
+      );
+      const numbers = results.map((r) => r.rows[0].po_number);
+      if (new Set(numbers).size !== numbers.length) {
+        throw new Error(`Duplicate PO numbers under concurrency: ${numbers.join(", ")}`);
+      }
+    } finally {
+      await Promise.all(clients.map((c) => c.end()));
+    }
+  });
+
+  await test("UM-CONC-02: concurrent awards cannot over-consume requisition qty", async () => {
+    const reqId = crypto.randomUUID();
+    const lineId = crypto.randomUUID();
+    const rfqId = crypto.randomUUID();
+    const rfqLineId = crypto.randomUUID();
+    const quoteId = crypto.randomUUID();
+    const quoteLineId = crypto.randomUUID();
+    const vendorId = "dddddddd-dddd-dddd-dddd-ddddddddd101";
+    const costCtrl = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa8";
+
+    await client.query("BEGIN");
+    try {
+      const { rows: periods } = await client.query(
+        `SELECT id FROM fiscal_periods WHERE fiscal_year_id = '77777777-7777-7777-7777-777777777701' AND period_number = 3 LIMIT 1`,
+      );
+      await client.query(
+        `INSERT INTO purchase_requisitions (
+           id, legal_entity_id, requisition_number, title_en, title_ar, requester_id,
+           control_scope_id, cost_node_id, fiscal_period_id, estimated_total, requisition_status,
+           submitted_at, approved_at, approved_by
+         ) VALUES (
+           $1::uuid, $2::uuid, $3, 'Conc Award', 'ترسية متزامنة', $4::uuid,
+           '55555555-5555-5555-5555-555555555502', '66666666-6666-6666-6666-666666666605',
+           $5::uuid, 1000, 'approved', NOW(), NOW(), $6::uuid
+         )`,
+        [reqId, LEGAL_ENTITY, `CONC-REQ-${Date.now()}`, FINANCE, periods[0].id, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2"],
+      );
+      await client.query(
+        `INSERT INTO purchase_requisition_lines (id, requisition_id, line_number, description, quantity, unit_price, cost_node_id)
+         VALUES ($1::uuid, $2::uuid, 1, 'Conc line', 10, 100, '66666666-6666-6666-6666-666666666605')`,
+        [lineId, reqId],
+      );
+      await client.query(
+        `INSERT INTO rfqs (
+           id, legal_entity_id, requisition_id, rfq_number, title_en, title_ar, currency_code,
+           rfq_status, created_by, issued_by, issue_date, response_deadline
+         ) VALUES (
+           $1::uuid, $2::uuid, $3::uuid, $4, 'Conc RFQ', 'طلب', 'SAR', 'evaluation',
+           $5::uuid, $5::uuid, CURRENT_DATE, NOW() + INTERVAL '7 days'
+         )`,
+        [rfqId, LEGAL_ENTITY, reqId, `CONC-RFQ-${Date.now()}`, costCtrl],
+      );
+      await client.query(
+        `INSERT INTO rfq_lines (id, rfq_id, requisition_line_id, line_number, description, quantity)
+         VALUES ($1::uuid, $2::uuid, $3::uuid, 1, 'Conc RFQ line', 10)`,
+        [rfqLineId, rfqId, lineId],
+      );
+      await client.query(
+        `INSERT INTO rfq_suppliers (rfq_id, vendor_id, invited_by) VALUES ($1::uuid, $2::uuid, $3::uuid)`,
+        [rfqId, vendorId, costCtrl],
+      );
+      await client.query(
+        `INSERT INTO supplier_quotations (
+           id, legal_entity_id, rfq_id, vendor_id, supplier_quote_reference, quotation_status,
+           subtotal_ex_vat, vat_amount, total_amount, entered_by
+         ) VALUES (
+           $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, 'accepted_for_evaluation', 1000, 0, 1000, $6::uuid
+         )`,
+        [quoteId, LEGAL_ENTITY, rfqId, vendorId, `CQ-${Date.now()}`, costCtrl],
+      );
+      await client.query(
+        `INSERT INTO supplier_quotation_lines (id, quotation_id, rfq_line_id, quoted_quantity, unit_price_ex_vat)
+         VALUES ($1::uuid, $2::uuid, $3::uuid, 10, 100)`,
+        [quoteLineId, quoteId, rfqLineId],
+      );
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    }
+
+    const workers = await Promise.all(
+      [0, 1].map(async () => {
+        const c = new pg.Client({ connectionString });
+        await c.connect();
+        return c;
+      }),
+    );
+    try {
+      const awards = await Promise.all(
+        workers.map(async (c, idx) => {
+          await c.query("BEGIN");
+          try {
+            await c.query("SET LOCAL role authenticated");
+            await c.query("SELECT set_config('request.jwt.claims', $1, true)", [
+              JSON.stringify({ sub: costCtrl, role: "authenticated" }),
+            ]);
+            const result = await c.query(
+              `SELECT public.rpc_award_create_and_submit(
+                 $1::uuid, $2::uuid,
+                 jsonb_build_array(jsonb_build_object(
+                   'rfq_line_id', $3::uuid,
+                   'awarded_quantity', 8,
+                   'unit_price_ex_vat', 100,
+                   'quotation_line_id', $4::uuid
+                 )),
+                 $5, NULL, $6, NULL
+               ) AS r`,
+              [rfqId, quoteId, rfqLineId, quoteLineId, `conc-${idx}`, `idem-conc-award-${Date.now()}-${idx}`],
+            );
+            await c.query("COMMIT");
+            return result.rows[0].r;
+          } catch (error) {
+            await c.query("ROLLBACK");
+            return { ok: false, message: error.message };
+          }
+        }),
+      );
+      const successes = awards.filter((r) => r.ok);
+      if (successes.length !== 1) {
+        throw new Error(`Expected exactly one successful award, got ${successes.length}: ${JSON.stringify(awards)}`);
+      }
+    } finally {
+      await Promise.all(workers.map((c) => c.end()));
+      await client.query(`DELETE FROM sourcing_award_lines WHERE award_id IN (SELECT id FROM sourcing_awards WHERE rfq_id = $1)`, [rfqId]);
+      await client.query(`DELETE FROM sourcing_awards WHERE rfq_id = $1`, [rfqId]);
+      await client.query(`DELETE FROM supplier_quotation_lines WHERE quotation_id = $1`, [quoteId]);
+      await client.query(`DELETE FROM supplier_quotations WHERE id = $1`, [quoteId]);
+      await client.query(`DELETE FROM rfq_suppliers WHERE rfq_id = $1`, [rfqId]);
+      await client.query(`DELETE FROM rfq_lines WHERE rfq_id = $1`, [rfqId]);
+      await client.query(`DELETE FROM rfqs WHERE id = $1`, [rfqId]);
+      await client.query(`DELETE FROM purchase_requisition_lines WHERE requisition_id = $1`, [reqId]);
+      await client.query(`DELETE FROM purchase_requisitions WHERE id = $1`, [reqId]);
+    }
+  });
+
+  await test("UM-CONC-03: concurrent payment requests cannot double-allocate invoice balance", async () => {
+    const poId = crypto.randomUUID();
+    const invId = crypto.randomUUID();
+    const vendorId = "dddddddd-dddd-dddd-dddd-ddddddddd101";
+    await client.query("BEGIN");
+    try {
+      const { rows: periods } = await client.query(
+        `SELECT id FROM fiscal_periods WHERE fiscal_year_id = '77777777-7777-7777-7777-777777777701' AND period_number = 3 LIMIT 1`,
+      );
+      await client.query(
+        `INSERT INTO purchase_orders (
+           id, legal_entity_id, vendor_id, po_number, po_status, currency_code, total_amount, created_by
+         ) VALUES ($1::uuid, $2::uuid, $3::uuid, $4, 'issued', 'SAR', 100, $5::uuid)`,
+        [poId, LEGAL_ENTITY, vendorId, `PO-CONC-${Date.now()}`, FINANCE],
+      );
+      await client.query(
+        `INSERT INTO supplier_invoices (
+           id, legal_entity_id, purchase_order_id, vendor_id, invoice_number, invoice_date,
+           gross_amount, subtotal_ex_vat, vat_amount, invoice_status, match_status, currency_code,
+           fiscal_period_id, created_by, approved_by, approved_at
+         ) VALUES (
+           $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, CURRENT_DATE,
+           100, 100, 0, 'approved', 'matched', 'SAR', $6::uuid, $7::uuid, $8::uuid, NOW()
+         )`,
+        [invId, LEGAL_ENTITY, poId, vendorId, `INV-CONC-${Date.now()}`, periods[0].id, FINANCE, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2"],
+      );
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    }
+
+    const workers = await Promise.all(
+      [0, 1].map(async () => {
+        const c = new pg.Client({ connectionString });
+        await c.connect();
+        return c;
+      }),
+    );
+    try {
+      const payments = await Promise.all(
+        workers.map(async (c, idx) => {
+          await c.query("BEGIN");
+          try {
+            await c.query("SET LOCAL role authenticated");
+            await c.query("SELECT set_config('request.jwt.claims', $1, true)", [
+              JSON.stringify({ sub: FINANCE, role: "authenticated" }),
+            ]);
+            const result = await c.query(
+              `SELECT public.rpc_payment_request_create(
+                 $1::uuid, $2::uuid, 80::numeric, CURRENT_DATE + 7, $3, $4, NULL
+               ) AS r`,
+              [LEGAL_ENTITY, invId, `conc-pay-${idx}`, `idem-conc-pay-${Date.now()}-${idx}`],
+            );
+            await c.query("COMMIT");
+            return result.rows[0].r;
+          } catch (error) {
+            await c.query("ROLLBACK");
+            return { ok: false, message: error.message };
+          }
+        }),
+      );
+      const successes = payments.filter((r) => r.ok);
+      if (successes.length !== 1) {
+        throw new Error(`Expected exactly one payment allocation, got ${successes.length}: ${JSON.stringify(payments)}`);
+      }
+    } finally {
+      await Promise.all(workers.map((c) => c.end()));
+      await client.query(`DELETE FROM payment_requests WHERE supplier_invoice_id = $1`, [invId]);
+      await client.query(`DELETE FROM supplier_invoices WHERE id = $1`, [invId]);
+      await client.query(`DELETE FROM purchase_orders WHERE id = $1`, [poId]);
+    }
+  });
+
   console.log(`\nConcurrency tests: ${passed} passed, ${failed} failed`);
 
   const artifactDir = fileURLToPath(new URL("../artifacts/financial-transactions/", import.meta.url));
@@ -225,6 +446,9 @@ async function main() {
           "COD-H-010 idempotent reversal",
           "DTA-M-001 bounded legacy fixture allocation debt",
           "COD-M-005 cross-tenant allocation rejection",
+          "UM-CONC-01 PO number uniqueness",
+          "UM-CONC-02 award overconsume blocked",
+          "UM-CONC-03 payment double allocate blocked",
         ],
       },
       null,
