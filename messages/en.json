@@ -378,7 +378,9 @@
     "exportCsv": "Export CSV",
     "exportExcel": "Export Excel",
     "preview": "Report preview",
-    "selectReport": "Select a report to preview"
+    "selectReport": "Select a report to preview",
+    "visualPreview": "Visual preview",
+    "loadError": "Unable to load the selected report."
   },
   "imports": {
     "title": "Actual cost import",
@@ -861,6 +863,15 @@
     "invoiceCreated": "Invoice created.",
     "matchInvoice": "Match",
     "invoiceMatched": "Invoice matched.",
+    "matchVisualTitle": "Invoice match status",
+    "emptyMatchVisual": "No procurement match exceptions.",
+    "matchStatuses": {
+      "matched": "Matched",
+      "matchedWithinTolerance": "Matched within tolerance",
+      "exception": "Match exception",
+      "overridden": "Match overridden",
+      "unknown": "Status unavailable"
+    },
     "overrideMatch": "Override match",
     "overrideReason": "Override reason",
     "matchOverridden": "Match overridden.",
@@ -1012,5 +1023,182 @@
     "reviewerSubmit": "Submit calibration",
     "reviewerSubmitted": "Calibration submitted.",
     "actionError": "Appraisal action failed."
+  },
+  "analytics": {
+    "sections": {
+      "kpis": "Executive KPIs",
+      "revenueTrend": "Revenue budget vs actual",
+      "utilization": "Budget utilization by classification",
+      "profitabilityTrend": "Profitability trend",
+      "grossToNet": "Gross-to-net revenue bridge",
+      "profitabilityBridge": "Profitability bridge",
+      "exceptions": "Management exceptions",
+      "insights": "Management insights",
+      "pipeline": "Procurement pipeline",
+      "evm": "Earned value",
+      "timeline": "Schedule timeline",
+      "projectSchedule": "Project schedule",
+      "roadmap": "Executive roadmap",
+      "riskMatrix": "Risk matrix",
+      "closeReadiness": "Period-close readiness",
+      "approvalAge": "Approval age",
+      "branchComparison": "Branch comparison",
+      "forecastTrend": "Budget / actual / forecast",
+      "forecastProfile": "Approved forecast by period",
+      "favorableVariances": "Top favorable variances",
+      "unfavorableVariances": "Top unfavorable variances",
+      "appraisalCompletion": "Appraisal completion",
+      "expenseTrend": "Expense budget vs actual"
+    },
+    "modes": {
+      "revenue": "Revenue",
+      "expense": "Expense",
+      "profitability": "Profitability"
+    },
+    "kpi": {
+      "revenue": "Net revenue",
+      "revenueVsBudget": "Revenue vs budget",
+      "grossProfit": "Gross profit",
+      "grossMargin": "Gross margin %",
+      "operatingContribution": "Operating contribution",
+      "actualOperatingCost": "Actual operating cost",
+      "openCommitments": "Open commitments",
+      "capex": "CAPEX",
+      "foodCost": "Food cost",
+      "readiness": "Close readiness",
+      "bac": "Budget at completion",
+      "fac": "Forecast at completion",
+      "cpi": "CPI",
+      "spi": "SPI",
+      "cv": "Cost variance (CV)",
+      "sv": "Schedule variance (SV)",
+      "eac": "Estimate at completion (EAC)",
+      "vac": "Variance at completion (VAC)",
+      "currentApprovedFac": "Current approved FAC",
+      "underReviewFac": "Under review forecast",
+      "draftFac": "Draft forecast total",
+      "versionCount": "Forecast versions",
+      "completedAppraisals": "Completed appraisals",
+      "overallProgress": "Overall progress",
+      "scheduleProgress": "Schedule progress",
+      "forecastCompletion": "Forecast completion",
+      "delayedMilestones": "Delayed milestones"
+    },
+    "series": {
+      "budget": "Budget",
+      "actual": "Actual",
+      "commitment": "Commitment",
+      "remaining": "Remaining",
+      "netRevenue": "Net revenue",
+      "grossProfit": "Gross profit",
+      "operatingContribution": "Operating contribution",
+      "forecast": "Forecast",
+      "pv": "Planned value",
+      "ev": "Earned value",
+      "ac": "Actual cost"
+      ,"count": "Count"
+    },
+    "bridge": {
+      "gross": "Gross revenue",
+      "rejections": "Rejections",
+      "discounts": "Discounts",
+      "refunds": "Refunds",
+      "creditNotes": "Credit notes",
+      "otherDeductions": "Other deductions",
+      "adjustments": "Adjustments",
+      "net": "Net revenue",
+      "costOfRevenue": "Cost of revenue",
+      "payroll": "Payroll",
+      "operatingExpenses": "Operating expenses"
+    },
+    "classification": {
+      "costOfRevenue": "Cost of revenue",
+      "payroll": "Payroll",
+      "operatingExpenses": "Operating expenses",
+      "capex": "CAPEX"
+      ,"revenue": "Revenue",
+      "internalTransfer": "Internal transfer",
+      "workingCapital": "Working capital",
+      "statistical": "Statistical",
+      "other": "Other"
+    },
+    "exceptions": {
+      "matchExceptions": "Invoice match exceptions",
+      "unmapped": "Unmapped actuals",
+      "periodBlockers": "Period-close blockers"
+    },
+    "notes": {
+      "capexSeparate": "Separate from operating contribution",
+      "pipelineLimit": "Latest 200 documents per reported stage"
+    },
+    "insights": {
+      "matchExceptions": "{count, plural, one {# procurement invoice has} other {# procurement invoices have}} unresolved match exceptions",
+      "delayedMilestones": "{count, plural, one {# milestone is} other {# milestones are}} past the forecast date"
+    },
+    "statuses": {
+      "completed": "Completed",
+      "delayed": "Delayed",
+      "inProgress": "In progress",
+      "notStarted": "Not started",
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "kinds": {
+      "project": "Project",
+      "phase": "Phase",
+      "workPackage": "Work package",
+      "task": "Task",
+      "milestone": "Milestone"
+    },
+    "appraisalStatuses": {
+      "employee_self_review": "Employee self-review",
+      "self_submitted": "Self-review submitted",
+      "manager_review": "Manager review",
+      "manager_submitted": "Manager review submitted",
+      "reviewer_review": "Calibration review",
+      "finalized": "Finalized",
+      "employee_acknowledged": "Employee acknowledged"
+    },
+    "common": {
+      "item": "Item",
+      "scheduleColumn": "Activity",
+      "baseline": "Baseline",
+      "forecast": "Forecast",
+      "progress": "Progress",
+      "actual": "Actual",
+      "status": "Status",
+      "today": "Today",
+      "noDates": "No dates",
+      "progressBasisBaseline": "Progress plotted on the authoritative baseline span; no forecast dates are recorded",
+      "viewFullTimeline": "View full timeline",
+      "riskMatrix": "Risk matrix",
+      "lifecycle": "Lifecycle",
+      "chartData": "Chart data",
+      "statusUnavailable": "Status unavailable",
+      "toggleItem": "Toggle {item}",
+      "ageDays": "{value}d"
+    },
+    "empty": {
+      "period": "No data available for the selected period",
+      "timeline": "No project timeline data is available.",
+      "schedule": "No project schedule data is available for this project.",
+      "pipeline": "No procurement pipeline data is available.",
+      "match": "No procurement match exceptions.",
+      "errorHint": "Unable to load analytics for the active legal entity."
+    },
+    "pipelineStages": {
+      "requisition": "Requisition",
+      "rfq": "RFQ",
+      "quotation": "Quotation",
+      "evaluation": "Evaluation",
+      "award": "Award",
+      "purchase_order": "Purchase order",
+      "receipt": "Receipt / service entry",
+      "invoice": "Invoice",
+      "matching": "Matching",
+      "payment_ready": "Payment readiness"
+    }
   }
 }

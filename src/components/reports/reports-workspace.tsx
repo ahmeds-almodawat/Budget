@@ -11,6 +11,9 @@ import {
 } from "@/app/actions/report-actions";
 import type { ReportType } from "@/data/repositories/report-repository";
 import { formatMoney } from "@/lib/money";
+import { ChartCard, CategoryBarChart, ProgressBar } from "@/components/analytics";
+import { toNumber } from "@/domain/analytics/format";
+import type { ChartPoint } from "@/domain/analytics/types";
 
 const REPORT_TYPES: ReportType[] = [
   "budget_vs_actual",
@@ -68,6 +71,18 @@ const MONEY_COLUMNS = new Set([
   "vac",
 ]);
 
+const FINANCIAL_GROUP_KEYS = {
+  revenue: "revenue",
+  cost_of_revenue: "costOfRevenue",
+  payroll: "payroll",
+  operating_expenses: "operatingExpenses",
+  capex: "capex",
+  internal_transfer: "internalTransfer",
+  working_capital: "workingCapital",
+  statistical: "statistical",
+  other: "other",
+} as const;
+
 export function ReportsWorkspace({
   canExport,
   canViewAudit,
@@ -76,18 +91,93 @@ export function ReportsWorkspace({
   canViewAudit: boolean;
 }) {
   const t = useTranslations("reports");
+  const tAnalytics = useTranslations("analytics");
   const [selected, setSelected] = useState<ReportType>("budget_vs_actual");
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const reportTypes = canViewAudit
     ? REPORT_TYPES
     : REPORT_TYPES.filter((type) => type !== "audit_history");
 
+  const chartPreview: { points: ChartPoint[]; readiness?: number | null } | null = (() => {
+    if (selected === "procurement_pipeline") {
+      const map = new Map<string, ChartPoint>();
+      for (const row of rows) {
+        const stage = String(row.stage ?? row.status ?? "other");
+        const existing = map.get(stage) ?? {
+          key: stage,
+          label: tAnalytics.has(`pipelineStages.${stage}`)
+            ? tAnalytics(`pipelineStages.${stage}`)
+            : stage,
+          count: 0,
+        };
+        existing.count =
+          (existing.count as number) +
+          (row.count == null ? 1 : toNumber(row.count as string | number));
+        map.set(stage, existing);
+      }
+      return { points: Array.from(map.values()) };
+    }
+    if (selected === "budget_vs_actual" || selected === "budget_actual_commitments") {
+      const map = new Map<string, ChartPoint>();
+      for (const row of rows) {
+        const key = String(row.financial_reporting_group ?? row.period_number ?? "row");
+        const classificationKey = FINANCIAL_GROUP_KEYS[key as keyof typeof FINANCIAL_GROUP_KEYS];
+        const existing = map.get(key) ?? {
+          key,
+          label: classificationKey
+            ? tAnalytics(`classification.${classificationKey}`)
+            : key,
+          budget: 0,
+          actual: 0,
+        };
+        existing.budget =
+          (existing.budget as number) +
+          toNumber((row.current_approved_amount ?? row.monthly_budget) as string | number | undefined);
+        existing.actual =
+          (existing.actual as number) + toNumber((row.actual_amount ?? row.mtd_actual) as string | number | undefined);
+        map.set(key, existing);
+      }
+      return { points: Array.from(map.values()) };
+    }
+    if (selected === "period_close_readiness") {
+      if (!rows.length) return { points: [], readiness: null };
+      const ready = rows.filter(
+        (row) =>
+          row.ready_for_hard_close === true ||
+          row.control_state === "hard_close" ||
+          row.control_state === "archived",
+      ).length;
+      return { points: [], readiness: (ready / rows.length) * 100 };
+    }
+    if (selected === "appraisal_cycle_completion") {
+      const total = rows.reduce(
+        (sum, row) => sum + toNumber(row.assignment_count as string | number | undefined),
+        0,
+      );
+      if (total === 0) return { points: [], readiness: null };
+      const completed = rows.reduce(
+        (sum, row) => sum + toNumber(row.finalized_count as string | number | undefined),
+        0,
+      );
+      return { points: [], readiness: (completed / total) * 100 };
+    }
+    if (!rows.length) return null;
+    return null;
+  })();
+
   function loadReport(type: ReportType) {
     setSelected(type);
     startTransition(async () => {
-      const data = await fetchReportAction(type);
-      setRows((data as Record<string, unknown>[]) ?? []);
+      setError(null);
+      try {
+        const data = await fetchReportAction(type);
+        setRows((data as Record<string, unknown>[]) ?? []);
+      } catch {
+        setRows([]);
+        setError(t("loadError"));
+      }
     });
   }
 
@@ -152,6 +242,37 @@ export function ReportsWorkspace({
         </div>
       ) : null}
 
+      {error ? <p className="text-sm text-danger" role="alert">{error}</p> : null}
+
+      {chartPreview ? (
+        <div data-testid="report-visual-preview">
+        <ChartCard
+          title={t("visualPreview")}
+          empty={chartPreview.readiness == null && chartPreview.points.length === 0}
+          emptyTitle={tAnalytics("empty.period")}
+        >
+          {chartPreview.readiness != null ? (
+            <ProgressBar value={chartPreview.readiness} label={tAnalytics("kpi.readiness")} />
+          ) : null}
+          {chartPreview.points.length > 0 ? (
+            <CategoryBarChart
+              data={chartPreview.points}
+              series={
+                selected === "procurement_pipeline"
+                  ? [{ key: "count", label: tAnalytics("series.count"), token: "chart-3", valueKind: "number" }]
+                  : [
+                      { key: "budget", label: tAnalytics("series.budget"), token: "chart-2" },
+                      { key: "actual", label: tAnalytics("series.actual"), token: "chart-1" },
+                    ]
+              }
+              layout="horizontal"
+              height={280}
+            />
+          ) : null}
+        </ChartCard>
+        </div>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>{t("preview")}</CardTitle>
@@ -175,7 +296,7 @@ export function ReportsWorkspace({
                           ? formatMoney(String(row[h] ?? 0), "SAR")
                           : typeof row[h] === "object"
                             ? JSON.stringify(row[h])
-                            : String(row[h] ?? "")}
+                            : String(row[h] ?? "—")}
                       </td>
                     ))}
                   </tr>

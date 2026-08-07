@@ -83,7 +83,7 @@ test.describe("revenue export and reporting", () => {
 
   test("internal revenue remains in revenue workspace", async ({ page }) => {
     await page.goto("/en/cost-control");
-    await page.getByRole("button", { name: "Revenue" }).click();
+    await page.getByRole("button", { name: "Revenue", exact: true }).click();
     await expect(page.getByTestId("budget-vs-actual-workspace")).toBeVisible();
   });
 });

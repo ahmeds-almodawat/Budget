@@ -33,6 +33,8 @@ import {
 import { formatMoney } from "@/lib/money";
 import { lineTotal } from "@/domain/procurement/calculations";
 import { pickLocalized } from "@/lib/i18n/display";
+import { ChartCard, ExceptionSummary } from "@/components/analytics";
+import { invoiceMatchStatusKey } from "@/domain/analytics/status";
 
 function firstRel<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
@@ -546,6 +548,8 @@ export function SupplierInvoiceWorkspace({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const matchStatusLabel = (status: string | null | undefined) =>
+    t(`matchStatuses.${invoiceMatchStatusKey(status)}`);
   const selectedPo = poOptions.find((p) => p.id === poId);
   const selectedLine = selectedPo?.lines.find((line) => line.id === poLineId);
   const gross = selectedLine ? lineTotal(invoiceQuantity || "0", selectedLine.unitPrice).toFixed(4) : "0.0000";
@@ -644,6 +648,62 @@ export function SupplierInvoiceWorkspace({
       ) : null}
       {message ? <p className="text-sm text-success">{message}</p> : null}
       {error ? <p className="text-sm text-danger">{error}</p> : null}
+      <div data-testid="invoice-match-visual">
+      <ChartCard
+        title={t("matchVisualTitle")}
+        empty={rows.length === 0}
+        emptyTitle={t("emptyMatchVisual")}
+      >
+        <ExceptionSummary
+          items={[
+            {
+              id: "matched",
+              label: t("matchStatuses.matched"),
+              count: rows.filter((r) => r.match_status === "matched").length,
+              tone: "neutral",
+            },
+            {
+              id: "tolerance",
+              label: t("matchStatuses.matchedWithinTolerance"),
+              count: rows.filter((r) => r.match_status === "matched_within_tolerance").length,
+              tone: "warning",
+            },
+            {
+              id: "exception",
+              label: t("matchStatuses.exception"),
+              count: rows.filter((r) => r.match_status === "exception").length,
+              tone: "danger",
+            },
+            {
+              id: "overridden",
+              label: t("matchStatuses.overridden"),
+              count: rows.filter((r) => r.match_status === "overridden").length,
+              tone: "warning",
+            },
+          ]}
+        />
+        <ul className="mt-4 space-y-2 text-xs text-text-secondary">
+          {rows
+            .filter((inv) => inv.match_status)
+            .slice(0, 8)
+            .map((inv) => {
+              const po = firstRel(inv.purchase_orders);
+              return (
+                <li key={inv.id} className="flex flex-wrap justify-between gap-2 border-b border-border/60 py-1">
+                  <span>
+                    {inv.invoice_number}
+                    {po ? ` · PO ${po.po_number}` : ""}
+                  </span>
+                  <span className="tabular-nums">
+                    {matchStatusLabel(inv.match_status)} · {formatMoney(inv.gross_amount, "SAR")}
+                  </span>
+                  <span className="sr-only">{t("amount")} {formatMoney(inv.gross_amount, "SAR")}</span>
+                </li>
+              );
+            })}
+        </ul>
+      </ChartCard>
+      </div>
       <ul className="space-y-2">
         {rows.map((inv) => {
           const vendor = firstRel(inv.vendors);
@@ -655,7 +715,7 @@ export function SupplierInvoiceWorkspace({
                 <p className="text-muted-foreground">
                   {vendor ? pickLocalized(locale, vendor.name_en, vendor.name_ar) : "—"}
                   {po ? ` · PO ${po.po_number}` : ""}
-                  {inv.match_status ? ` · ${inv.match_status}` : ""}
+                  {inv.match_status ? ` · ${matchStatusLabel(inv.match_status)}` : ""}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">

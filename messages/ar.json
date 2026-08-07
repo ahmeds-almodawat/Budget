@@ -378,7 +378,9 @@
     "exportCsv": "تصدير CSV",
     "exportExcel": "تصدير Excel",
     "preview": "معاينة التقرير",
-    "selectReport": "اختر تقريراً للمعاينة"
+    "selectReport": "اختر تقريراً للمعاينة",
+    "visualPreview": "معاينة مرئية",
+    "loadError": "تعذر تحميل التقرير المحدد."
   },
   "imports": {
     "title": "استيراد التكاليف الفعلية",
@@ -861,6 +863,15 @@
     "invoiceCreated": "تم إنشاء الفاتورة.",
     "matchInvoice": "مطابقة",
     "invoiceMatched": "تمت مطابقة الفاتورة.",
+    "matchVisualTitle": "حالة مطابقة الفاتورة",
+    "emptyMatchVisual": "لا توجد استثناءات مطابقة للمشتريات.",
+    "matchStatuses": {
+      "matched": "مطابقة",
+      "matchedWithinTolerance": "مطابقة ضمن حد السماح",
+      "exception": "استثناء مطابقة",
+      "overridden": "تم تجاوز المطابقة",
+      "unknown": "الحالة غير متاحة"
+    },
     "overrideMatch": "تجاوز المطابقة",
     "overrideReason": "سبب التجاوز",
     "matchOverridden": "تم تجاوز المطابقة.",
@@ -1012,5 +1023,182 @@
     "reviewerSubmit": "تقديم المعايرة",
     "reviewerSubmitted": "تم تقديم المعايرة.",
     "actionError": "فشل إجراء التقييم."
+  },
+  "analytics": {
+    "sections": {
+      "kpis": "مؤشرات تنفيذية",
+      "revenueTrend": "الإيراد الميزانية مقابل الفعلي",
+      "utilization": "استخدام الميزانية حسب التصنيف",
+      "profitabilityTrend": "اتجاه الربحية",
+      "grossToNet": "جسر الإيراد من الإجمالي إلى الصافي",
+      "profitabilityBridge": "جسر الربحية",
+      "exceptions": "استثناءات الإدارة",
+      "insights": "رؤى إدارية",
+      "pipeline": "مسار المشتريات",
+      "evm": "القيمة المكتسبة",
+      "timeline": "الجدول الزمني",
+      "projectSchedule": "جدول المشروع",
+      "roadmap": "خارطة الطريق التنفيذية",
+      "riskMatrix": "مصفوفة المخاطر",
+      "closeReadiness": "جاهزية إغلاق الفترة",
+      "approvalAge": "عمر الاعتماد",
+      "branchComparison": "مقارنة الفروع",
+      "forecastTrend": "الميزانية / الفعلي / التوقع",
+      "forecastProfile": "التوقع المعتمد حسب الفترة",
+      "favorableVariances": "أعلى الفروقات الإيجابية",
+      "unfavorableVariances": "أعلى الفروقات السلبية",
+      "appraisalCompletion": "إنجاز التقييمات",
+      "expenseTrend": "مصروف الميزانية مقابل الفعلي"
+    },
+    "modes": {
+      "revenue": "الإيراد",
+      "expense": "المصروف",
+      "profitability": "الربحية"
+    },
+    "kpi": {
+      "revenue": "صافي الإيراد",
+      "revenueVsBudget": "الإيراد مقابل الميزانية",
+      "grossProfit": "إجمالي الربح",
+      "grossMargin": "هامش إجمالي الربح %",
+      "operatingContribution": "المساهمة التشغيلية",
+      "actualOperatingCost": "التكلفة التشغيلية الفعلية",
+      "openCommitments": "الالتزامات المفتوحة",
+      "capex": "النفقات الرأسمالية",
+      "foodCost": "تكلفة الغذاء",
+      "readiness": "جاهزية الإغلاق",
+      "bac": "الميزانية عند الإنجاز",
+      "fac": "التوقع عند الإنجاز",
+      "cpi": "مؤشر أداء التكلفة",
+      "spi": "مؤشر أداء الجدول",
+      "cv": "فرق التكلفة (CV)",
+      "sv": "فرق الجدول (SV)",
+      "eac": "التقدير عند الإنجاز (EAC)",
+      "vac": "الفرق عند الإنجاز (VAC)",
+      "currentApprovedFac": "التوقع المعتمد الحالي",
+      "underReviewFac": "التوقع قيد المراجعة",
+      "draftFac": "إجمالي مسودة التوقع",
+      "versionCount": "إصدارات التوقع",
+      "completedAppraisals": "التقييمات المكتملة",
+      "overallProgress": "التقدم الإجمالي",
+      "scheduleProgress": "تقدم الجدول",
+      "forecastCompletion": "الإنجاز المتوقع",
+      "delayedMilestones": "المعالم المتأخرة"
+    },
+    "series": {
+      "budget": "الميزانية",
+      "actual": "الفعلي",
+      "commitment": "الالتزام",
+      "remaining": "المتبقي",
+      "netRevenue": "صافي الإيراد",
+      "grossProfit": "إجمالي الربح",
+      "operatingContribution": "المساهمة التشغيلية",
+      "forecast": "التوقع",
+      "pv": "القيمة المخططة",
+      "ev": "القيمة المكتسبة",
+      "ac": "التكلفة الفعلية"
+      ,"count": "العدد"
+    },
+    "bridge": {
+      "gross": "إجمالي الإيراد",
+      "rejections": "الرفض",
+      "discounts": "الخصومات",
+      "refunds": "المستردات",
+      "creditNotes": "إشعارات دائنة",
+      "otherDeductions": "خصومات أخرى",
+      "adjustments": "تسويات",
+      "net": "صافي الإيراد",
+      "costOfRevenue": "تكلفة الإيراد",
+      "payroll": "الرواتب",
+      "operatingExpenses": "المصروفات التشغيلية"
+    },
+    "classification": {
+      "costOfRevenue": "تكلفة الإيراد",
+      "payroll": "الرواتب",
+      "operatingExpenses": "المصروفات التشغيلية",
+      "capex": "النفقات الرأسمالية"
+      ,"revenue": "الإيراد",
+      "internalTransfer": "تحويل داخلي",
+      "workingCapital": "رأس المال العامل",
+      "statistical": "إحصائي",
+      "other": "أخرى"
+    },
+    "exceptions": {
+      "matchExceptions": "استثناءات مطابقة الفواتير",
+      "unmapped": "فعليات غير مربوطة",
+      "periodBlockers": "معوّقات إغلاق الفترة"
+    },
+    "notes": {
+      "capexSeparate": "منفصلة عن المساهمة التشغيلية",
+      "pipelineLimit": "أحدث 200 مستند لكل مرحلة معروضة"
+    },
+    "insights": {
+      "matchExceptions": "توجد استثناءات مطابقة غير معالجة في {count} من فواتير المشتريات",
+      "delayedMilestones": "يوجد {count} من المعالم بعد تاريخ التوقع"
+    },
+    "statuses": {
+      "completed": "مكتمل",
+      "delayed": "متأخر",
+      "inProgress": "قيد التنفيذ",
+      "notStarted": "لم يبدأ",
+      "draft": "مسودة",
+      "submitted": "مُرسل",
+      "approved": "معتمد",
+      "rejected": "مرفوض"
+    },
+    "kinds": {
+      "project": "مشروع",
+      "phase": "مرحلة",
+      "workPackage": "حزمة عمل",
+      "task": "مهمة",
+      "milestone": "معلم"
+    },
+    "appraisalStatuses": {
+      "employee_self_review": "المراجعة الذاتية للموظف",
+      "self_submitted": "تم تقديم المراجعة الذاتية",
+      "manager_review": "مراجعة المدير",
+      "manager_submitted": "تم تقديم مراجعة المدير",
+      "reviewer_review": "مراجعة المعايرة",
+      "finalized": "معتمد نهائياً",
+      "employee_acknowledged": "إقرار الموظف"
+    },
+    "common": {
+      "item": "البند",
+      "scheduleColumn": "النشاط",
+      "baseline": "خط الأساس",
+      "forecast": "التوقع",
+      "progress": "التقدم",
+      "actual": "الفعلي",
+      "status": "الحالة",
+      "today": "اليوم",
+      "noDates": "لا توجد تواريخ",
+      "progressBasisBaseline": "يُعرض التقدم على نطاق خط الأساس المعتمد لعدم وجود تواريخ توقع مسجلة",
+      "viewFullTimeline": "عرض الجدول الزمني الكامل",
+      "riskMatrix": "مصفوفة المخاطر",
+      "lifecycle": "دورة الحالة",
+      "chartData": "بيانات الرسم",
+      "statusUnavailable": "الحالة غير متاحة",
+      "toggleItem": "توسيع أو طي {item}",
+      "ageDays": "{value} ي"
+    },
+    "empty": {
+      "period": "لا تتوفر بيانات للفترة المحددة",
+      "timeline": "لا تتوفر بيانات للجدول الزمني للمشروع.",
+      "schedule": "لا تتوفر بيانات لجدول المشروع لهذا المشروع.",
+      "pipeline": "لا تتوفر بيانات لمسار المشتريات.",
+      "match": "لا توجد استثناءات مطابقة للمشتريات.",
+      "errorHint": "تعذر تحميل التحليلات للكيان القانوني النشط."
+    },
+    "pipelineStages": {
+      "requisition": "طلب شراء",
+      "rfq": "طلب عرض سعر",
+      "quotation": "عرض سعر",
+      "evaluation": "تقييم",
+      "award": "ترسية",
+      "purchase_order": "أمر شراء",
+      "receipt": "استلام / قيد خدمة",
+      "invoice": "فاتورة",
+      "matching": "مطابقة",
+      "payment_ready": "جاهزية الدفع"
+    }
   }
 }

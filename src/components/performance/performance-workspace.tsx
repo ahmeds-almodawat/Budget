@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,12 @@ import type {
   AppraisalCycleRow,
   AppraisalTemplateRow,
 } from "@/data/repositories/appraisal-repository";
+import { ChartCard, ProgressBar } from "@/components/analytics";
+import { formatInteger } from "@/domain/analytics/format";
 
 type Tab = "scorecard" | "my" | "team" | "cycles";
+
+const COMPLETED_STATUSES = new Set(["finalized", "employee_acknowledged"]);
 
 export interface ScorecardTeam {
   id: string;
@@ -56,6 +60,7 @@ export function PerformanceWorkspace({
 }) {
   const locale = useLocale();
   const t = useTranslations("appraisal");
+  const tAnalytics = useTranslations("analytics");
   const tDash = useTranslations("dashboard.employee");
   const [tab, setTab] = useState<Tab>("scorecard");
   const [message, setMessage] = useState<string | null>(null);
@@ -72,6 +77,20 @@ export function PerformanceWorkspace({
   const [managerId, setManagerId] = useState("");
   const [templateRows, setTemplateRows] = useState(templates);
 
+  const completionStats = useMemo(() => {
+    const byId = new Map<string, AppraisalAssignmentRow>();
+    for (const row of [...myAppraisals, ...teamAppraisals]) {
+      byId.set(row.id, row);
+    }
+    const assignments = Array.from(byId.values());
+    const completed = assignments.filter((a) => COMPLETED_STATUSES.has(a.assignment_status)).length;
+    const statusCounts = assignments.reduce<Record<string, number>>((acc, row) => {
+      acc[row.assignment_status] = (acc[row.assignment_status] ?? 0) + 1;
+      return acc;
+    }, {});
+    return { total: assignments.length, completed, statusCounts };
+  }, [myAppraisals, teamAppraisals]);
+
   const tabs: { key: Tab; label: string; show: boolean }[] = [
     { key: "scorecard", label: t("tabs.scorecard"), show: true },
     { key: "my", label: t("tabs.my"), show: true },
@@ -84,8 +103,35 @@ export function PerformanceWorkspace({
     return p ? pickLocalized(locale, p.full_name_en, p.full_name_ar) : id.slice(0, 8);
   };
 
+  const appraisalStatusLabel = (status: string) =>
+    tAnalytics.has(`appraisalStatuses.${status}`)
+      ? tAnalytics(`appraisalStatuses.${status}`)
+      : tAnalytics("common.statusUnavailable");
+
   return (
     <div className="space-y-6">
+      <ChartCard
+        title={tAnalytics("sections.appraisalCompletion")}
+        empty={completionStats.total === 0}
+        emptyTitle={tAnalytics("empty.period")}
+      >
+        <div className="space-y-4">
+          <ProgressBar
+            value={completionStats.completed}
+            max={completionStats.total || 1}
+            label={`${tAnalytics("kpi.completedAppraisals")}: ${formatInteger(completionStats.completed, locale)} / ${formatInteger(completionStats.total, locale)}`}
+          />
+          <ul className="grid gap-2 sm:grid-cols-2 text-sm text-text-secondary">
+            {Object.entries(completionStats.statusCounts).map(([status, count]) => (
+              <li key={status} className="flex justify-between gap-2 rounded-md border border-border px-3 py-2">
+                <span>{appraisalStatusLabel(status)}</span>
+                <span className="tabular-nums text-foreground">{formatInteger(count, locale)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </ChartCard>
+
       <div className="flex flex-wrap gap-2">
         {tabs
           .filter((x) => x.show)

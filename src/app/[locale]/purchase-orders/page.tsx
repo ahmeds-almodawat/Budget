@@ -2,11 +2,13 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { WorkspaceError } from "@/components/governance/workspace-state";
 import { PurchaseOrderWorkspace } from "@/components/governance/purchase-order-workspace";
+import { ProcurementAnalyticsPanel } from "@/components/governance/procurement-analytics-panel";
 import {
   fetchAwardsAction,
   fetchPurchaseOrdersWithLinesAction,
 } from "@/app/actions/procurement-actions";
 import { getFiscalPeriods } from "@/data/repositories/budget-repository";
+import { getProcurementPipelineReport } from "@/data/repositories/report-repository";
 import { hasPermission } from "@/domain/auth/permissions";
 import { FISCAL_YEAR_2027 } from "@/types/database";
 import { requireRoutePermission } from "@/lib/auth/route-authorization";
@@ -34,14 +36,16 @@ export default async function PurchaseOrdersPage({
 
   let purchaseOrders: Awaited<ReturnType<typeof fetchPurchaseOrdersWithLinesAction>> = [];
   let awards: Awaited<ReturnType<typeof fetchAwardsAction>> = [];
+  let pipelineRows: Awaited<ReturnType<typeof getProcurementPipelineReport>> = [];
   let fiscalPeriodId = "";
   let errorMessage: string | null = null;
   try {
     const periods = await getFiscalPeriods(session.db, FISCAL_YEAR_2027);
     fiscalPeriodId = periods[0]?.id ?? "";
-    [purchaseOrders, awards] = await Promise.all([
+    [purchaseOrders, awards, pipelineRows] = await Promise.all([
       fetchPurchaseOrdersWithLinesAction(),
       fetchAwardsAction(),
+      getProcurementPipelineReport(session.db, session.legalEntityId),
     ]);
   } catch (e) {
     errorMessage = e instanceof Error ? e.message : t("loadError");
@@ -60,14 +64,19 @@ export default async function PurchaseOrdersPage({
       {errorMessage ? (
         <WorkspaceError message={errorMessage} />
       ) : (
-        <PurchaseOrderWorkspace
-          initialOrders={purchaseOrders as never}
-          awardOptions={awardOptions}
-          fiscalPeriodId={fiscalPeriodId}
-          canCreate={hasPermission(roles, "commitment", "create", entityId)}
-          canUpdate={hasPermission(roles, "commitment", "update", entityId)}
-          canApprove={hasPermission(roles, "commitment", "approve", entityId)}
-        />
+        <>
+          <ProcurementAnalyticsPanel
+            rows={pipelineRows as Array<{ stage: string; status?: string | null; amount?: string | number | null }>}
+          />
+          <PurchaseOrderWorkspace
+            initialOrders={purchaseOrders as never}
+            awardOptions={awardOptions}
+            fiscalPeriodId={fiscalPeriodId}
+            canCreate={hasPermission(roles, "commitment", "create", entityId)}
+            canUpdate={hasPermission(roles, "commitment", "update", entityId)}
+            canApprove={hasPermission(roles, "commitment", "approve", entityId)}
+          />
+        </>
       )}
     </div>
   );

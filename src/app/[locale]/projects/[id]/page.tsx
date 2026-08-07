@@ -1,10 +1,27 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
-import { fetchProjectDashboardAction } from "@/app/actions/project-actions";
+import {
+  fetchProjectDashboardAction,
+  fetchProjectTimelineAction,
+} from "@/app/actions/project-actions";
 import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
 import { pickLocalized } from "@/lib/i18n/display";
 import { loadRouteData, requireRoutePermission } from "@/lib/auth/route-authorization";
+import { formatCompactMoney, formatCompactPercent, formatRatio, toNumber } from "@/domain/analytics/format";
+import type { ChartPoint, ChartSeriesDef, KpiMetric } from "@/domain/analytics/types";
+import { dateInTimeZone } from "@/domain/analytics/timeline";
+import { ProjectEvmAnalyticsPanel } from "@/components/dashboard/project-evm-analytics-panel";
+import { ProjectSchedulePreview } from "@/components/dashboard/project-timeline-analytics";
+import { mapTimelineToGanttItems } from "@/lib/projects/map-timeline-gantt";
+
+function decimalToNumber(value: { toNumber?: () => number; toString: () => string } | number | string | null | undefined): number | null {
+  if (value == null) return null;
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return toNumber(value);
+  if (typeof value.toNumber === "function") return value.toNumber();
+  return toNumber(value.toString());
+}
 
 export default async function ProjectDashboardPage({
   params,
@@ -17,9 +34,15 @@ export default async function ProjectDashboardPage({
   const t = await getTranslations("dashboard.project");
   const tPages = await getTranslations("pages.projects");
   const tLabels = await getTranslations("dashboardLabels");
+  const tAnalytics = await getTranslations("analytics");
+  const arabicCurrency = locale.startsWith("ar");
+  const moneyLocale = locale.startsWith("ar") ? "ar-SA" : "en-SA";
 
   const scopeId = id === "cs-khamis-hospital" ? CONTROL_SCOPE_KM_HOSPITAL : id;
-  const dashboard = await loadRouteData(() => fetchProjectDashboardAction(scopeId));
+  const [dashboard, timeline] = await Promise.all([
+    loadRouteData(() => fetchProjectDashboardAction(scopeId)),
+    loadRouteData(() => fetchProjectTimelineAction(scopeId)),
+  ]);
 
   if (!dashboard) {
     return (
@@ -31,6 +54,95 @@ export default async function ProjectDashboardPage({
   }
 
   const { project, metrics, milestones } = dashboard;
+  const today = dateInTimeZone();
+  const ganttItems = timeline
+    ? mapTimelineToGanttItems({
+        locale,
+        project: timeline.project,
+        phases: timeline.phases,
+        milestones: timeline.milestones,
+        today,
+      })
+    : [];
+  const fmt = (v: number) =>
+    formatCompactMoney(v, { locale: moneyLocale, arabicCurrency });
+
+  const bac = decimalToNumber(metrics?.budgetAtCompletion);
+  const pv = decimalToNumber(metrics?.plannedValue);
+  const ev = decimalToNumber(metrics?.earnedValue);
+  const ac = decimalToNumber(metrics?.actualCost);
+  const cv = decimalToNumber(metrics?.costVariance);
+  const sv = decimalToNumber(metrics?.scheduleVariance);
+  const cpi = decimalToNumber(metrics?.costPerformanceIndex);
+  const spi = decimalToNumber(metrics?.schedulePerformanceIndex);
+  const eac = decimalToNumber(metrics?.estimateAtCompletion);
+
+  const kpis: KpiMetric[] = metrics
+    ? [
+        {
+          id: "bac",
+          label: tAnalytics("kpi.bac"),
+          value: bac,
+          formattedValue: bac == null ? "—" : fmt(bac),
+        },
+        {
+          id: "pv",
+          label: t("pv"),
+          value: pv,
+          formattedValue: pv == null ? "—" : fmt(pv),
+        },
+        {
+          id: "ev",
+          label: t("ev"),
+          value: ev,
+          formattedValue: ev == null ? "—" : fmt(ev),
+        },
+        {
+          id: "ac",
+          label: t("ac"),
+          value: ac,
+          formattedValue: ac == null ? "—" : fmt(ac),
+        },
+        {
+          id: "cpi",
+          label: tAnalytics("kpi.cpi"),
+          value: cpi,
+          formattedValue: formatRatio(cpi, locale),
+        },
+        {
+          id: "spi",
+          label: tAnalytics("kpi.spi"),
+          value: spi,
+          formattedValue: formatRatio(spi, locale),
+        },
+        {
+          id: "cv",
+          label: tAnalytics("kpi.cv"),
+          value: cv,
+          formattedValue: cv == null ? "—" : fmt(cv),
+        },
+        {
+          id: "sv",
+          label: tAnalytics("kpi.sv"),
+          value: sv,
+          formattedValue: sv == null ? "—" : fmt(sv),
+        },
+        {
+          id: "eac",
+          label: tAnalytics("kpi.eac"),
+          value: eac,
+          formattedValue: eac == null ? "—" : fmt(eac),
+        },
+      ]
+    : [];
+
+  // EVM view is a current control-account snapshot — no period history series.
+  const trend: ChartPoint[] = [];
+  const trendSeries: ChartSeriesDef[] = [
+    { key: "pv", label: tAnalytics("series.pv"), token: "chart-1", type: "line" },
+    { key: "ev", label: tAnalytics("series.ev"), token: "chart-2", type: "line" },
+    { key: "ac", label: tAnalytics("series.ac"), token: "chart-3", type: "line" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -59,29 +171,41 @@ export default async function ProjectDashboardPage({
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("cpi")}</CardTitle></CardHeader>
-          <CardContent>{metrics?.costPerformanceIndex?.toFixed(2) ?? "N/A"}</CardContent>
+          <CardContent>{metrics?.costPerformanceIndex?.toFixed(2) ?? tPages("insufficientData")}</CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm">{t("spi")}</CardTitle></CardHeader>
-          <CardContent>{metrics?.schedulePerformanceIndex?.toFixed(2) ?? "N/A"}</CardContent>
+          <CardContent>{metrics?.schedulePerformanceIndex?.toFixed(2) ?? tPages("insufficientData")}</CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm">EAC</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{tAnalytics("kpi.eac")}</CardTitle></CardHeader>
           <CardContent>
-            {metrics?.estimateAtCompletion
+            {metrics?.estimateAtCompletion != null
               ? formatMoney(metrics.estimateAtCompletion, "SAR")
-              : "N/A"}
+              : tPages("insufficientData")}
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm">VAC</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{tAnalytics("kpi.vac")}</CardTitle></CardHeader>
           <CardContent>
-            {metrics?.varianceAtCompletion
+            {metrics?.varianceAtCompletion != null
               ? formatMoney(metrics.varianceAtCompletion, "SAR")
-              : "N/A"}
+              : tPages("insufficientData")}
           </CardContent>
         </Card>
       </div>
+
+      <ProjectEvmAnalyticsPanel
+        locale={locale}
+        kpis={kpis}
+        trend={trend}
+        trendSeries={trendSeries}
+        titles={{
+          evm: tAnalytics("sections.evm"),
+          empty: tAnalytics("empty.period"),
+        }}
+      />
+
       <Card>
         <CardHeader><CardTitle>{tLabels("baselines")}</CardTitle></CardHeader>
         <CardContent className="grid gap-2 text-sm md:grid-cols-2">
@@ -90,6 +214,75 @@ export default async function ProjectDashboardPage({
           <div>{tLabels("currentForecastEnd")}: {project.forecast_end}</div>
         </CardContent>
       </Card>
+
+      {(() => {
+        const progressValues = milestones
+          .map((m) => (m.approved_progress == null ? null : toNumber(m.approved_progress)))
+          .filter((v): v is number => v != null);
+        const overallProgress =
+          progressValues.length > 0
+            ? Math.round(
+                (progressValues.reduce((sum, v) => sum + v, 0) / progressValues.length) * 10,
+              ) / 10
+            : null;
+        const scheduleProgress =
+          pv != null && pv > 0 && ev != null ? Math.round((ev / pv) * 1000) / 10 : null;
+        const delayedMilestones = ganttItems.filter(
+          (i) => i.kind === "milestone" && i.delayed,
+        ).length;
+        const scheduleKpis: KpiMetric[] = [
+          {
+            id: "overall-progress",
+            label: tAnalytics("kpi.overallProgress"),
+            value: overallProgress,
+            formattedValue:
+              overallProgress == null
+                ? "—"
+                : formatCompactPercent(overallProgress, locale),
+          },
+          {
+            id: "schedule-progress",
+            label: tAnalytics("kpi.scheduleProgress"),
+            value: scheduleProgress,
+            formattedValue:
+              scheduleProgress == null
+                ? "—"
+                : formatCompactPercent(scheduleProgress, locale),
+          },
+          {
+            id: "spi",
+            label: tAnalytics("kpi.spi"),
+            value: spi,
+            formattedValue: formatRatio(spi, locale),
+          },
+          {
+            id: "forecast-completion",
+            label: tAnalytics("kpi.forecastCompletion"),
+            value: null,
+            formattedValue: project.forecast_end ?? "—",
+          },
+          {
+            id: "delayed-milestones",
+            label: tAnalytics("kpi.delayedMilestones"),
+            value: delayedMilestones,
+            formattedValue: String(delayedMilestones),
+          },
+        ];
+
+        return (
+          <ProjectSchedulePreview
+            items={ganttItems}
+            today={today}
+            locale={locale}
+            href={`/${locale}/projects/${id}/timeline`}
+            title={tAnalytics("sections.projectSchedule")}
+            viewFullLabel={tAnalytics("common.viewFullTimeline")}
+            emptyTitle={tAnalytics("empty.schedule")}
+            scheduleKpis={scheduleKpis}
+          />
+        );
+      })()}
+
       <Card>
         <CardHeader><CardTitle>{t("timeline")}</CardTitle></CardHeader>
         <CardContent>

@@ -76,7 +76,7 @@ export function AppShell({
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-20 border-b border-border bg-header px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-3.5">
-            <div className="flex items-center justify-between gap-3">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
               <div className="flex min-w-0 items-center gap-2">
                 <Dialog.Trigger asChild>
                   <Button
@@ -99,7 +99,7 @@ export function AppShell({
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
                 <ThemeToggle />
                 <ActiveEntitySelector user={user} />
                 <AuthUserBar user={user} />
