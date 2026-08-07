@@ -525,7 +525,10 @@ export function BudgetVsActualWorkspace({
           <CardHeader><CardTitle className="text-base">{t("tables.profitability")}</CardTitle></CardHeader>
           <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
             {filteredProfitability.map((p) => (
-              <div key={p.fiscal_period_id} className="rounded border p-3">
+              <div
+                key={`${p.control_scope_id ?? "entity"}-${p.fiscal_period_id}`}
+                className="rounded border p-3"
+              >
                 <p>{t("columns.period")}: {p.period_number}</p>
                 <p>{t("columns.net")}: {formatMoney(p.net_revenue, "SAR")}</p>
                 <p>{t("cards.grossProfit")}: {formatMoney(p.gross_profit, "SAR")}</p>

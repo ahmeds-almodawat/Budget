@@ -30,6 +30,12 @@ test.describe("budget vs actual revenue semantics", () => {
   });
 
   test("revenue and expense tabs show different sections", async ({ page }) => {
+    const duplicateKeyWarnings: string[] = [];
+    page.on("console", (message) => {
+      if (message.text().includes("Encountered two children with the same key")) {
+        duplicateKeyWarnings.push(message.text());
+      }
+    });
     await page.goto("/en/cost-control");
     await page.getByRole("button", { name: "Revenue", exact: true }).click();
     await expect(page.getByText("Revenue detail")).toBeVisible();
@@ -37,5 +43,6 @@ test.describe("budget vs actual revenue semantics", () => {
     await expect(page.getByText("Expense detail")).toBeVisible();
     await page.getByRole("button", { name: "Profitability", exact: true }).click();
     await expect(page.getByTestId("profitability-section")).toBeVisible();
+    expect(duplicateKeyWarnings).toEqual([]);
   });
 });
