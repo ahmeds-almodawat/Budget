@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,8 @@ import {
 } from "@/app/actions/governance-actions";
 import { pickLocalized } from "@/lib/i18n/display";
 import type { PeriodCloseTemplateRow } from "@/data/repositories/period-close-repository";
+import { ChartCard, ProgressRing } from "@/components/analytics";
+import { periodCloseProgress } from "@/domain/analytics/timeline";
 
 const MODULES = ["budgets", "actuals", "procurement", "forecasts", "projects", "reporting"] as const;
 
@@ -55,6 +57,7 @@ export function PeriodCloseWorkspace({
 }) {
   const locale = useLocale();
   const t = useTranslations("periodClose");
+  const tAnalytics = useTranslations("analytics");
   const [controls, setControls] = useState(initialControls);
   const [templates, setTemplates] = useState(initialTemplates);
   const [selectedPeriod, setSelectedPeriod] = useState(fiscalPeriods[0]?.id ?? "");
@@ -112,6 +115,23 @@ export function PeriodCloseWorkspace({
     ) ?? false;
 
   const readinessPass = Boolean(readiness && (readiness as { pass?: boolean }).pass);
+
+  const closeProgress = useMemo(() => {
+    const items = checklist?.items ?? [];
+    const automatic = items.filter((item) => item.item_type === "automatic");
+    const manual = items.filter((item) => item.item_type !== "automatic");
+    const isPassed = (status: string | null) => status === "passed" || status === "waived";
+    const blockingFailures = items.filter(
+      (item) => item.is_blocking && item.result_status === "failed",
+    ).length;
+    return periodCloseProgress({
+      automaticPassed: automatic.filter((item) => isPassed(item.result_status)).length,
+      automaticTotal: automatic.length,
+      manualPassed: manual.filter((item) => isPassed(item.result_status)).length,
+      manualTotal: manual.length,
+      blockingFailures,
+    });
+  }, [checklist]);
 
   const handleSoftClose = (module: string) => {
     startTransition(async () => {
@@ -456,6 +476,33 @@ export function PeriodCloseWorkspace({
 
       {message ? <p className="text-sm text-success">{message}</p> : null}
       {error ? <p className="text-sm text-danger">{error}</p> : null}
+
+      <ChartCard
+        title={tAnalytics("sections.closeReadiness")}
+        empty={!checklist?.items.length}
+        emptyTitle={tAnalytics("empty.period")}
+      >
+        <div className="flex flex-wrap items-center gap-6">
+          <ProgressRing
+            value={closeProgress.readinessPercent}
+            max={100}
+            label={tAnalytics("kpi.readiness")}
+          />
+          <div className="space-y-1 text-sm text-text-secondary">
+            <p>
+              {tAnalytics("kpi.readiness")}:{" "}
+              <span className="font-medium tabular-nums text-foreground">
+                {closeProgress.readinessPercent}%
+              </span>
+            </p>
+            {closeProgress.blocked ? (
+              <Badge variant="danger">{t("blocked")}</Badge>
+            ) : (
+              <Badge variant="success">{t("ready")}</Badge>
+            )}
+          </div>
+        </div>
+      </ChartCard>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

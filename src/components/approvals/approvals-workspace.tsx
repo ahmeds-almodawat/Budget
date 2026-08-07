@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { actAsDelegateAction, fetchApprovalInboxAction } from "@/app/actions/approval-actions";
 import type { ApprovalTab } from "@/data/repositories/approval-repository";
 import { pickLocalized } from "@/lib/i18n/display";
+import { ChartCard, ExceptionSummary } from "@/components/analytics";
+import { approvalAgeBuckets } from "@/domain/analytics/timeline";
 
 const TAB_KEYS: ApprovalTab[] = ["awaiting", "submitted", "approved", "rejected", "delegated", "overdue"];
 
@@ -37,12 +39,21 @@ export function ApprovalsWorkspace({
 }) {
   const locale = useLocale();
   const t = useTranslations("approvals");
+  const tAnalytics = useTranslations("analytics");
   const [tab, setTab] = useState<ApprovalTab>(initialTab);
   const [items, setItems] = useState(initialItems);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const ageBuckets = useMemo(
+    () =>
+      approvalAgeBuckets(
+        items.map((item) => ({ createdAt: item.submitted_at ?? null })),
+      ),
+    [items],
+  );
 
   function switchTab(next: ApprovalTab) {
     setTab(next);
@@ -103,6 +114,21 @@ export function ApprovalsWorkspace({
 
   return (
     <div className="space-y-6">
+      <ChartCard
+        title={tAnalytics("sections.approvalAge")}
+        empty={items.length === 0}
+        emptyTitle={tAnalytics("empty.period")}
+      >
+        <ExceptionSummary
+          items={ageBuckets.map((bucket) => ({
+            id: bucket.id,
+            label: `${bucket.label}d`,
+            count: bucket.count,
+            tone: bucket.id === "10+" && bucket.count > 0 ? "warning" : "neutral",
+          }))}
+        />
+      </ChartCard>
+
       <div className="flex flex-wrap gap-2">
         {TAB_KEYS.map((key) => (
           <Button
