@@ -471,6 +471,39 @@ export async function masterRecordCreateDraft(
   );
 }
 
+export async function masterRecordCreateRevision(
+  db: SupabaseClient,
+  params: {
+    recordId: string;
+    nameEn: string;
+    nameAr: string;
+    description?: string;
+    parentId?: string;
+    attributes?: Record<string, unknown>;
+    effectiveStart?: string;
+    effectiveEnd?: string;
+    changeReason: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_master_record_create_revision", {
+      p_record_id: params.recordId,
+      p_name_en: params.nameEn,
+      p_name_ar: params.nameAr,
+      p_description: params.description ?? null,
+      p_parent_id: params.parentId ?? null,
+      p_attributes: params.attributes ?? {},
+      p_effective_start: params.effectiveStart ?? null,
+      p_effective_end: params.effectiveEnd ?? null,
+      p_change_reason: params.changeReason,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
 export async function delegationCreateDraft(
   db: SupabaseClient,
   params: {
@@ -1184,6 +1217,29 @@ export async function supplierInvoiceApprove(
   );
 }
 
+export async function supplierInvoiceReverseAndReplace(
+  db: SupabaseClient,
+  params: {
+    supplierInvoiceId: string;
+    reason: string;
+    replacementInvoiceNumber?: string;
+    replacementInvoiceDate?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_supplier_invoice_reverse_and_replace", {
+      p_supplier_invoice_id: params.supplierInvoiceId,
+      p_reason: params.reason,
+      p_replacement_invoice_number: params.replacementInvoiceNumber ?? null,
+      p_replacement_invoice_date: params.replacementInvoiceDate ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
 export async function paymentRequestCreate(
   db: SupabaseClient,
   params: {
@@ -1234,6 +1290,42 @@ export async function paymentRequestApprove(
       p_expected_status: options.expectedStatus ?? "submitted",
       p_idempotency_key: options.idempotencyKey ?? null,
       p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function paymentRequestReject(
+  db: SupabaseClient,
+  params: { paymentRequestId: string; reason: string; idempotencyKey?: string; correlationId?: string },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_payment_request_reject", {
+      p_payment_request_id: params.paymentRequestId,
+      p_reason: params.reason,
+      p_expected_status: "submitted",
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function paymentRequestCancel(
+  db: SupabaseClient,
+  params: {
+    paymentRequestId: string;
+    reason: string;
+    expectedStatus: "draft" | "submitted" | "approved";
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_payment_request_cancel", {
+      p_payment_request_id: params.paymentRequestId,
+      p_reason: params.reason,
+      p_expected_status: params.expectedStatus,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
     }),
   );
 }
@@ -1371,6 +1463,108 @@ export async function periodCloseEvaluateReadiness(
   );
 }
 
+export async function periodTemplateCreate(
+  db: SupabaseClient,
+  params: {
+    legalEntityId: string;
+    module: string;
+    code: string;
+    nameEn: string;
+    nameAr: string;
+    effectiveFrom?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_period_template_create", {
+      p_legal_entity_id: params.legalEntityId,
+      p_module: params.module,
+      p_code: params.code,
+      p_name_en: params.nameEn,
+      p_name_ar: params.nameAr,
+      p_effective_from: params.effectiveFrom ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function periodTemplateAddItem(
+  db: SupabaseClient,
+  params: {
+    templateId: string;
+    sequenceNo: number;
+    nameEn: string;
+    nameAr: string;
+    description?: string;
+    itemType: "manual" | "automatic";
+    ownerRoleCode?: string;
+    isRequired: boolean;
+    isBlocking: boolean;
+    controlCode?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_period_template_add_item", {
+      p_template_id: params.templateId,
+      p_sequence_no: params.sequenceNo,
+      p_name_en: params.nameEn,
+      p_name_ar: params.nameAr,
+      p_description: params.description ?? null,
+      p_item_type: params.itemType,
+      p_owner_role_code: params.ownerRoleCode ?? null,
+      p_is_required: params.isRequired,
+      p_is_blocking: params.isBlocking,
+      p_control_code: params.controlCode ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+async function periodTemplateTransition(
+  db: SupabaseClient,
+  templateId: string,
+  rpc: string,
+  expectedStatus: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, rpc, {
+      p_template_id: templateId,
+      p_expected_status: expectedStatus,
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function periodTemplateSubmit(db: SupabaseClient, templateId: string, options: CommandOptions = {}) {
+  return periodTemplateTransition(db, templateId, "rpc_period_template_submit", "draft", options);
+}
+
+export async function periodTemplateApprove(db: SupabaseClient, templateId: string, options: CommandOptions = {}) {
+  return periodTemplateTransition(db, templateId, "rpc_period_template_approve", "submitted", options);
+}
+
+export async function periodTemplateRetire(
+  db: SupabaseClient,
+  params: { templateId: string; reason: string; idempotencyKey?: string; correlationId?: string },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_period_template_retire", {
+      p_template_id: params.templateId,
+      p_reason: params.reason,
+      p_expected_status: "approved",
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
 export async function periodChecklistSetResult(
   db: SupabaseClient,
   params: {
@@ -1503,6 +1697,164 @@ export async function appraisalCycleActivate(
       p_expected_status: options.expectedStatus ?? "draft",
       p_idempotency_key: options.idempotencyKey ?? null,
       p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function appraisalTemplateCreate(
+  db: SupabaseClient,
+  params: {
+    legalEntityId: string;
+    code: string;
+    nameEn: string;
+    nameAr: string;
+    instructionsEn?: string;
+    instructionsAr?: string;
+    ratingScaleMax?: number;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_template_create", {
+      p_legal_entity_id: params.legalEntityId,
+      p_code: params.code,
+      p_name_en: params.nameEn,
+      p_name_ar: params.nameAr,
+      p_instructions_en: params.instructionsEn ?? null,
+      p_instructions_ar: params.instructionsAr ?? null,
+      p_rating_scale_max: params.ratingScaleMax ?? 5,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function appraisalTemplateAddCriterion(
+  db: SupabaseClient,
+  params: {
+    templateId: string;
+    sequenceNo: number;
+    category: string;
+    nameEn: string;
+    nameAr: string;
+    weight: string | number;
+    maxScale: number;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_template_add_criterion", {
+      p_template_id: params.templateId,
+      p_sequence_no: params.sequenceNo,
+      p_category: params.category,
+      p_name_en: params.nameEn,
+      p_name_ar: params.nameAr,
+      p_weight: params.weight,
+      p_max_scale: params.maxScale,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+async function appraisalTemplateTransition(
+  db: SupabaseClient,
+  templateId: string,
+  rpc: string,
+  expectedStatus: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, rpc, {
+      p_template_id: templateId,
+      p_expected_status: expectedStatus,
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function appraisalTemplateSubmit(db: SupabaseClient, templateId: string, options: CommandOptions = {}) {
+  return appraisalTemplateTransition(db, templateId, "rpc_appraisal_template_submit", "draft", options);
+}
+
+export async function appraisalTemplateApprove(db: SupabaseClient, templateId: string, options: CommandOptions = {}) {
+  return appraisalTemplateTransition(db, templateId, "rpc_appraisal_template_approve", "submitted", options);
+}
+
+export async function appraisalTemplateRetire(
+  db: SupabaseClient,
+  params: { templateId: string; reason: string; idempotencyKey?: string; correlationId?: string },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_template_retire", {
+      p_template_id: params.templateId,
+      p_reason: params.reason,
+      p_expected_status: "approved",
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function appraisalGoalCreate(
+  db: SupabaseClient,
+  params: {
+    assignmentId: string;
+    description: string;
+    targetText?: string;
+    measureUnit?: string;
+    weight: string | number;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_goal_create", {
+      p_assignment_id: params.assignmentId,
+      p_description: params.description,
+      p_target_text: params.targetText ?? null,
+      p_measure_unit: params.measureUnit ?? null,
+      p_weight: params.weight,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function appraisalGoalEmployeeUpdate(
+  db: SupabaseClient,
+  params: { goalId: string; employeeComment: string; idempotencyKey?: string; correlationId?: string },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_goal_employee_update", {
+      p_goal_id: params.goalId,
+      p_employee_comment: params.employeeComment,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function appraisalGoalManagerUpdate(
+  db: SupabaseClient,
+  params: {
+    goalId: string;
+    managerRating: string | number;
+    managerComment?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_goal_manager_update", {
+      p_goal_id: params.goalId,
+      p_manager_rating: params.managerRating,
+      p_manager_comment: params.managerComment ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
     }),
   );
 }

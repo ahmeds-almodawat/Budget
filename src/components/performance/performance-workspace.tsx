@@ -14,6 +14,7 @@ import {
   createAppraisalCycleAction,
   finalizeAppraisalAction,
 } from "@/app/actions/appraisal-actions";
+import { AppraisalTemplateGovernance } from "@/components/performance/appraisal-template-governance";
 import { pickLocalized } from "@/lib/i18n/display";
 import type {
   AppraisalAssignmentRow,
@@ -40,6 +41,7 @@ export function PerformanceWorkspace({
   templates,
   profiles,
   canManageCycles,
+  canApproveTemplates,
   localePrefix,
 }: {
   scorecard: ScorecardTeam[];
@@ -49,6 +51,7 @@ export function PerformanceWorkspace({
   templates: AppraisalTemplateRow[];
   profiles: { id: string; full_name_en: string | null; full_name_ar: string | null }[];
   canManageCycles: boolean;
+  canApproveTemplates: boolean;
   localePrefix: string;
 }) {
   const locale = useLocale();
@@ -67,6 +70,7 @@ export function PerformanceWorkspace({
   const [assignTemplateId, setAssignTemplateId] = useState(templates[0]?.id ?? "");
   const [employeeId, setEmployeeId] = useState("");
   const [managerId, setManagerId] = useState("");
+  const [templateRows, setTemplateRows] = useState(templates);
 
   const tabs: { key: Tab; label: string; show: boolean }[] = [
     { key: "scorecard", label: t("tabs.scorecard"), show: true },
@@ -236,6 +240,11 @@ export function PerformanceWorkspace({
 
       {tab === "cycles" && canManageCycles ? (
         <div className="space-y-6">
+          <AppraisalTemplateGovernance
+            templates={templateRows}
+            canApprove={canApproveTemplates}
+            onTemplatesChange={setTemplateRows}
+          />
           <Card>
             <CardHeader>
               <CardTitle className="text-base">{t("createCycle")}</CardTitle>
@@ -312,7 +321,7 @@ export function PerformanceWorkspace({
                   value={assignTemplateId}
                   onChange={(e) => setAssignTemplateId(e.target.value)}
                 >
-                  {templates.map((tmpl) => (
+                  {templateRows.filter((tmpl) => tmpl.is_active && tmpl.governance_status === "approved").map((tmpl) => (
                     <option key={tmpl.id} value={tmpl.id}>
                       {pickLocalized(locale, tmpl.name_en, tmpl.name_ar)}
                     </option>

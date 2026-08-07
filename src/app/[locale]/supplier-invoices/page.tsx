@@ -48,6 +48,13 @@ export default async function SupplierInvoicesPage({
               id: po.id as string,
               label: po.po_number as string,
               vendorId: po.vendor_id as string,
+              lines: ((po.purchase_order_lines ?? []) as Array<Record<string, unknown>>).map((line) => ({
+                id: line.id as string,
+                lineNumber: Number(line.line_number),
+                description: line.description as string,
+                quantity: String(line.quantity),
+                unitPrice: String(line.unit_price_ex_vat),
+              })),
             }))}
           canCreate={hasPermission(roles, "commitment", "create", entityId)}
           canUpdate={hasPermission(roles, "commitment", "update", entityId)}

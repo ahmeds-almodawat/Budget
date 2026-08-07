@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { fetchApprovalInboxAction } from "@/app/actions/approval-actions";
+import { actAsDelegateAction, fetchApprovalInboxAction } from "@/app/actions/approval-actions";
 import type { ApprovalTab } from "@/data/repositories/approval-repository";
 import { pickLocalized } from "@/lib/i18n/display";
 
@@ -39,6 +39,9 @@ export function ApprovalsWorkspace({
   const t = useTranslations("approvals");
   const [tab, setTab] = useState<ApprovalTab>(initialTab);
   const [items, setItems] = useState(initialItems);
+  const [comments, setComments] = useState<Record<string, string>>({});
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function switchTab(next: ApprovalTab) {
@@ -63,6 +66,7 @@ export function ApprovalsWorkspace({
     "approval_rule",
     "purchase_order",
     "payment_request",
+    "sourcing_award",
     "period_reopen",
     "appraisal",
   ] as const;
@@ -73,6 +77,28 @@ export function ApprovalsWorkspace({
 
   function isDelegated(item: InboxItem) {
     return Boolean(item.delegation_id) && item.effective_assignee_id === currentUserId;
+  }
+
+  function decideAsDelegate(item: InboxItem, decision: "approve" | "reject") {
+    if (!item.original_assignee_id || !item.delegation_id) return;
+    startTransition(async () => {
+      setError(null);
+      setMessage(null);
+      try {
+        await actAsDelegateAction({
+          itemType: item.item_type,
+          entityId: item.entity_id,
+          decision,
+          originalAssigneeId: item.original_assignee_id as string,
+          delegationId: item.delegation_id as string,
+          comments: comments[item.entity_id] || undefined,
+        });
+        setItems((current) => current.filter((candidate) => candidate.entity_id !== item.entity_id));
+        setMessage(t(decision === "approve" ? "delegatedApproved" : "delegatedRejected"));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t("actionError"));
+      }
+    });
   }
 
   return (
@@ -90,6 +116,9 @@ export function ApprovalsWorkspace({
           </Button>
         ))}
       </div>
+
+      {message ? <p className="text-sm text-success">{message}</p> : null}
+      {error ? <p className="text-sm text-danger" role="alert">{error}</p> : null}
 
       <Card>
         <CardHeader>
@@ -132,7 +161,28 @@ export function ApprovalsWorkspace({
                     </p>
                   ) : null}
                   {delegated && (tab === "awaiting" || tab === "delegated" || tab === "overdue") ? (
-                    <p className="mt-2 text-xs text-warning">{t("delegatedReadOnly")}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <input
+                        className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                        value={comments[item.entity_id] ?? ""}
+                        onChange={(event) =>
+                          setComments((current) => ({ ...current, [item.entity_id]: event.target.value }))
+                        }
+                        placeholder={t("comments")}
+                        aria-label={t("comments")}
+                      />
+                      <Button size="sm" disabled={pending} onClick={() => decideAsDelegate(item, "approve")}>
+                        {t("approveAsDelegate")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={pending || (comments[item.entity_id]?.trim().length ?? 0) < 5}
+                        onClick={() => decideAsDelegate(item, "reject")}
+                      >
+                        {t("rejectAsDelegate")}
+                      </Button>
+                    </div>
                   ) : null}
                 </li>
               );

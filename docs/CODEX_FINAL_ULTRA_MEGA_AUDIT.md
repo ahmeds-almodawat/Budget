@@ -10,6 +10,92 @@
 
 **Report date:** 2026-08-07 (Asia/Riyadh)
 
+## 0. Final blocker-closure addendum — 2026-08-07
+
+This addendum is the current disposition of the historical audit below. The original findings, first-run failures, recommendations, and checkpoint conclusion are retained verbatim as audit history; where they conflict with this addendum, this section is authoritative for the blocker-closure revision.
+
+**Preserved defensive checkpoint:** `89a05b3c4b96739432e72dd18555e723e08fa0c6` (`fix: contain workflow authorization and audit integrity defects`), pushed to `origin/feat/mega-finish-platform` before additional implementation.
+
+**Closure migration:** `supabase/migrations/20260807132939_final_blocker_closure.sql`. It is additive after `20260807120700`; no pushed migration was edited.
+
+### Current finding disposition
+
+| Previous finding | Current status | Correction and independent regression evidence |
+|---|---|---|
+| `CDF-H-001`–`CDF-H-008` | **VERIFIED** | The defensive grant, audit, checklist, appraisal ownership, tenant relationship, PO uniqueness, contract lifecycle, and reopen-atomicity controls remain present. The two clean database cycles pass the full catalog and exact behavior suite. |
+| `OPEN-H-101` | **CORRECTED / VERIFIED** | Invoice matching is line-bound and cumulative, distinguishes goods/service/policy-limited two-way evidence, reconciles header/lines, applies tolerances, and excludes reversed exposure. `UM-38`, `UM-39`. |
+| `OPEN-H-102` | **CORRECTED / VERIFIED** | Receipt, service-entry, invoice, sourcing-award, and child-line triggers bind entity/vendor/PO/contract relationships; acceptance enforces PO/contract and line ceilings. `UM-39`, `UM-45`. |
+| `OPEN-H-103` | **CORRECTED / VERIFIED** | `invoice_commitment_applications` records decimal-safe line relief; approval recalculates `commitments.invoiced_applied`; reversal atomically restores relief and replacement preserves source lines. `UM-38`. |
+| `OPEN-H-104` | **CORRECTED / VERIFIED** | Submitted evaluations, scores, and criteria are immutable; awards require a submitted compliant same-RFQ evaluation/quotation and derive authoritative quoted prices; cumulative award quantity is locked. `UM-39`, `UM-CONC-02`. |
+| `OPEN-H-105` | **CORRECTED / VERIFIED** | `workflow_approval_assignments` records the authoritative original assignee. Requisition, payment, and award adapters invoke the real transition atomically and record actual/original/delegated actors. `UM-40`, `UM-46`, `UM-CONC-04`. |
+| `OPEN-H-106` | **CORRECTED / VERIFIED** | Governance is bound to the supported operational organization-unit, cost-node, and vendor families through `governed_master_bindings`; approval creates/updates the exact operational row and deactivation affects that row. Unsupported generic types are no longer represented as editable operational masters. `UM-43`, `UM-45`. |
+| `OPEN-H-107` | **CORRECTED / VERIFIED** | Versioned template/criterion publication and retirement plus controlled goal create/employee/manager paths are available through RPC, actions, and bilingual UI. Published/used definitions are immutable and assignment participants remain distinct. `UM-42`, `UM-45`, `UM-47`. |
+| `OPEN-M-108` | **CORRECTED / VERIFIED** | Period template/item create, submit, independent approve, retire, effective versioning, activation uniqueness, and used-version immutability are controlled and exposed in the bilingual workspace. `UM-41`, `UM-45`. |
+| `OPEN-M-109` | **CORRECTED / VERIFIED** | Payment rejection and cancellation are controlled, audited, and idempotent. Approval continues to mean ready-for-payment; bank execution/release remains intentionally excluded. `UM-44`. |
+| `OPEN-M-110` | **CORRECTED / VERIFIED for the reproduced coupling** | The P5 integration suite now explicitly initializes and restores its local period fixture. The focused suite passed 5/5 and the later full run passed 159/159 against the same database. Other database scenarios use transactions or unique IDs; external resets remain required for the prescribed independent database and E2E cycles. |
+| `OPEN-M-111` | **OPEN — environmental instability** | Windows first E2E evidence produced 12 failure artifacts (11 resource/server class plus one corrected locator). After the locator correction, the focused test passed 1/1; the full follow-up passed 65/67, with both failures caused by `ERR_INSUFFICIENT_RESOURCES` and teardown again reporting `spawn UNKNOWN`/`ECONNRESET`. Linux GitHub CI remains required before merge. |
+| `KNOWN-MOD-112` | **OPEN — documented exception** | Raw `npm audit --json`: 2 Moderate (`exceljs -> uuid`, `GHSA-w5hq-g745-h8pq`), 0 High, 0 Critical. No forced or breaking dependency change was made, and the advisory is not represented as resolved. |
+
+No Critical or High implementation finding from the controlling audit remains open in the locally verified revision. `OPEN-M-111` and `KNOWN-MOD-112` remain explicitly unresolved and do not change the five-module functional judgment.
+
+### Final required-module matrix
+
+| Required module | Judgment | Safety and functional evidence |
+|---|---:|---|
+| Procurement | **PASS** | Controlled RPC lifecycle, authoritative relationships, line/cumulative matching, commitment relief/reversal, immutable sourcing evidence, server-derived price, payment reject/cancel; `UM-38`, `UM-39`, `UM-44`, `UM-45`, `UM-CONC-02`, `UM-CONC-03`; procurement E2E scenario passed in the 65/67 follow-up. |
+| Delegated approvals | **PASS** | Authoritative assignee rows, active one-hop delegation validation, atomic real workflow adapters, complete actor attribution, SOD preservation, exact competing-decision lock order; `UM-40`, `UM-45`, `UM-46`, `UM-CONC-04`; delegation E2E scenario passed. |
+| Master Data | **PASS** | Supported types are bound to exact operational rows; revision, approval, deactivation, hierarchy, tenant, audit, and read-only table boundaries are controlled; `UM-43`, `UM-45`; master-data E2E scenario passed. |
+| Period Close | **PASS** | Versioned controlled configuration plus required/blocking runtime evidence, hard-close fail-closed behavior, independent reopen approval, and immutable used versions; `UM-32`, `UM-33`, `UM-37`, `UM-41`, `UM-45`; focused E2E 1/1 passed. |
+| Employee Appraisal | **PASS** | Versioned template/criteria configuration, weight validation, goals, assignment binding, participant field ownership, privacy, finalization/acknowledgement, and SOD; `UM-34`, `UM-35`, `UM-42`, `UM-45`, `UM-47`; appraisal E2E scenario passed. |
+
+### Final control matrices
+
+| Controlled-table class | Authenticated SELECT | Authenticated INSERT/UPDATE/DELETE | Mutation path | Result |
+|---|:---:|:---:|---|---|
+| 41 previously audited lifecycle tables | RLS-authorized | No / No / No | Narrow controlled RPC | **VERIFIED** |
+| `invoice_commitment_applications` | RLS-authorized | No / No / No | Invoice approve/reverse RPCs | **VERIFIED** |
+| `workflow_approval_assignments` | RLS-authorized | No / No / No | Workflow transition triggers/delegated adapter | **VERIFIED** |
+| `governed_master_bindings` | RLS-authorized | No / No / No | Master approval RPC | **VERIFIED** |
+
+Zero-fixture catalog proof: all **44/44** controlled tables are read-only to `authenticated`; all **107/107** public tables have RLS and FORCE RLS; all **9/9** views use `security_invoker`; all **208/208** policies target `authenticated`.
+
+| Closure RPC group | Authentication / tenant / role | Expected state and SOD | Definer/path/ACL | Atomic audit | Result |
+|---|---|---|---|---|---|
+| Procurement matching, approval, reversal, payment termination, service acceptance | Server actor; parent-derived entity/vendor; scoped roles | Locked current state; recorder/approver separation | Yes | Yes | **VERIFIED** |
+| Delegated workflow adapters | Server actor; assignment/delegation tenant, dates, permission, threshold | Business row first lock; original SOD retained; one decision | Yes | Yes | **VERIFIED** |
+| Master revision/approve/deactivate | Server actor; exact legal entity and supported operational type | Draft/submitted/approved lifecycle; independent approval | Yes | Yes | **VERIFIED** |
+| Period template commands and hard-close gate | Server actor; entity admin scope | Draft/submitted/approved; creator cannot approve; used definitions immutable | Yes | Yes | **VERIFIED** |
+| Appraisal template/goal commands | Server actor; performance-admin or exact participant | Publication SOD; exact employee/manager ownership; finalized evidence immutable | Yes | Yes | **VERIFIED** |
+
+Catalog proof: **115/115** public RPCs are SECURITY DEFINER, use an empty `search_path`, grant required execution to `authenticated`, and deny `anon`/`PUBLIC` execution.
+
+### Final verification evidence
+
+| Check | Exact result |
+|---|---|
+| `npm ci` | Passed; 699 packages installed; reported the known 2 Moderate advisories. |
+| Lint | Passed with 0 errors and 2 pre-existing unused-variable warnings. |
+| Type check | Passed. |
+| Unit/integration, initial pre-clean attempt | 157 assertions passed, but exit failed on Windows worker initialization/teardown `EINVAL`; retained as environmental evidence. |
+| Unit/integration, clean-install first attempt | 157 passed / 2 failed because the P5 period fixture was already soft-closed; this reproduced `OPEN-M-110`. |
+| P5 focused after harness correction | 1 file / 5 tests passed. |
+| Unit/integration after harness correction | 25 files / 159 tests passed. |
+| Localization | EN 913 / AR 913, parity and completeness passed; one intentional locale branch remains in layout. |
+| Import security | 17/17 passed. |
+| Concurrency | 9/9 passed, including separate-session direct/delegate race. |
+| Database cycle 1 | Fresh reset + guarded 15-persona fixtures + 102/102 passed. |
+| Database cycle 2 | Independent fresh reset + guarded fixtures + 102/102 passed. |
+| E2E first full invocation | Failed. The desktop handle lost the runner footer, but retained artifacts identify exactly 12 failed scenarios: 11 Windows/Next resource failures and one unscoped period selector assertion. No retry is represented as first-run stability. |
+| Period locator focused follow-up | Fresh reset; 1/1 passed; retries remained zero. |
+| E2E full follow-up | 65/67 passed in 8.2 minutes; 2 failed from `ERR_INSUFFICIENT_RESOURCES`; teardown emitted `spawn UNKNOWN` and `ECONNRESET`; retries remained zero. All five required-module E2E scenarios passed. |
+| Build | Passed; Next.js 16.3.0/Turbopack, 87/87 static pages. |
+| npm audit | Exit 1 by advisory policy: 2 Moderate, 0 Low/High/Critical; documented exception remains. |
+| Zero-fixture replay | Passed: 0 Auth fixture users, 0 vendors, 0 Ultra procurement documents, 0 appraisal documents, 0 period-close documents; 107/107 RLS+FORCE, 9/9 invoker views, 208 policies, 115 hardened RPCs, 44/44 controlled grants. |
+
+### Closure recommendation
+
+The five audited module blockers are locally corrected and verified, so the blocker-closure commit may be preserved and pushed. Do not merge until the final pull request receives a green Linux GitHub Actions run and review. Do not deploy or promote this revision: production IdP/provider configuration, bank execution, production storage/email, sanitized-scale migration rehearsal, backup/restore, monitoring/alerting, secrets rotation, retention, incident response, and rollback evidence remain outside this closure. The platform is not described as production ready.
+
 ## 1. Executive conclusion
 
 The defensive authorization correction materially improves the platform. Direct authenticated writes to 41 workflow-owned tables are removed; unsafe delegated decisions are fail-closed; period close now requires a materialized, completed, audited checklist; period reopen failure is atomic; contract submission exists; appraisal field ownership and finalization are command-controlled; peer identity lookup is names-only; duplicate purchase orders per award are blocked; and cross-entity fiscal-period and master-parent relationships are rejected.

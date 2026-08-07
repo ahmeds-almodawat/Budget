@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   approveMasterRecordAction,
   createMasterRecordDraftAction,
+  createMasterRecordRevisionAction,
   deactivateMasterRecordAction,
   rejectMasterRecordAction,
   submitMasterRecordAction,
@@ -24,20 +25,7 @@ const RECORD_TYPES = [
   "cost_category",
   "cost_subcategory",
   "cost_item",
-  "gl_account",
-  "gl_cost_mapping",
   "vendor",
-  "unit_of_measure",
-  "currency",
-  "vat_treatment",
-  "fiscal_calendar",
-  "fiscal_period",
-  "project_type",
-  "control_scope_type",
-  "workflow_type",
-  "variance_reason",
-  "risk_category",
-  "approval_threshold",
 ] as const;
 
 const HIERARCHICAL_TYPES = new Set([
@@ -48,8 +36,10 @@ const HIERARCHICAL_TYPES = new Set([
   "cost_category",
   "cost_subcategory",
   "cost_item",
-  "gl_account",
 ]);
+
+const ORGANIZATION_TYPES = new Set(["organization_unit", "department", "cost_center", "team"]);
+const COST_TYPES = new Set(["cost_category", "cost_subcategory", "cost_item"]);
 
 export interface MasterRecordRow {
   id: string;
@@ -59,6 +49,11 @@ export interface MasterRecordRow {
   name_ar: string;
   parent_id: string | null;
   governance_status: string;
+  description: string | null;
+  attributes: Record<string, unknown>;
+  revision_number: number;
+  supersedes_record_id: string | null;
+  is_current: boolean;
   effective_start: string;
   effective_end: string | null;
   updated_at: string;
@@ -198,6 +193,13 @@ export function MasterDataWorkspace({
   const [code, setCode] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [nameAr, setNameAr] = useState("");
+  const [revisionSourceId, setRevisionSourceId] = useState("");
+  const [changeReason, setChangeReason] = useState("");
+  const [unitTypeCode, setUnitTypeCode] = useState("");
+  const [levelOrder, setLevelOrder] = useState("");
+  const [isCostCenterLevel, setIsCostCenterLevel] = useState(false);
+  const [classification, setClassification] = useState("opex");
+  const [currencyCode, setCurrencyCode] = useState("SAR");
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -220,12 +222,14 @@ export function MasterDataWorkspace({
 
   const parentCandidates = useMemo(
     () =>
-      records.filter(
-        (r) =>
-          r.record_type === recordType &&
+      records.filter((r) => {
+          const sameHierarchy = r.record_type === recordType ||
+            (ORGANIZATION_TYPES.has(recordType) && ORGANIZATION_TYPES.has(r.record_type)) ||
+            (COST_TYPES.has(recordType) && COST_TYPES.has(r.record_type));
+          return sameHierarchy &&
           r.governance_status !== "rejected" &&
-          r.governance_status !== "cancelled",
-      ),
+          r.governance_status !== "cancelled";
+        }),
     [records, recordType],
   );
 
@@ -260,19 +264,40 @@ export function MasterDataWorkspace({
       setError(null);
       setMessage(null);
       try {
-        const created = (await createMasterRecordDraftAction({
-          recordType,
-          code,
-          nameEn,
-          nameAr,
-          parentId: parentId || undefined,
-        })) as MasterRecordRow;
+        const revisionSource = records.find((record) => record.id === revisionSourceId);
+        const attributes: Record<string, unknown> = { ...(revisionSource?.attributes ?? {}) };
+        if (recordType === "organization_unit_type") {
+          if (levelOrder) attributes.level_order = Number(levelOrder);
+          attributes.is_cost_center_level = isCostCenterLevel;
+        }
+        if (recordType === "organization_unit" && unitTypeCode.trim()) attributes.unit_type_code = unitTypeCode.trim();
+        if (COST_TYPES.has(recordType)) attributes.classification = classification;
+        if (recordType === "vendor") attributes.currency_code = currencyCode.trim().toUpperCase() || "SAR";
+        const created = (revisionSourceId
+          ? await createMasterRecordRevisionAction({
+              recordId: revisionSourceId,
+              nameEn,
+              nameAr,
+              parentId: parentId || undefined,
+              attributes,
+              changeReason,
+            })
+          : await createMasterRecordDraftAction({
+              recordType,
+              code,
+              nameEn,
+              nameAr,
+              parentId: parentId || undefined,
+              attributes,
+            })) as MasterRecordRow;
         setRecords((prev) => [created, ...prev]);
-        setMessage(t("created"));
+        setMessage(t(revisionSourceId ? "revisionCreated" : "created"));
         setCode("");
         setNameEn("");
         setNameAr("");
         setParentId("");
+        setRevisionSourceId("");
+        setChangeReason("");
       } catch (err) {
         setError(err instanceof Error ? err.message : t("actionError"));
       }
@@ -347,7 +372,7 @@ export function MasterDataWorkspace({
       {canCreate ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">{t("createDraft")}</CardTitle>
+            <CardTitle className="text-base">{t(revisionSourceId ? "createRevision" : "createDraft")}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
@@ -358,6 +383,7 @@ export function MasterDataWorkspace({
                 id="md-type"
                 className="rounded-md border border-border bg-background px-3 py-2 text-sm"
                 value={recordType}
+                disabled={Boolean(revisionSourceId)}
                 onChange={(e) => {
                   setRecordType(e.target.value);
                   setParentId("");
@@ -394,7 +420,7 @@ export function MasterDataWorkspace({
               <label htmlFor="md-code" className="text-xs font-medium text-text-secondary">
                 {t("code")}
               </label>
-              <Input id="md-code" value={code} onChange={(e) => setCode(e.target.value)} />
+              <Input id="md-code" value={code} disabled={Boolean(revisionSourceId)} onChange={(e) => setCode(e.target.value)} />
             </div>
             <div className="space-y-1">
               <label htmlFor="md-name-en" className="text-xs font-medium text-text-secondary">
@@ -408,9 +434,37 @@ export function MasterDataWorkspace({
               </label>
               <Input id="md-name-ar" value={nameAr} onChange={(e) => setNameAr(e.target.value)} dir="rtl" />
             </div>
-            <Button disabled={pending || !code || !nameEn || !nameAr} onClick={handleCreate}>
-              {t("createDraft")}
+            {recordType === "organization_unit_type" ? (
+              <>
+                <Input className="w-28" type="number" min="1" value={levelOrder} onChange={(event) => setLevelOrder(event.target.value)} placeholder={t("levelOrder")} />
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={isCostCenterLevel} onChange={(event) => setIsCostCenterLevel(event.target.checked)} />
+                  {t("costCenterLevel")}
+                </label>
+              </>
+            ) : null}
+            {recordType === "organization_unit" ? (
+              <Input value={unitTypeCode} onChange={(event) => setUnitTypeCode(event.target.value)} placeholder={t("unitTypeCode")} />
+            ) : null}
+            {COST_TYPES.has(recordType) ? (
+              <select className="rounded-md border border-border bg-background px-3 py-2 text-sm" value={classification} onChange={(event) => setClassification(event.target.value)}>
+                {["capex", "opex", "revenue", "cost_of_revenue", "payroll", "working_capital", "internal_transfer", "statistical"].map((value) => <option key={value} value={value}>{t(`classifications.${value}`)}</option>)}
+              </select>
+            ) : null}
+            {recordType === "vendor" ? (
+              <Input className="w-24" value={currencyCode} maxLength={3} onChange={(event) => setCurrencyCode(event.target.value)} placeholder={t("currencyCode")} />
+            ) : null}
+            {revisionSourceId ? (
+              <Input value={changeReason} onChange={(event) => setChangeReason(event.target.value)} placeholder={t("changeReason")} />
+            ) : null}
+            <Button disabled={pending || !code || !nameEn || !nameAr || (revisionSourceId !== "" && changeReason.trim().length < 5)} onClick={handleCreate}>
+              {t(revisionSourceId ? "createRevision" : "createDraft")}
             </Button>
+            {revisionSourceId ? (
+              <Button variant="outline" disabled={pending} onClick={() => { setRevisionSourceId(""); setCode(""); setNameEn(""); setNameAr(""); setParentId(""); setChangeReason(""); }}>
+                {tCommon("cancel")}
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}
@@ -514,16 +568,41 @@ export function MasterDataWorkspace({
                     </>
                   ) : null}
                   {canDeactivate && record.governance_status === "approved" ? (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      disabled={pending}
-                      onClick={() =>
-                        runTransition(() => deactivateMasterRecordAction(record.id), "deactivated")
-                      }
-                    >
-                      {t("deactivate")}
-                    </Button>
+                    <>
+                      {canCreate && record.is_current ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={pending}
+                          onClick={() => {
+                            setRevisionSourceId(record.id);
+                            setRecordType(record.record_type);
+                            setCode(record.code);
+                            setNameEn(record.name_en);
+                            setNameAr(record.name_ar);
+                            setParentId(record.parent_id ?? "");
+                            setUnitTypeCode(String(record.attributes?.unit_type_code ?? ""));
+                            setLevelOrder(String(record.attributes?.level_order ?? ""));
+                            setIsCostCenterLevel(Boolean(record.attributes?.is_cost_center_level));
+                            setClassification(String(record.attributes?.classification ?? "opex"));
+                            setCurrencyCode(String(record.attributes?.currency_code ?? "SAR"));
+                            globalThis.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                        >
+                          {t("revise")}
+                        </Button>
+                      ) : null}
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={pending}
+                        onClick={() =>
+                          runTransition(() => deactivateMasterRecordAction(record.id), "deactivated")
+                        }
+                      >
+                        {t("deactivate")}
+                      </Button>
+                    </>
                   ) : null}
                 </div>
               </CardContent>

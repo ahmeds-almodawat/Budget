@@ -7,12 +7,21 @@ import {
   appraisalCycleCreate,
   appraisalCycleActivate,
   appraisalFinalize,
+  appraisalGoalCreate,
+  appraisalGoalEmployeeUpdate,
+  appraisalGoalManagerUpdate,
   appraisalManagerSubmit,
   appraisalReviewerSubmit,
   appraisalSelfSubmit,
+  appraisalTemplateAddCriterion,
+  appraisalTemplateApprove,
+  appraisalTemplateCreate,
+  appraisalTemplateRetire,
+  appraisalTemplateSubmit,
 } from "@/lib/commands";
 import {
   getAppraisalAssignment,
+  getAssignmentGoals,
   getAssignmentRatings,
   listAllAssignments,
   listAppraisalCycles,
@@ -58,7 +67,96 @@ export async function fetchAppraisalDetailAction(assignmentId: string) {
     const assignment = await getAppraisalAssignment(db, assignmentId);
     const ratings = await getAssignmentRatings(db, assignment.id);
     const criteria = await listTemplateCriteria(db, assignment.template_id);
-    return { assignment, ratings, criteria };
+    const goals = await getAssignmentGoals(db, assignment.id);
+    return { assignment, ratings, criteria, goals };
+  });
+}
+
+async function reloadTemplate(db: Parameters<typeof listAppraisalTemplates>[0], templateId: string) {
+  const { data, error } = await db.from("appraisal_templates").select("*").eq("id", templateId).single();
+  if (error || !data) throw new DataAccessError("Template not found.", "NOT_FOUND");
+  return data;
+}
+
+export async function createAppraisalTemplateAction(params: {
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  instructionsEn?: string;
+  instructionsAr?: string;
+  ratingScaleMax?: number;
+}) {
+  return withActivePermission("appraisal", "create", async ({ legalEntityId, db }) => {
+    const result = await appraisalTemplateCreate(db, { legalEntityId, ...params });
+    return reloadTemplate(db, result.entity_id as string);
+  });
+}
+
+export async function addAppraisalCriterionAction(params: {
+  templateId: string;
+  sequenceNo: number;
+  category: string;
+  nameEn: string;
+  nameAr: string;
+  weight: string;
+  maxScale: number;
+}) {
+  return withActivePermission("appraisal", "update", async ({ db }) => {
+    await appraisalTemplateAddCriterion(db, params);
+    return listTemplateCriteria(db, params.templateId);
+  });
+}
+
+export async function submitAppraisalTemplateAction(templateId: string) {
+  return withActivePermission("appraisal", "update", async ({ db }) => {
+    await appraisalTemplateSubmit(db, templateId);
+    return reloadTemplate(db, templateId);
+  });
+}
+
+export async function approveAppraisalTemplateAction(templateId: string) {
+  return withActivePermission("appraisal", "approve", async ({ db }) => {
+    await appraisalTemplateApprove(db, templateId);
+    return reloadTemplate(db, templateId);
+  });
+}
+
+export async function retireAppraisalTemplateAction(params: { templateId: string; reason: string }) {
+  return withActivePermission("appraisal", "approve", async ({ db }) => {
+    await appraisalTemplateRetire(db, params);
+    return reloadTemplate(db, params.templateId);
+  });
+}
+
+export async function createAppraisalGoalAction(params: {
+  assignmentId: string;
+  description: string;
+  targetText?: string;
+  measureUnit?: string;
+  weight: string;
+}) {
+  return withActivePermission("appraisal", "create", async ({ db }) => {
+    await appraisalGoalCreate(db, params);
+    return getAssignmentGoals(db, params.assignmentId);
+  });
+}
+
+export async function updateEmployeeGoalAction(params: { goalId: string; assignmentId: string; employeeComment: string }) {
+  return withActivePermission("appraisal", "update", async ({ db }) => {
+    await appraisalGoalEmployeeUpdate(db, params);
+    return getAssignmentGoals(db, params.assignmentId);
+  });
+}
+
+export async function updateManagerGoalAction(params: {
+  goalId: string;
+  assignmentId: string;
+  managerRating: string;
+  managerComment?: string;
+}) {
+  return withActivePermission("appraisal", "approve", async ({ db }) => {
+    await appraisalGoalManagerUpdate(db, params);
+    return getAssignmentGoals(db, params.assignmentId);
   });
 }
 

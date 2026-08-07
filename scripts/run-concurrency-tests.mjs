@@ -12,6 +12,9 @@ const connectionString =
 
 const LEGAL_ENTITY = "11111111-1111-1111-1111-111111111102";
 const FINANCE = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3";
+const APPROVER = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2";
+const COST_CONTROLLER = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa8";
+const APPROVER_DELEGATION = "dddddddd-dddd-dddd-dddd-ddddddddd301";
 const LEGACY_ORPHAN_SOURCE_IDS = [
   "REST-B1-FOOD-001",
   "REST-B1-LAB-001",
@@ -298,6 +301,36 @@ async function main() {
       throw e;
     }
 
+    await client.query("BEGIN");
+    try {
+      await client.query("SET LOCAL role authenticated");
+      await client.query("SELECT set_config('request.jwt.claims', $1, true)", [
+        JSON.stringify({ sub: costCtrl, role: "authenticated" }),
+      ]);
+      const evaluation = await client.query(
+        `SELECT public.rpc_evaluation_submit(
+           $1::uuid, $2::uuid,
+           jsonb_build_array(jsonb_build_object(
+             'sequence_no', 1, 'score', 100, 'is_pass', true
+           )),
+           jsonb_build_array(jsonb_build_object(
+             'category', 'commercial', 'name_en', 'Price', 'name_ar', 'السعر',
+             'weight_percent', 100, 'scoring_scale_max', 100,
+             'is_mandatory', true, 'sequence_no', 1
+           )),
+           'Recommended', 'Concurrency setup', $3, NULL
+         ) AS r`,
+        [rfqId, quoteId, `idem-conc-evaluation-${Date.now()}`],
+      );
+      if (!evaluation.rows[0].r.ok) {
+        throw new Error(`Submitted evaluation setup failed: ${JSON.stringify(evaluation.rows[0].r)}`);
+      }
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+
     const workers = await Promise.all(
       [0, 1].map(async () => {
         const c = new pg.Client({ connectionString });
@@ -341,15 +374,6 @@ async function main() {
       }
     } finally {
       await Promise.all(workers.map((c) => c.end()));
-      await client.query(`DELETE FROM sourcing_award_lines WHERE award_id IN (SELECT id FROM sourcing_awards WHERE rfq_id = $1)`, [rfqId]);
-      await client.query(`DELETE FROM sourcing_awards WHERE rfq_id = $1`, [rfqId]);
-      await client.query(`DELETE FROM supplier_quotation_lines WHERE quotation_id = $1`, [quoteId]);
-      await client.query(`DELETE FROM supplier_quotations WHERE id = $1`, [quoteId]);
-      await client.query(`DELETE FROM rfq_suppliers WHERE rfq_id = $1`, [rfqId]);
-      await client.query(`DELETE FROM rfq_lines WHERE rfq_id = $1`, [rfqId]);
-      await client.query(`DELETE FROM rfqs WHERE id = $1`, [rfqId]);
-      await client.query(`DELETE FROM purchase_requisition_lines WHERE requisition_id = $1`, [reqId]);
-      await client.query(`DELETE FROM purchase_requisitions WHERE id = $1`, [reqId]);
     }
   });
 
@@ -427,6 +451,150 @@ async function main() {
     }
   });
 
+  await test("UM-CONC-04: direct and delegated decisions produce exactly one transition", async () => {
+    const reqId = crypto.randomUUID();
+    const lineId = crypto.randomUUID();
+    const reviewKey = `idem-conc-review-${Date.now()}`;
+
+    await client.query("BEGIN");
+    try {
+      const { rows: periods } = await client.query(
+        `SELECT id FROM fiscal_periods
+         WHERE fiscal_year_id = '77777777-7777-7777-7777-777777777701' AND period_number = 3
+         LIMIT 1`,
+      );
+      await client.query(
+        `INSERT INTO purchase_requisitions (
+           id, legal_entity_id, requisition_number, title_en, title_ar, requester_id,
+           control_scope_id, cost_node_id, fiscal_period_id, estimated_total, requisition_status,
+           submitted_at
+         ) VALUES (
+           $1::uuid, $2::uuid, $3, 'Concurrent delegated approval', 'موافقة مفوضة متزامنة', $4::uuid,
+           '55555555-5555-5555-5555-555555555502', '66666666-6666-6666-6666-666666666605',
+           $5::uuid, 100, 'budget_checked', NOW()
+         )`,
+        [reqId, LEGAL_ENTITY, `CONC-DELEGATE-${Date.now()}`, FINANCE, periods[0].id],
+      );
+      await client.query(
+        `INSERT INTO purchase_requisition_lines (
+           id, requisition_id, line_number, description, quantity, unit_price, cost_node_id
+         ) VALUES (
+           $1::uuid, $2::uuid, 1, 'Concurrent approval line', 1, 100,
+           '66666666-6666-6666-6666-666666666605'
+         )`,
+        [lineId, reqId],
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+
+    await client.query("BEGIN");
+    try {
+      await client.query("SET LOCAL role authenticated");
+      await client.query("SELECT set_config('request.jwt.claims', $1, true)", [
+        JSON.stringify({ sub: COST_CONTROLLER, role: "authenticated" }),
+      ]);
+      const review = await client.query(
+        `SELECT public.rpc_requisition_procurement_review(
+           $1::uuid, 'budget_checked', $2, NULL
+         ) AS r`,
+        [reqId, reviewKey],
+      );
+      if (!review.rows[0].r.ok) {
+        throw new Error(`Unable to create authoritative approval assignment: ${JSON.stringify(review.rows[0].r)}`);
+      }
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+
+    const workers = await Promise.all(
+      [0, 1].map(async () => {
+        const c = new pg.Client({ connectionString });
+        await c.connect();
+        return c;
+      }),
+    );
+    try {
+      const [direct, delegated] = await Promise.all([
+        (async () => {
+          const c = workers[0];
+          await c.query("BEGIN");
+          try {
+            await c.query("SET LOCAL role authenticated");
+            await c.query("SELECT set_config('request.jwt.claims', $1, true)", [
+              JSON.stringify({ sub: APPROVER, role: "authenticated" }),
+            ]);
+            const result = await c.query(
+              `SELECT public.rpc_requisition_approve(
+                 $1::uuid, 'procurement_review', $2, NULL
+               ) AS r`,
+              [reqId, `idem-conc-direct-${Date.now()}`],
+            );
+            await c.query("COMMIT");
+            return result.rows[0].r;
+          } catch (error) {
+            await c.query("ROLLBACK");
+            return { ok: false, message: error.message };
+          }
+        })(),
+        (async () => {
+          const c = workers[1];
+          await c.query("BEGIN");
+          try {
+            await c.query("SET LOCAL role authenticated");
+            await c.query("SELECT set_config('request.jwt.claims', $1, true)", [
+              JSON.stringify({ sub: COST_CONTROLLER, role: "authenticated" }),
+            ]);
+            const result = await c.query(
+              `SELECT public.rpc_approval_act_as_delegate(
+                 'purchase_requisition', $1::uuid, 'approve', $2::uuid, $3::uuid,
+                 'Concurrent delegated decision', $4, NULL
+               ) AS r`,
+              [reqId, APPROVER, APPROVER_DELEGATION, `idem-conc-delegated-${Date.now()}`],
+            );
+            await c.query("COMMIT");
+            return result.rows[0].r;
+          } catch (error) {
+            await c.query("ROLLBACK");
+            return { ok: false, message: error.message };
+          }
+        })(),
+      ]);
+      const successes = [direct, delegated].filter((result) => result.ok);
+      if (successes.length !== 1) {
+        throw new Error(`Expected one successful direct/delegated decision, got ${successes.length}: ${JSON.stringify({ direct, delegated })}`);
+      }
+      const { rows } = await client.query(
+        `SELECT pr.requisition_status, waa.assignment_status,
+                (SELECT count(*)::int FROM approval_decision_audit AS ada
+                 WHERE ada.item_type='purchase_requisition' AND ada.entity_id=pr.id) AS delegated_audit_count
+         FROM purchase_requisitions AS pr
+         JOIN workflow_approval_assignments AS waa
+           ON waa.item_type='purchase_requisition' AND waa.entity_id=pr.id
+         WHERE pr.id=$1::uuid`,
+        [reqId],
+      );
+      if (rows.length !== 1 || rows[0].requisition_status !== "approved" || rows[0].assignment_status !== "approved") {
+        throw new Error(`Race did not resolve one authoritative approval: ${JSON.stringify(rows)}`);
+      }
+      if (rows[0].delegated_audit_count > 1) {
+        throw new Error("Concurrent race duplicated delegated decision audit evidence");
+      }
+    } finally {
+      await Promise.all(workers.map((c) => c.end()));
+      await client.query(
+        `DELETE FROM workflow_approval_assignments WHERE item_type='purchase_requisition' AND entity_id=$1::uuid`,
+        [reqId],
+      );
+      await client.query(`DELETE FROM purchase_requisition_lines WHERE requisition_id=$1::uuid`, [reqId]);
+      await client.query(`DELETE FROM purchase_requisitions WHERE id=$1::uuid`, [reqId]);
+    }
+  });
+
   console.log(`\nConcurrency tests: ${passed} passed, ${failed} failed`);
 
   const artifactDir = fileURLToPath(new URL("../artifacts/financial-transactions/", import.meta.url));
@@ -449,6 +617,7 @@ async function main() {
           "UM-CONC-01 PO number uniqueness",
           "UM-CONC-02 award overconsume blocked",
           "UM-CONC-03 payment double allocate blocked",
+          "UM-CONC-04 direct/delegated decision race resolves once",
         ],
       },
       null,

@@ -6,6 +6,7 @@ import { requireRoutePermission } from "@/lib/auth/route-authorization";
 import { hasPermission } from "@/domain/auth/permissions";
 import {
   getAppraisalAssignment,
+  getAssignmentGoals,
   getAssignmentRatings,
   listTemplateCriteria,
 } from "@/data/repositories/appraisal-repository";
@@ -33,9 +34,10 @@ export default async function AppraisalDetailPage({
     notFound();
   }
 
-  const [ratings, criteria] = await Promise.all([
+  const [ratings, criteria, goals] = await Promise.all([
     getAssignmentRatings(session.db, assignment.id),
     listTemplateCriteria(session.db, assignment.template_id),
+    getAssignmentGoals(session.db, assignment.id),
   ]);
 
   const canManage =
@@ -50,8 +52,10 @@ export default async function AppraisalDetailPage({
         assignment={assignment}
         ratings={ratings}
         criteria={criteria}
+        goals={goals}
         currentUserId={session.ctx.userId}
         canManage={canManage}
+        canCreateGoals={hasPermission(session.ctx.roleAssignments, "appraisal", "create", session.legalEntityId)}
       />
     </div>
   );

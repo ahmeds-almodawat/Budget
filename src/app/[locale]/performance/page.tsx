@@ -27,6 +27,7 @@ export default async function EmployeePerformancePage({
   const entityId = session.legalEntityId;
   const userId = session.ctx.userId;
   const canManageCycles = hasPermission(session.ctx.roleAssignments, "appraisal", "create", entityId);
+  const canApproveTemplates = hasPermission(session.ctx.roleAssignments, "appraisal", "approve", entityId);
 
   const { data: teams } = await db
     .from("teams")
@@ -79,6 +80,7 @@ export default async function EmployeePerformancePage({
           full_name_ar: p.full_name_ar,
         }))}
         canManageCycles={canManageCycles}
+        canApproveTemplates={canApproveTemplates}
         localePrefix={`/${locale}`}
       />
     </div>

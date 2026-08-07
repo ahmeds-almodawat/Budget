@@ -13,6 +13,7 @@ import {
   approveContractAction,
   approvePaymentRequestAction,
   approveSupplierInvoiceAction,
+  cancelPaymentRequestAction,
   closeContractAction,
   createContractAction,
   createGoodsReceiptAction,
@@ -22,12 +23,15 @@ import {
   expireContractAction,
   matchSupplierInvoiceAction,
   overrideInvoiceMatchAction,
+  rejectPaymentRequestAction,
   rejectContractAction,
+  reverseSupplierInvoiceAction,
   submitContractAction,
   submitPaymentRequestAction,
   terminateContractAction,
 } from "@/app/actions/procurement-actions";
 import { formatMoney } from "@/lib/money";
+import { lineTotal } from "@/domain/procurement/calculations";
 import { pickLocalized } from "@/lib/i18n/display";
 
 function firstRel<T>(value: T | T[] | null | undefined): T | null {
@@ -512,7 +516,18 @@ export function SupplierInvoiceWorkspace({
     purchase_orders?: { po_number: string } | { po_number: string }[] | null;
     vendors?: { name_en: string; name_ar: string } | { name_en: string; name_ar: string }[] | null;
   }>;
-  poOptions: { id: string; label: string; vendorId: string }[];
+  poOptions: {
+    id: string;
+    label: string;
+    vendorId: string;
+    lines: Array<{
+      id: string;
+      lineNumber: number;
+      description: string;
+      quantity: string;
+      unitPrice: string;
+    }>;
+  }[];
   canCreate: boolean;
   canUpdate: boolean;
   canApprove: boolean;
@@ -523,12 +538,17 @@ export function SupplierInvoiceWorkspace({
   const [poId, setPoId] = useState(poOptions[0]?.id ?? "");
   const [invoiceNumber, setInvoiceNumber] = useState(() => `INV-${Date.now()}`);
   const [invoiceDate, setInvoiceDate] = useState("");
-  const [gross, setGross] = useState("0");
+  const [poLineId, setPoLineId] = useState(poOptions[0]?.lines[0]?.id ?? "");
+  const [invoiceQuantity, setInvoiceQuantity] = useState(poOptions[0]?.lines[0]?.quantity ?? "1");
   const [overrideReason, setOverrideReason] = useState<Record<string, string>>({});
+  const [reverseReason, setReverseReason] = useState<Record<string, string>>({});
+  const [replacementNumber, setReplacementNumber] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const selectedPo = poOptions.find((p) => p.id === poId);
+  const selectedLine = selectedPo?.lines.find((line) => line.id === poLineId);
+  const gross = selectedLine ? lineTotal(invoiceQuantity || "0", selectedLine.unitPrice).toFixed(4) : "0.0000";
 
   return (
     <div className="space-y-6">
@@ -541,7 +561,12 @@ export function SupplierInvoiceWorkspace({
             <select
               className="flex h-9 rounded-md border border-input bg-background px-3 text-sm"
               value={poId}
-              onChange={(e) => setPoId(e.target.value)}
+              onChange={(e) => {
+                const nextPo = poOptions.find((option) => option.id === e.target.value);
+                setPoId(e.target.value);
+                setPoLineId(nextPo?.lines[0]?.id ?? "");
+                setInvoiceQuantity(nextPo?.lines[0]?.quantity ?? "1");
+              }}
             >
               {poOptions.map((o) => (
                 <option key={o.id} value={o.id}>
@@ -549,12 +574,39 @@ export function SupplierInvoiceWorkspace({
                 </option>
               ))}
             </select>
+            <select
+              className="flex h-9 rounded-md border border-input bg-background px-3 text-sm"
+              value={poLineId}
+              onChange={(event) => {
+                const line = selectedPo.lines.find((candidate) => candidate.id === event.target.value);
+                setPoLineId(event.target.value);
+                setInvoiceQuantity(line?.quantity ?? "1");
+              }}
+              aria-label={t("invoiceLine")}
+            >
+              {selectedPo.lines.map((line) => (
+                <option key={line.id} value={line.id}>
+                  {line.lineNumber} — {line.description}
+                </option>
+              ))}
+            </select>
             <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
             <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
-            <Input type="number" className="w-28" value={gross} onChange={(e) => setGross(e.target.value)} />
+            <Input
+              type="number"
+              className="w-28"
+              min="0.0001"
+              step="0.0001"
+              value={invoiceQuantity}
+              onChange={(e) => setInvoiceQuantity(e.target.value)}
+              aria-label={t("invoiceQuantity")}
+            />
+            <span className="text-sm text-text-secondary">{formatMoney(gross, "SAR")}</span>
             <Button
-              disabled={pending || !invoiceDate}
+              disabled={pending || !invoiceDate || !selectedLine || Number(invoiceQuantity) <= 0}
               onClick={() => {
+                const invoiceLine = selectedLine;
+                if (!invoiceLine) return;
                 startTransition(async () => {
                   setError(null);
                   try {
@@ -564,6 +616,18 @@ export function SupplierInvoiceWorkspace({
                       invoiceNumber,
                       invoiceDate,
                       grossAmount: gross,
+                      subtotalExVat: gross,
+                      vatAmount: "0",
+                      lines: [
+                        {
+                          purchase_order_line_id: invoiceLine.id,
+                          line_number: invoiceLine.lineNumber,
+                          description: invoiceLine.description,
+                          quantity: invoiceQuantity,
+                          unit_price_ex_vat: invoiceLine.unitPrice,
+                          vat_amount: "0",
+                        },
+                      ],
                     });
                     setRows((prev) => [created as (typeof rows)[0], ...prev]);
                     setMessage(t("invoiceCreated"));
@@ -666,6 +730,50 @@ export function SupplierInvoiceWorkspace({
                     {t("approveInvoice")}
                   </Button>
                 ) : null}
+                {canUpdate && inv.invoice_status === "approved" ? (
+                  <>
+                    <Input
+                      className="w-40"
+                      placeholder={t("reversalReason")}
+                      value={reverseReason[inv.id] ?? ""}
+                      onChange={(event) => setReverseReason((current) => ({ ...current, [inv.id]: event.target.value }))}
+                    />
+                    <Input
+                      className="w-40"
+                      placeholder={t("replacementInvoiceNumber")}
+                      value={replacementNumber[inv.id] ?? ""}
+                      onChange={(event) => setReplacementNumber((current) => ({ ...current, [inv.id]: event.target.value }))}
+                    />
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={pending || (reverseReason[inv.id]?.trim().length ?? 0) < 5}
+                      onClick={() => {
+                        startTransition(async () => {
+                          setError(null);
+                          try {
+                            const updated = (await reverseSupplierInvoiceAction({
+                              supplierInvoiceId: inv.id,
+                              reason: reverseReason[inv.id],
+                              replacementInvoiceNumber: replacementNumber[inv.id] || undefined,
+                              replacementInvoiceDate: replacementNumber[inv.id] ? invoiceDate || undefined : undefined,
+                            })) as (typeof rows);
+                            setRows((current) => {
+                              const changed = new Map(updated.map((row) => [row.id, row]));
+                              const existing = current.map((row) => changed.get(row.id) ?? row);
+                              return [...updated.filter((row) => !current.some((old) => old.id === row.id)), ...existing];
+                            });
+                            setMessage(t("invoiceReversed"));
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : t("actionError"));
+                          }
+                        });
+                      }}
+                    >
+                      {t("reverseInvoice")}
+                    </Button>
+                  </>
+                ) : null}
               </div>
             </li>
           );
@@ -698,6 +806,7 @@ export function PaymentRequestWorkspace({
   const [rows, setRows] = useState(initialRequests);
   const [invoiceId, setInvoiceId] = useState(invoiceOptions[0]?.id ?? "");
   const [amount, setAmount] = useState(invoiceOptions[0]?.maxAmount ?? "0");
+  const [reason, setReason] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -787,23 +896,76 @@ export function PaymentRequestWorkspace({
                   </Button>
                 ) : null}
                 {canApprove && pr.request_status === "submitted" ? (
-                  <Button
-                    size="sm"
-                    disabled={pending}
-                    onClick={() => {
-                      startTransition(async () => {
-                        try {
-                          const updated = await approvePaymentRequestAction(pr.id);
-                          setRows((prev) => prev.map((x) => (x.id === pr.id ? (updated as (typeof rows)[0]) : x)));
-                          setMessage(t("paymentRequestApproved"));
-                        } catch (err) {
-                          setError(err instanceof Error ? err.message : t("actionError"));
-                        }
-                      });
-                    }}
-                  >
-                    {t("approvePaymentRequest")}
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      disabled={pending}
+                      onClick={() => {
+                        startTransition(async () => {
+                          try {
+                            const updated = await approvePaymentRequestAction(pr.id);
+                            setRows((prev) => prev.map((x) => (x.id === pr.id ? (updated as (typeof rows)[0]) : x)));
+                            setMessage(t("paymentRequestApproved"));
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : t("actionError"));
+                          }
+                        });
+                      }}
+                    >
+                      {t("approvePaymentRequest")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={pending || (reason[pr.id]?.trim().length ?? 0) < 5}
+                      onClick={() => {
+                        startTransition(async () => {
+                          try {
+                            const updated = await rejectPaymentRequestAction({ paymentRequestId: pr.id, reason: reason[pr.id] });
+                            setRows((prev) => prev.map((x) => (x.id === pr.id ? (updated as (typeof rows)[0]) : x)));
+                            setMessage(t("paymentRequestRejected"));
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : t("actionError"));
+                          }
+                        });
+                      }}
+                    >
+                      {tCommon("reject")}
+                    </Button>
+                  </>
+                ) : null}
+                {(canUpdate && ["draft", "submitted"].includes(pr.request_status)) ||
+                (canApprove && pr.request_status === "approved") ? (
+                  <>
+                    <Input
+                      className="w-40"
+                      placeholder={t("paymentDecisionReason")}
+                      value={reason[pr.id] ?? ""}
+                      onChange={(event) => setReason((current) => ({ ...current, [pr.id]: event.target.value }))}
+                    />
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={pending || (reason[pr.id]?.trim().length ?? 0) < 5}
+                      onClick={() => {
+                        startTransition(async () => {
+                          try {
+                            const updated = await cancelPaymentRequestAction({
+                              paymentRequestId: pr.id,
+                              reason: reason[pr.id],
+                              expectedStatus: pr.request_status as "draft" | "submitted" | "approved",
+                            });
+                            setRows((prev) => prev.map((x) => (x.id === pr.id ? (updated as (typeof rows)[0]) : x)));
+                            setMessage(t("paymentRequestCancelled"));
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : t("actionError"));
+                          }
+                        });
+                      }}
+                    >
+                      {tCommon("cancel")}
+                    </Button>
+                  </>
                 ) : null}
               </div>
             </li>

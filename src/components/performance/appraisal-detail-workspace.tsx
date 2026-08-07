@@ -8,10 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   acknowledgeAppraisalAction,
+  createAppraisalGoalAction,
   finalizeAppraisalAction,
   managerSubmitAppraisalAction,
   reviewerSubmitAppraisalAction,
   selfSubmitAppraisalAction,
+  updateEmployeeGoalAction,
+  updateManagerGoalAction,
 } from "@/app/actions/appraisal-actions";
 import {
   calculateWeightedAppraisalScore,
@@ -20,6 +23,7 @@ import { pickLocalized } from "@/lib/i18n/display";
 import type {
   AppraisalAssignmentRow,
   AppraisalCriterionRow,
+  AppraisalGoalRow,
   AppraisalRatingRow,
 } from "@/data/repositories/appraisal-repository";
 
@@ -27,19 +31,37 @@ export function AppraisalDetailWorkspace({
   assignment: initial,
   ratings: initialRatings,
   criteria,
+  goals: initialGoals,
   currentUserId,
   canManage,
+  canCreateGoals,
 }: {
   assignment: AppraisalAssignmentRow;
   ratings: AppraisalRatingRow[];
   criteria: AppraisalCriterionRow[];
+  goals: AppraisalGoalRow[];
   currentUserId: string;
   canManage: boolean;
+  canCreateGoals: boolean;
 }) {
   const locale = useLocale();
   const t = useTranslations("appraisal");
   const [assignment, setAssignment] = useState(initial);
   const [ratings, setRatings] = useState(initialRatings);
+  const [goals, setGoals] = useState(initialGoals);
+  const [goalDescription, setGoalDescription] = useState("");
+  const [goalTarget, setGoalTarget] = useState("");
+  const [goalUnit, setGoalUnit] = useState("");
+  const [goalWeight, setGoalWeight] = useState("");
+  const [employeeGoalComments, setEmployeeGoalComments] = useState<Record<string, string>>(
+    Object.fromEntries(initialGoals.map((goal) => [goal.id, goal.employee_comment ?? ""])),
+  );
+  const [managerGoalRatings, setManagerGoalRatings] = useState<Record<string, string>>(
+    Object.fromEntries(initialGoals.map((goal) => [goal.id, goal.manager_rating == null ? "" : String(goal.manager_rating)])),
+  );
+  const [managerGoalComments, setManagerGoalComments] = useState<Record<string, string>>(
+    Object.fromEntries(initialGoals.map((goal) => [goal.id, goal.manager_comment ?? ""])),
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -114,6 +136,75 @@ export function AppraisalDetailWorkspace({
 
       {message ? <p className="text-sm text-success">{message}</p> : null}
       {error ? <p className="text-sm text-danger">{error}</p> : null}
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">{t("goals")}</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {canCreateGoals && assignment.assignment_status === "employee_self_review" ? (
+            <div className="flex flex-wrap items-end gap-2">
+              <Input value={goalDescription} onChange={(event) => setGoalDescription(event.target.value)} placeholder={t("goalDescription")} />
+              <Input value={goalTarget} onChange={(event) => setGoalTarget(event.target.value)} placeholder={t("goalTarget")} />
+              <Input value={goalUnit} onChange={(event) => setGoalUnit(event.target.value)} placeholder={t("goalUnit")} />
+              <Input className="w-24" type="number" min="0.0001" max="100" step="0.0001" value={goalWeight} onChange={(event) => setGoalWeight(event.target.value)} aria-label={t("weight")} />
+              <Button disabled={pending || !goalDescription.trim() || !goalWeight} onClick={() => startTransition(async () => {
+                setError(null);
+                try {
+                  const updated = await createAppraisalGoalAction({
+                    assignmentId: assignment.id,
+                    description: goalDescription,
+                    targetText: goalTarget || undefined,
+                    measureUnit: goalUnit || undefined,
+                    weight: goalWeight,
+                  });
+                  setGoals(updated);
+                  setGoalDescription(""); setGoalTarget(""); setGoalUnit(""); setGoalWeight("");
+                  setMessage(t("goalCreated"));
+                } catch (err) { setError(err instanceof Error ? err.message : t("actionError")); }
+              })}>{t("addGoal")}</Button>
+            </div>
+          ) : null}
+          {goals.length === 0 ? <p className="text-sm text-text-secondary">{t("noGoals")}</p> : (
+            <ul className="space-y-3">
+              {goals.map((goal) => (
+                <li key={goal.id} className="border-t border-border pt-3 text-sm">
+                  <p className="font-medium">{goal.description} · {t("weight")}: {String(goal.weight)}</p>
+                  {goal.target_text ? <p className="text-text-secondary">{goal.target_text}{goal.measure_unit ? ` (${goal.measure_unit})` : ""}</p> : null}
+                  {isEmployee && assignment.assignment_status === "employee_self_review" ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Input value={employeeGoalComments[goal.id] ?? ""} onChange={(event) => setEmployeeGoalComments((current) => ({ ...current, [goal.id]: event.target.value }))} placeholder={t("employeeGoalComment")} />
+                      <Button size="sm" disabled={pending} onClick={() => startTransition(async () => {
+                        setError(null);
+                        try {
+                          setGoals(await updateEmployeeGoalAction({ goalId: goal.id, assignmentId: assignment.id, employeeComment: employeeGoalComments[goal.id] ?? "" }));
+                          setMessage(t("goalUpdated"));
+                        } catch (err) { setError(err instanceof Error ? err.message : t("actionError")); }
+                      })}>{t("saveGoal")}</Button>
+                    </div>
+                  ) : null}
+                  {isManager && ["self_submitted", "manager_review"].includes(assignment.assignment_status) ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Input className="w-24" type="number" min="0" value={managerGoalRatings[goal.id] ?? ""} onChange={(event) => setManagerGoalRatings((current) => ({ ...current, [goal.id]: event.target.value }))} aria-label={t("managerGoalRating")} />
+                      <Input value={managerGoalComments[goal.id] ?? ""} onChange={(event) => setManagerGoalComments((current) => ({ ...current, [goal.id]: event.target.value }))} placeholder={t("managerComment")} />
+                      <Button size="sm" disabled={pending || managerGoalRatings[goal.id] === ""} onClick={() => startTransition(async () => {
+                        setError(null);
+                        try {
+                          setGoals(await updateManagerGoalAction({
+                            goalId: goal.id,
+                            assignmentId: assignment.id,
+                            managerRating: managerGoalRatings[goal.id],
+                            managerComment: managerGoalComments[goal.id] || undefined,
+                          }));
+                          setMessage(t("goalUpdated"));
+                        } catch (err) { setError(err instanceof Error ? err.message : t("actionError")); }
+                      })}>{t("saveGoal")}</Button>
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4">
         {criteria.map((c) => {

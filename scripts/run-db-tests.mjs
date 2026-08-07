@@ -42,6 +42,7 @@ const EXPOSED_TABLES = [
   "variance_explanations", "vendors", "work_packages", "schedule_baseline_versions",
   "forecast_versions", "forecast_lines",
   "governed_master_records",
+  "governed_master_bindings", "invoice_commitment_applications", "workflow_approval_assignments",
   "purchase_requisitions", "purchase_requisition_lines", "purchase_orders", "purchase_order_lines",
   "supplier_invoices", "supplier_invoice_lines", "payment_requests",
   "revenue_component_types", "payer_categories", "payers", "service_lines",
@@ -517,7 +518,7 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
   `);
   const tables = objects.filter((row) => row.relkind === "r");
   const views = objects.filter((row) => row.relkind === "v");
-  assert(tables.length === 104, `Expected 104 public tables, found ${tables.length}`);
+  assert(tables.length === 107, `Expected 107 public tables, found ${tables.length}`);
   assert(views.length === 9, `Expected 9 public views, found ${views.length}`);
   assert(tables.every((row) => row.relrowsecurity && row.relforcerowsecurity), "Every table must enable and force RLS");
   assert(objects.every((row) => row.classification?.startsWith("@classification ")), "Every public table/view needs a classification");
@@ -529,7 +530,7 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
     WHERE schemaname = 'public'
     ORDER BY tablename, policyname
   `);
-  assert(policies.length === 205, `Expected 205 reviewed policies, found ${policies.length}`);
+  assert(policies.length === 208, `Expected 208 reviewed policies, found ${policies.length}`);
   assert(
     policies.every((policy) => String(policy.roles) === "{authenticated}"),
     "Every policy must explicitly target authenticated",
@@ -645,7 +646,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
     WHERE n.nspname = 'public'
     ORDER BY p.proname
   `);
-  assert(publicFunctions.length === 96, `Expected 96 public RPC wrappers, found ${publicFunctions.length}`);
+  assert(publicFunctions.length === 115, `Expected 115 public RPC wrappers, found ${publicFunctions.length}`);
   for (const fn of publicFunctions) {
     assert(fn.proname.startsWith("rpc_"), `Unexpected public function ${fn.proname}`);
     assert(fn.prosecdef, `${fn.proname} must be SECURITY DEFINER`);
@@ -672,7 +673,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
   const helpers = new Set([
     "current_user_has_active_membership", "current_user_is_active",
     "user_can_access_legal_entity", "user_has_any_role", "user_has_role",
-    "resolve_effective_approver",
+    "resolve_effective_approver", "resolve_assignment_actor",
   ]);
   const triggerOnly = new Set([
     "deny_audit_mutation", "enforce_allocation_tenant_consistency", "enforce_leaf_posting",

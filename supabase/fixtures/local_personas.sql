@@ -421,6 +421,20 @@ ON CONFLICT (id) DO UPDATE SET user_id = EXCLUDED.user_id, role_id = EXCLUDED.ro
   scope_type = EXCLUDED.scope_type, scope_id = EXCLUDED.scope_id,
   effective_start = EXCLUDED.effective_start, effective_end = EXCLUDED.effective_end;
 
+-- Delegation changes routing and attribution, not the delegate's baseline role
+-- boundary. This persona is independently eligible for the real transition.
+INSERT INTO public.role_assignments (
+  id, user_id, role_id, scope_type, scope_id, effective_start, effective_end
+)
+SELECT 'e0000000-0000-0000-0000-000000000019'::uuid,
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa8'::uuid,
+  r.id, 'legal_entity'::public.assignment_scope,
+  '11111111-1111-1111-1111-111111111102'::uuid, CURRENT_DATE, NULL::date
+FROM public.roles AS r WHERE r.code = 'approver'
+ON CONFLICT (id) DO UPDATE SET user_id = EXCLUDED.user_id, role_id = EXCLUDED.role_id,
+  scope_type = EXCLUDED.scope_type, scope_id = EXCLUDED.scope_id,
+  effective_start = EXCLUDED.effective_start, effective_end = EXCLUDED.effective_end;
+
 -- Three active vendors for the primary (restaurant/hospital) legal entity.
 INSERT INTO public.vendors (
   id, legal_entity_id, code, name_en, name_ar, status, currency_code, payment_terms_days,
@@ -469,7 +483,7 @@ ON CONFLICT (id) DO UPDATE SET
   invoice_total_tolerance_amount = EXCLUDED.invoice_total_tolerance_amount,
   status = 'active', effective_to = NULL;
 
--- Active delegation: finance → cost controller (purchase_requisition workflow).
+-- Active delegation: assigned approver → independently eligible cost controller.
 INSERT INTO public.approval_delegations (
   id, legal_entity_id, delegator_id, delegate_id, workflow_type, permission_code,
   financial_threshold, effective_start, effective_end, reason, delegation_status,
@@ -478,12 +492,12 @@ INSERT INTO public.approval_delegations (
 VALUES (
   'dddddddd-dddd-dddd-dddd-ddddddddd301',
   '11111111-1111-1111-1111-111111111102',
-  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa8',
   'purchase_requisition', 'commitment.approve', NULL,
   NOW() - INTERVAL '1 day', NOW() + INTERVAL '180 days',
-  'Fixture active finance to cost-controller delegation', 'active',
-  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2'
+  'Fixture active approver to cost-controller delegation', 'active',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', 'baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1'
 )
 ON CONFLICT (id) DO UPDATE SET
   delegator_id = EXCLUDED.delegator_id, delegate_id = EXCLUDED.delegate_id,
@@ -493,14 +507,18 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Appraisal cycle + template (weights 100) + assignment employee → manager (pm).
 INSERT INTO public.appraisal_templates (
-  id, legal_entity_id, code, name_en, name_ar, rating_scale_max, is_active
+  id, legal_entity_id, code, name_en, name_ar, rating_scale_max, is_active,
+  governance_status, approved_by, approved_at
 )
 VALUES (
   'dddddddd-dddd-dddd-dddd-ddddddddd402',
   '11111111-1111-1111-1111-111111111102',
-  'APP-STD-2027', 'Standard Annual Template', 'قالب التقييم السنوي', 5, true
+  'APP-STD-2027', 'Standard Annual Template', 'قالب التقييم السنوي', 5, true,
+  'approved', 'baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', NOW()
 )
-ON CONFLICT (id) DO UPDATE SET name_en = EXCLUDED.name_en, name_ar = EXCLUDED.name_ar, is_active = true, legal_entity_id = EXCLUDED.legal_entity_id;
+ON CONFLICT (id) DO UPDATE SET name_en = EXCLUDED.name_en, name_ar = EXCLUDED.name_ar,
+  is_active = true, governance_status='approved',approved_by=EXCLUDED.approved_by,
+  approved_at=EXCLUDED.approved_at,legal_entity_id = EXCLUDED.legal_entity_id;
 
 INSERT INTO public.appraisal_template_criteria (
   id, template_id, sequence_no, category, name_en, name_ar, weight, max_scale
@@ -551,15 +569,19 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Period close checklist template with one blocking item (March FY2027).
 INSERT INTO public.period_close_checklist_templates (
-  id, legal_entity_id, module, code, name_en, name_ar, is_active
+  id, legal_entity_id, module, code, name_en, name_ar, is_active,
+  governance_status, approved_by, approved_at
 )
 VALUES (
   'dddddddd-dddd-dddd-dddd-ddddddddd501',
   '11111111-1111-1111-1111-111111111102',
   'actuals', 'ACTUALS-CLOSE-STD',
-  'Actuals Close Checklist', 'قائمة إغلاق الفعلي', true
+  'Actuals Close Checklist', 'قائمة إغلاق الفعلي', true,
+  'approved', 'baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', NOW()
 )
-ON CONFLICT (id) DO UPDATE SET is_active = true, name_en = EXCLUDED.name_en, name_ar = EXCLUDED.name_ar;
+ON CONFLICT (id) DO UPDATE SET is_active = true, governance_status='approved',
+  approved_by=EXCLUDED.approved_by,approved_at=EXCLUDED.approved_at,
+  name_en = EXCLUDED.name_en, name_ar = EXCLUDED.name_ar;
 
 INSERT INTO public.period_close_checklist_items (
   id, template_id, sequence_no, name_en, name_ar, description,

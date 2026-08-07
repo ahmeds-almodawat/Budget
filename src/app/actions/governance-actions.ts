@@ -18,6 +18,7 @@ import {
   delegationRevoke,
   delegationSubmit,
   masterRecordCreateDraft,
+  masterRecordCreateRevision,
   masterRecordDeactivate,
   masterRecordReject,
   periodChecklistSetResult,
@@ -26,10 +27,18 @@ import {
   periodReopenApprove,
   periodReopenRequest,
   periodSoftClose,
+  periodTemplateAddItem,
+  periodTemplateApprove,
+  periodTemplateCreate,
+  periodTemplateRetire,
+  periodTemplateSubmit,
   requisitionCreateDraft,
   requisitionSubmit,
 } from "@/lib/commands";
-import { getPeriodChecklistWorkspace } from "@/data/repositories/period-close-repository";
+import {
+  getPeriodChecklistWorkspace,
+  listPeriodCloseTemplates,
+} from "@/data/repositories/period-close-repository";
 import { withActivePermission } from "@/lib/auth/action-guard";
 
 export async function fetchRisksAction() {
@@ -157,6 +166,7 @@ export async function createMasterRecordDraftAction(params: {
   nameAr: string;
   description?: string;
   parentId?: string;
+  attributes?: Record<string, unknown>;
   changeReason?: string;
 }) {
   return withActivePermission("master_data", "create", async ({ legalEntityId, db }) => {
@@ -170,6 +180,29 @@ export async function createMasterRecordDraftAction(params: {
       .eq("id", result.entity_id as string)
       .single();
     if (error || !data) throw new DataAccessError("Master record not found.", "NOT_FOUND");
+    return data;
+  });
+}
+
+export async function createMasterRecordRevisionAction(params: {
+  recordId: string;
+  nameEn: string;
+  nameAr: string;
+  description?: string;
+  parentId?: string;
+  attributes?: Record<string, unknown>;
+  effectiveStart?: string;
+  effectiveEnd?: string;
+  changeReason: string;
+}) {
+  return withActivePermission("master_data", "create", async ({ db }) => {
+    const result = await masterRecordCreateRevision(db, params);
+    const { data, error } = await db
+      .from("governed_master_records")
+      .select("*")
+      .eq("id", result.entity_id as string)
+      .single();
+    if (error || !data) throw new DataAccessError("Master record revision not found.", "NOT_FOUND");
     return data;
   });
 }
@@ -330,6 +363,64 @@ export async function fetchPeriodChecklistAction(params: {
   return withActivePermission("period_close", "read", async ({ legalEntityId, db }) =>
     getPeriodChecklistWorkspace(db, legalEntityId, params.fiscalPeriodId, params.module),
   );
+}
+
+export async function fetchPeriodTemplatesAction() {
+  return withActivePermission("period_close", "read", async ({ legalEntityId, db }) =>
+    listPeriodCloseTemplates(db, legalEntityId),
+  );
+}
+
+export async function createPeriodTemplateAction(params: {
+  module: string;
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  effectiveFrom?: string;
+}) {
+  return withActivePermission("period_close", "create", async ({ legalEntityId, db }) => {
+    await periodTemplateCreate(db, { legalEntityId, ...params });
+    return listPeriodCloseTemplates(db, legalEntityId);
+  });
+}
+
+export async function addPeriodTemplateItemAction(params: {
+  templateId: string;
+  sequenceNo: number;
+  nameEn: string;
+  nameAr: string;
+  description?: string;
+  itemType: "manual" | "automatic";
+  ownerRoleCode?: string;
+  isRequired: boolean;
+  isBlocking: boolean;
+  controlCode?: string;
+}) {
+  return withActivePermission("period_close", "update", async ({ legalEntityId, db }) => {
+    await periodTemplateAddItem(db, params);
+    return listPeriodCloseTemplates(db, legalEntityId);
+  });
+}
+
+export async function submitPeriodTemplateAction(templateId: string) {
+  return withActivePermission("period_close", "update", async ({ legalEntityId, db }) => {
+    await periodTemplateSubmit(db, templateId);
+    return listPeriodCloseTemplates(db, legalEntityId);
+  });
+}
+
+export async function approvePeriodTemplateAction(templateId: string) {
+  return withActivePermission("period_close", "approve", async ({ legalEntityId, db }) => {
+    await periodTemplateApprove(db, templateId);
+    return listPeriodCloseTemplates(db, legalEntityId);
+  });
+}
+
+export async function retirePeriodTemplateAction(params: { templateId: string; reason: string }) {
+  return withActivePermission("period_close", "approve", async ({ legalEntityId, db }) => {
+    await periodTemplateRetire(db, params);
+    return listPeriodCloseTemplates(db, legalEntityId);
+  });
 }
 
 export async function evaluatePeriodReadinessAction(params: {

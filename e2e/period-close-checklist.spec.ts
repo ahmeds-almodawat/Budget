@@ -16,8 +16,9 @@ test.describe("period close checklist", () => {
     await signIn(page, "finance@modawat.local");
     await page.goto("/en/period-close");
     await expect(page.getByRole("heading", { name: "Period Calendar & Close", level: 1 })).toBeVisible();
-    await expect(page.locator("select").first()).toBeVisible();
-    await expect(page.locator('option[value="actuals"]')).toHaveCount(1);
+    const closeModuleSelect = page.locator("select").first();
+    await expect(closeModuleSelect).toBeVisible();
+    await expect(closeModuleSelect.locator('option[value="actuals"]')).toHaveCount(1);
     await expect(page.getByText("Module coming soon")).toHaveCount(0);
   });
 });

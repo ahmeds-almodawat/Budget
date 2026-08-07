@@ -1,11 +1,11 @@
 # ULTRA MEGA Required Modules
 
-**Status:** FINAL AUDIT CHECKPOINT — REQUIRED MODULES REMAIN PARTIAL
+**Status:** LOCAL REQUIRED-MODULE BLOCKERS CLOSED — FINAL PR / LINUX CI PENDING
 **Branch:** `feat/mega-finish-platform`  
 **Starting SHA:** `d448c39d3c54b4dcf7da3ffa688234b28993f6b0`  
 **Assessment date:** 2026-08-07
 
-This document inventories the ULTRA MEGA tranche. The independent final audit in `CODEX_FINAL_ULTRA_MEGA_AUDIT.md` supersedes earlier completion language: the tranche adds substantial schema, command, and UI coverage, but procurement accounting integrity, real delegated decisions, governed configuration paths, and appraisal configuration/goals remain incomplete.
+This document inventories the ULTRA MEGA tranche. The independent audit in `CODEX_FINAL_ULTRA_MEGA_AUDIT.md` remains authoritative: it retains the original blocker findings and records their correction and verification through additive migration `20260807132939_final_blocker_closure.sql`.
 
 ## Starting point
 
@@ -23,6 +23,7 @@ Work begins from SHA `d448c39d3c54b4dcf7da3ffa688234b28993f6b0` (`fix: harden ro
 | `20260807120500_ultra_grant_resolve_approver.sql` | Grants `EXECUTE` on `private.resolve_effective_approver` to `authenticated` so security-invoker inbox views resolve |
 | `20260807120600_ultra_appraisal_profile_peers.sql` | Earlier whole-row peer-profile policy; superseded by the names-only RPC in the correction migration |
 | `20260807120700_enforce_workflow_authorization_and_integrity.sql` | Revokes direct lifecycle DML, fails delegated decisions closed, narrows appraisal identity, completes contract transitions, gates period close, and hardens appraisal field ownership |
+| `20260807132939_final_blocker_closure.sql` | Line/cumulative invoice matching and commitment reconciliation; sourcing integrity; authoritative delegated adapters; operational master binding; versioned period/appraisal configuration; payment reject/cancel |
 
 Additive only. Money remains `NUMERIC(18,4)`. No bank/payment-execution fields.
 
@@ -73,20 +74,20 @@ Enforced in database RPCs (`private.user_has_any_role` + actor checks), not UI-o
 
 - `private.resolve_effective_approver(original, legal_entity, workflow_type)` walks active, in-window delegations with cycle detection.  
 - `public.v_approval_inbox` (security_invoker) exposes `original_assignee_id`, `effective_assignee_id`, and `delegation_id`.  
-- `public.v_delegated_approval_inbox` is intentionally empty after the final audit because requester identity is not a valid approval assignment.
-- Approvals UI supports act-as-delegate decisions against the resolved inbox.  
+- `public.v_delegated_approval_inbox` exposes actual pending authoritative assignments only when an active delegation resolves to the current actor.
+- Delegated actions support requisition, payment-request, and sourcing-award workflows by invoking their real controlled transition atomically.
 - Inbox base set includes budgets, changes, imports, milestone progress, schedule extensions, variances, delegations, purchase requisitions, and approval rules. PO/payment approval also remains available through dedicated procurement RPCs with SOD.
 
 ## Master data: hierarchy + deactivate
 
-- Workspace covers the governed `RECORD_TYPES` set (org units, cost structure, GL, vendor, UoM, currency, VAT, fiscal, project/control-scope/workflow types, variance/risk/approval thresholds).  
+- Workspace exposes only operationally bound organization-unit, cost-node, and vendor families; generic types without an authoritative command path are not represented as editable operational masters.
 - Hierarchical types support parent selection and tree browse; cycle rejection remains database-enforced.  
 - Lifecycle: draft → submit → approve / reject; `rpc_master_record_deactivate` for controlled deactivation.  
 - Submitter cannot decide (approve/reject) own master-data submission (SOD).
 
 ## Period close: checklist + gated hard close + senior reopen
 
-- Checklist templates/items/instances/results with automatic and blocking item evaluation.  
+- Versioned checklist template/item creation, submission, independent approval, retirement, effective dating, instances/results, and automatic/blocking evaluation.
 - `rpc_period_hard_close_with_checklist` / `rpc_period_hard_close_gated` refuse hard close while blocking checklist items are incomplete.  
 - Reopen requires `rpc_period_reopen_request` then `rpc_period_reopen_approve` by senior admin roles with SOD.  
 - Soft/hard close and module open assertions continue to gate posting commands.
@@ -95,7 +96,7 @@ Enforced in database RPCs (`private.user_has_any_role` + actor checks), not UI-o
 
 Architecture:
 
-- Cycles, templates, criteria, assignments, ratings, goals, acknowledgements  
+- Cycles, versioned controlled templates/criteria, assignments, controlled goals, ratings, and acknowledgements
 - Status path: self review → self submitted → manager review → manager submitted → (optional reviewer) → finalized → employee acknowledged  
 - Weighted score computation in the database; UI for scorecard, my appraisal, team, cycle admin, and assignment detail
 
@@ -191,30 +192,31 @@ Still open outside ULTRA MEGA required-module scope:
 
 ## Evidence pointers (local)
 
-- Migrations: `supabase/migrations/20260807120*.sql` (through `20260807120600`)
+- Migrations: `supabase/migrations/20260807120*.sql` plus `20260807132939_final_blocker_closure.sql`
 - Fixtures: `supabase/fixtures/local_personas.sql` (15 personas)
 - E2E: `e2e/procurement-lifecycle.spec.ts`, `delegation-inbox.spec.ts`, `master-data-hierarchy.spec.ts`, `period-close-checklist.spec.ts`, `appraisal-lifecycle.spec.ts`
 - Closure companion: `docs/FINAL_PLATFORM_CLOSURE.md`
 - Checklist: `docs/MEGA_FINISH_STATUS.md`
 
-## Local verification snapshot (2026-08-07)
+## Final blocker-closure verification snapshot (2026-08-07)
 
 | Suite | Result |
 |---|---|
 | `npm run lint` | pass (2 pre-existing unused-var warnings) |
 | `npm run typecheck` | pass |
-| `npm run test` | 159 passed |
-| `npm run test:i18n` | EN=811 AR=811 |
+| `npm run test` | 25 files / 159 passed after test-fixture isolation correction; earlier Windows/shared-state failures retained in the controlling audit |
+| `npm run test:i18n` | EN=913 AR=913 |
 | `npm run test:import-security` | 17 passed |
-| `npm run test:concurrency` | 8 passed (incl. UM-CONC-01..03) |
-| `npm run test:db` cycle 1 | 83 passed |
-| `npm run test:db` cycle 2 (independent reset+fixtures) | 83 passed |
-| `npm run build` | pass |
+| `npm run test:concurrency` | 9 passed (incl. separate-session direct/delegate race) |
+| `npm run test:db` cycle 1 | independent reset + fixtures; 102 passed |
+| `npm run test:db` cycle 2 | independent reset + fixtures; 102 passed |
+| `npm run build` | pass; 87/87 static pages |
 | `npm audit` | 2 moderate (`exceljs`→`uuid`); 0 high/critical |
-| E2E first full run | 64 passed / 3 failed (sign-out missing between personas) |
-| E2E corrections | signOut between users; department-approve persona = cost.controller; appraisal peer profile policy; master-data empty copy + entity select |
-| E2E module retest | 5/5 required-module specs passed |
-| E2E final full suite | **67 passed**, 0 failed, retries=0 |
-| Public RLS policies | 206 |
+| Prior ULTRA E2E first full run | 64 passed / 3 failed (sign-out missing between personas) |
+| Prior ULTRA E2E corrections | signOut between users; department-approve persona = cost.controller; appraisal peer profile policy; master-data empty copy + entity select |
+| Prior ULTRA E2E module retest | 5/5 required-module specs passed |
+| E2E closure follow-up | **65 passed / 2 Windows resource failures**, retries=0; all five required-module scenarios passed |
+| Public RLS policies | 208; all target `authenticated` |
+| Zero-fixture catalog | 107/107 RLS+FORCE tables; 9/9 invoker views; 115/115 hardened public RPCs; 44/44 controlled tables read-only |
 
-**Final label:** FINAL AUDIT CHECKPOINT — REQUIRED MODULE BLOCKERS REMAIN
+**Final label:** LOCAL REQUIRED-MODULE BLOCKERS CLOSED — FINAL PR / LINUX CI PENDING

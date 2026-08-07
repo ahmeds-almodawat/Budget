@@ -14,6 +14,24 @@ export interface PeriodCloseChecklistItemRow {
   control_code: string | null;
 }
 
+export interface PeriodCloseTemplateRow {
+  id: string;
+  legal_entity_id: string;
+  module: string;
+  code: string;
+  name_en: string;
+  name_ar: string;
+  is_active: boolean;
+  version_number: number;
+  governance_status: string;
+  effective_from: string;
+  effective_to: string | null;
+  created_by: string | null;
+  submitted_by: string | null;
+  approved_by: string | null;
+  period_close_checklist_items?: PeriodCloseChecklistItemRow[];
+}
+
 export interface PeriodCloseInstanceRow {
   id: string;
   legal_entity_id: string;
@@ -58,6 +76,18 @@ export interface ChecklistWorkspaceData {
   instance: PeriodCloseInstanceRow | null;
   items: Array<PeriodCloseChecklistItemRow & { result_status: string | null; result_id: string | null }>;
   reopenRequests: PeriodReopenRequestRow[];
+}
+
+export async function listPeriodCloseTemplates(db: SupabaseClient, legalEntityId: string) {
+  const { data, error } = await db
+    .from("period_close_checklist_templates")
+    .select("*, period_close_checklist_items(*)")
+    .eq("legal_entity_id", legalEntityId)
+    .order("module")
+    .order("code")
+    .order("version_number", { ascending: false });
+  if (error) throw new DataAccessError(error.message, "DATABASE");
+  return (data ?? []) as PeriodCloseTemplateRow[];
 }
 
 export async function getPeriodChecklistWorkspace(

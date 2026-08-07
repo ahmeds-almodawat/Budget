@@ -27,6 +27,22 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
     ]);
   }
 
+  async function grantRoleForTest(client, userId, roleCode) {
+    await client.query(
+      `INSERT INTO public.role_assignments (user_id, role_id, scope_type, scope_id, effective_start)
+       SELECT $1::uuid, r.id, 'legal_entity', $2::uuid, CURRENT_DATE
+       FROM public.roles AS r
+       WHERE r.code = $3
+         AND NOT EXISTS (
+           SELECT 1 FROM public.role_assignments AS existing
+           JOIN public.roles AS existing_role ON existing_role.id = existing.role_id
+           WHERE existing.user_id = $1::uuid AND existing_role.code = $3
+             AND existing.scope_type = 'legal_entity' AND existing.scope_id = $2::uuid
+         )`,
+      [userId, ENTITY, roleCode],
+    );
+  }
+
   async function fiscalPeriodId(client, periodNumber = 3) {
     const { rows } = await client.query(
       `SELECT id FROM public.fiscal_periods
@@ -99,6 +115,7 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
     vendorId = VENDOR_A,
     awardedQty = 10,
     unitPrice = 100,
+    withSubmittedEvaluation = true,
   }) {
     await client.query(
       `INSERT INTO public.rfqs (
@@ -146,6 +163,15 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
        ) VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5)`,
       [quoteLineId, quoteId, rfqLineId, awardedQty, unitPrice],
     );
+    if (withSubmittedEvaluation) {
+      await client.query(
+        `INSERT INTO public.sourcing_evaluations (
+           legal_entity_id, rfq_id, quotation_id, evaluator_id, evaluation_status,
+           weighted_score, has_mandatory_failure, recommendation, submitted_at
+         ) VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 'submitted', 90, false, 'award', NOW())`,
+        [ENTITY, rfqId, quoteId, FINANCE],
+      );
+    }
   }
 
   async function seedApprovedInvoice(client, { invId, poId, gross = 100 }) {
@@ -260,6 +286,7 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
       await seedApprovedRequisition(client, { reqId, line1Id: line1, line2Id: line2 });
       await seedIssuedRfqWithQuote(client, {
         reqId, line1Id: line1, rfqId, rfqLineId, quoteId, quoteLineId,
+        withSubmittedEvaluation: false,
       });
       await authAs(client, COST_CTRL);
       const bad = await client.query(
@@ -295,6 +322,7 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
       await seedApprovedRequisition(client, { reqId, line1Id: line1, line2Id: line2 });
       await seedIssuedRfqWithQuote(client, {
         reqId, line1Id: line1, rfqId, rfqLineId, quoteId, quoteLineId,
+        withSubmittedEvaluation: false,
       });
       await authAs(client, COST_CTRL);
       const ok = await client.query(
@@ -628,14 +656,22 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
       await client.query(`SELECT public.rpc_po_approve($1::uuid, 'submitted', $2, NULL)`, [poId, `i-pa-${Date.now()}`]);
       await authAs(client, COST_CTRL);
       await client.query(`SELECT public.rpc_po_issue($1::uuid, 'approved', $2, NULL)`, [poId, `i-pi-${Date.now()}`]);
-      // 2-way match path: invoice gross far above PO total with zero tolerance
+      const { rows: poLines } = await client.query(
+        `SELECT id FROM public.purchase_order_lines WHERE purchase_order_id=$1::uuid ORDER BY line_number LIMIT 1`,
+        [poId],
+      );
+      // Missing fulfillment evidence and a far-over-PO invoice must produce blocking exceptions.
       await authAs(client, FINANCE);
       const inv = await client.query(
         `SELECT public.rpc_supplier_invoice_create(
            $1::uuid, $2::uuid, $3::uuid, $4, CURRENT_DATE, 9999::numeric,
-           9999::numeric, 0::numeric, CURRENT_DATE + 30, '[]'::jsonb, $5::uuid, $6, NULL
+           9999::numeric, 0::numeric, CURRENT_DATE + 30,
+           jsonb_build_array(jsonb_build_object(
+             'purchase_order_line_id',$5::uuid,'line_number',1,'description','Over invoice',
+             'quantity',99.99,'unit_price_ex_vat',100,'vat_amount',0
+           )), $6::uuid, $7, NULL
          ) AS r`,
-        [ENTITY, poId, VENDOR_A, `INV-${Date.now()}`, periodId, `idem-inv-create-${Date.now()}`],
+        [ENTITY, poId, VENDOR_A, `INV-${Date.now()}`, poLines[0].id, periodId, `idem-inv-create-${Date.now()}`],
       );
       assert(inv.rows[0].r.ok, `invoice create failed: ${JSON.stringify(inv.rows[0].r)}`);
       const match = await client.query(
@@ -711,12 +747,12 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
     }
   });
 
-  test("UM-15 active delegation resolves finance assignee to cost controller", async (client) => {
+  test("UM-15 active delegation resolves assigned approver to cost controller", async (client) => {
     await asRole(client, "authenticated", COST_CTRL, async () => {
       const { rows } = await client.query(
         `SELECT effective_assignee_id, delegation_id
          FROM private.resolve_effective_approver($1::uuid, $2::uuid, 'purchase_requisition')`,
-        [FINANCE, ENTITY],
+        [APPROVER, ENTITY],
       );
       assert(rows[0].effective_assignee_id === COST_CTRL, "Delegation did not resolve to cost controller");
       assert(rows[0].delegation_id === DELEGATION, "Unexpected delegation id");
@@ -736,9 +772,9 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
       const { rows } = await client.query(
         `SELECT effective_assignee_id, delegation_id
          FROM private.resolve_effective_approver($1::uuid, $2::uuid, 'purchase_requisition')`,
-        [FINANCE, ENTITY],
+        [APPROVER, ENTITY],
       );
-      assert(rows[0].effective_assignee_id === FINANCE, "Revoked delegation should restore finance");
+      assert(rows[0].effective_assignee_id === APPROVER, "Revoked delegation should restore assigned approver");
       assert(rows[0].delegation_id == null, "Revoked delegation_id should be null");
     } finally {
       await client.query("ROLLBACK");
@@ -1176,9 +1212,9 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
       const resultId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee924";
       await client.query(
         `INSERT INTO public.period_close_checklist_templates (
-           id, legal_entity_id, module, code, name_en, name_ar, is_active
+           id, legal_entity_id, module, code, name_en, name_ar, is_active, governance_status
          ) VALUES ($1::uuid, $2::uuid, 'forecasts', 'UM-FORECAST-CLOSE-PASS',
-           'Forecast close', 'إغلاق التوقع', true)`,
+           'Forecast close', 'إغلاق التوقع', true, 'approved')`,
         [templateId, ENTITY],
       );
       await client.query(
@@ -1418,6 +1454,760 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
       );
       assert(state.rows[0].status === "submitted", "Failed reopen approval changed request status");
       assert(state.rows[0].control_state === "open", "Failed reopen approval changed period state");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-38 line-level invoice approval relieves and reversal restores commitment", async (client) => {
+    await client.query("BEGIN");
+    try {
+      const periodId = await fiscalPeriodId(client, 4);
+      const commitmentId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee960";
+      const poId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee961";
+      const poLineId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee962";
+      const receiptId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee963";
+      await client.query(
+        `INSERT INTO public.commitments (id, legal_entity_id, vendor_id, reference_number, original_value, approval_status)
+         VALUES ($1::uuid, $2::uuid, $3::uuid, 'UM-RELIEF-PO', 1000, 'approved')`,
+        [commitmentId, ENTITY, VENDOR_A],
+      );
+      await client.query(
+        `INSERT INTO public.purchase_orders (
+           id, legal_entity_id, vendor_id, po_number, po_status, commitment_id, currency_code,
+           total_amount, fiscal_period_id, created_by, issued_by, issued_at
+         ) VALUES ($1::uuid, $2::uuid, $3::uuid, 'UM-RELIEF-PO', 'issued', $4::uuid,
+           'SAR', 1000, $5::uuid, $6::uuid, $6::uuid, NOW())`,
+        [poId, ENTITY, VENDOR_A, commitmentId, periodId, COST_CTRL],
+      );
+      await client.query(
+        `INSERT INTO public.purchase_order_lines (
+           id, purchase_order_id, line_number, description, quantity, unit_price_ex_vat
+         ) VALUES ($1::uuid, $2::uuid, 1, 'Matched goods', 10, 100)`,
+        [poLineId, poId],
+      );
+      await client.query(
+        `INSERT INTO public.goods_receipts (
+           id, legal_entity_id, purchase_order_id, vendor_id, receipt_number, receiver_id,
+           receipt_status, fiscal_period_id, accepted_by, accepted_at
+         ) VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 'UM-GR-RELIEF', $5::uuid,
+           'accepted', $6::uuid, $7::uuid, NOW())`,
+        [receiptId, ENTITY, poId, VENDOR_A, FINANCE, periodId, COST_CTRL],
+      );
+      await client.query(
+        `INSERT INTO public.goods_receipt_lines (
+           goods_receipt_id, purchase_order_line_id, line_number, quantity_received, quantity_accepted
+         ) VALUES ($1::uuid, $2::uuid, 1, 10, 10)`,
+        [receiptId, poLineId],
+      );
+
+      await authAs(client, FINANCE);
+      const created = await client.query(
+        `SELECT public.rpc_supplier_invoice_create(
+           $1::uuid,$2::uuid,$3::uuid,'UM-INV-RELIEF',CURRENT_DATE,400,400,0,CURRENT_DATE+30,
+           jsonb_build_array(jsonb_build_object(
+             'purchase_order_line_id',$4::uuid,'line_number',1,'description','Partial invoice',
+             'quantity',4,'unit_price_ex_vat',100,'vat_amount',0
+           )),$5::uuid,$6,NULL
+         ) AS r`,
+        [ENTITY, poId, VENDOR_A, poLineId, periodId, "idem-um38-create"],
+      );
+      assert(created.rows[0].r.ok, `Invoice create failed: ${JSON.stringify(created.rows[0].r)}`);
+      const invoiceId = created.rows[0].r.entity_id;
+      const matched = await client.query(
+        `SELECT public.rpc_supplier_invoice_match($1::uuid,$2,NULL) AS r`,
+        [invoiceId, "idem-um38-match"],
+      );
+      assert(matched.rows[0].r.match_mode === "three_way_goods", `Wrong match mode: ${JSON.stringify(matched.rows[0].r)}`);
+      assert(matched.rows[0].r.match_status === "matched", `Invoice did not match: ${JSON.stringify(matched.rows[0].r)}`);
+
+      await authAs(client, COST_CTRL);
+      const approved = await client.query(
+        `SELECT public.rpc_supplier_invoice_approve($1::uuid,'matched',$2,NULL) AS r`,
+        [invoiceId, "idem-um38-approve"],
+      );
+      assert(approved.rows[0].r.ok, `Invoice approval failed: ${JSON.stringify(approved.rows[0].r)}`);
+      let reconciliation = await client.query(
+        `SELECT invoiced_applied::numeric AS applied FROM public.commitments WHERE id=$1::uuid`,
+        [commitmentId],
+      );
+      assert(Number(reconciliation.rows[0].applied) === 400, "Commitment relief did not equal approved line value");
+
+      await authAs(client, FINANCE);
+      const reversed = await client.query(
+        `SELECT public.rpc_supplier_invoice_reverse_and_replace(
+           $1::uuid,'Validated accounting reversal','UM-INV-RELIEF-R',CURRENT_DATE,$2,NULL
+         ) AS r`,
+        [invoiceId, "idem-um38-reverse"],
+      );
+      assert(reversed.rows[0].r.ok && reversed.rows[0].r.replacement_invoice_id, `Reversal failed: ${JSON.stringify(reversed.rows[0].r)}`);
+      reconciliation = await client.query(
+        `SELECT c.invoiced_applied::numeric AS applied, si.invoice_status,
+           (SELECT count(*)::int FROM public.supplier_invoice_lines WHERE supplier_invoice_id=$2::uuid) AS replacement_lines
+         FROM public.commitments AS c
+         JOIN public.supplier_invoices AS si ON si.id=$1::uuid
+         WHERE c.id=$3::uuid`,
+        [invoiceId, reversed.rows[0].r.replacement_invoice_id, commitmentId],
+      );
+      assert(Number(reconciliation.rows[0].applied) === 0, "Reversal did not restore open commitment");
+      assert(reconciliation.rows[0].invoice_status === "reversed", "Invoice reversal status was not stored");
+      assert(reconciliation.rows[0].replacement_lines === 1, "Replacement did not preserve line provenance");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-39 cross-PO invoice lines and sourcing price tampering are rejected", async (client) => {
+    await client.query("BEGIN");
+    try {
+      const periodId = await fiscalPeriodId(client, 5);
+      const poA = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee964";
+      const poB = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee965";
+      const lineA = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee966";
+      const lineB = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee967";
+      await client.query(
+        `INSERT INTO public.purchase_orders (id,legal_entity_id,vendor_id,po_number,po_status,currency_code,total_amount,created_by)
+         VALUES ($1::uuid,$3::uuid,$4::uuid,'UM-PO-A','issued','SAR',100,$5::uuid),
+                ($2::uuid,$3::uuid,$4::uuid,'UM-PO-B','issued','SAR',100,$5::uuid)`,
+        [poA, poB, ENTITY, VENDOR_A, COST_CTRL],
+      );
+      await client.query(
+        `INSERT INTO public.purchase_order_lines (id,purchase_order_id,line_number,description,quantity,unit_price_ex_vat)
+         VALUES ($1::uuid,$3::uuid,1,'A',1,100),($2::uuid,$4::uuid,1,'B',1,100)`,
+        [lineA, lineB, poA, poB],
+      );
+      await authAs(client, FINANCE);
+      let mixedBlocked = false;
+      try {
+        await client.query(
+          `SELECT public.rpc_supplier_invoice_create(
+             $1::uuid,$2::uuid,$3::uuid,'UM-CROSS-PO',CURRENT_DATE,100,100,0,NULL,
+             jsonb_build_array(jsonb_build_object('purchase_order_line_id',$4::uuid,'quantity',1,'unit_price_ex_vat',100,'vat_amount',0)),
+             $5::uuid,'idem-um39-cross',NULL
+           )`,
+          [ENTITY, poA, VENDOR_A, lineB, periodId],
+        );
+      } catch {
+        mixedBlocked = true;
+      }
+      assert(mixedBlocked, "Invoice accepted a line from a different purchase order");
+
+      await client.query("ROLLBACK");
+      await client.query("BEGIN");
+      const reqId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee968";
+      const reqLine = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee969";
+      const reqLine2 = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee96a";
+      const rfqId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee96b";
+      const rfqLine = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee96c";
+      const quoteId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee96d";
+      const quoteLine = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee96e";
+      await seedApprovedRequisition(client, { reqId, line1Id: reqLine, line2Id: reqLine2 });
+      await seedIssuedRfqWithQuote(client, { reqId, line1Id: reqLine, rfqId, rfqLineId: rfqLine, quoteId, quoteLineId: quoteLine });
+      let frozen = false;
+      try {
+        await client.query(`UPDATE public.sourcing_evaluations SET evaluation_status='draft' WHERE rfq_id=$1::uuid`, [rfqId]);
+      } catch {
+        frozen = true;
+      }
+      assert(frozen, "Submitted sourcing evaluation was mutable");
+      await client.query("ROLLBACK");
+      await client.query("BEGIN");
+      await seedApprovedRequisition(client, { reqId, line1Id: reqLine, line2Id: reqLine2 });
+      await seedIssuedRfqWithQuote(client, { reqId, line1Id: reqLine, rfqId, rfqLineId: rfqLine, quoteId, quoteLineId: quoteLine });
+      await authAs(client, COST_CTRL);
+      let tamperBlocked = false;
+      try {
+        await client.query(
+          `SELECT public.rpc_award_create_and_submit(
+             $1::uuid,$2::uuid,jsonb_build_array(jsonb_build_object(
+               'rfq_line_id',$3::uuid,'awarded_quantity',10,'unit_price_ex_vat',101,'quotation_line_id',$4::uuid
+             )),'tampered price',NULL,'idem-um39-award',NULL
+           )`,
+          [rfqId, quoteId, rfqLine, quoteLine],
+        );
+      } catch {
+        tamperBlocked = true;
+      }
+      assert(tamperBlocked, "Award accepted a caller-tampered price");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-40 delegated approval performs the real transition with exact actor attribution", async (client) => {
+    await client.query("BEGIN");
+    try {
+      const reqId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee970";
+      await seedApprovedRequisition(client, {
+        reqId,
+        line1Id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeee971",
+        line2Id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeee972",
+      });
+      await client.query(
+        `UPDATE public.purchase_requisitions
+         SET requisition_status='budget_checked', approved_by=NULL, approved_at=NULL
+         WHERE id=$1::uuid`,
+        [reqId],
+      );
+      await authAs(client, COST_CTRL);
+      const review = await client.query(
+        `SELECT public.rpc_requisition_procurement_review(
+           $1::uuid,'budget_checked',$2,NULL
+         ) AS r`,
+        [reqId, "idem-um40-review"],
+      );
+      assert(review.rows[0].r.ok, `Procurement-review transition failed: ${JSON.stringify(review.rows[0].r)}`);
+      const assignment = await client.query(
+        `SELECT id, original_assignee_id, assignment_status
+         FROM public.workflow_approval_assignments
+         WHERE item_type='purchase_requisition' AND entity_id=$1::uuid`,
+        [reqId],
+      );
+      assert(assignment.rows.length === 1, "Authoritative requisition assignment was not created");
+      assert(assignment.rows[0].original_assignee_id === APPROVER, "Wrong original requisition assignee");
+
+      await authAs(client, COST_CTRL);
+      const decision = await client.query(
+        `SELECT public.rpc_approval_act_as_delegate(
+           'purchase_requisition',$1::uuid,'approve',$2::uuid,$3::uuid,
+           'Delegated approval regression',$4,NULL
+         ) AS r`,
+        [reqId, APPROVER, DELEGATION, "idem-um40-decision"],
+      );
+      assert(decision.rows[0].r.ok, `Delegated transition failed: ${JSON.stringify(decision.rows[0].r)}`);
+      const replay = await client.query(
+        `SELECT public.rpc_approval_act_as_delegate(
+           'purchase_requisition',$1::uuid,'approve',$2::uuid,$3::uuid,
+           'Delegated approval regression',$4,NULL
+         ) AS r`,
+        [reqId, APPROVER, DELEGATION, "idem-um40-decision"],
+      );
+      assert(replay.rows[0].r.decision_audit_id === decision.rows[0].r.decision_audit_id, "Delegated replay was not idempotent");
+
+      await client.query("SET LOCAL role postgres");
+      const evidence = await client.query(
+        `SELECT pr.requisition_status, waa.assignment_status, ada.actual_actor_user_id,
+                ada.original_assignee_user_id, ada.delegated_from_user_id,
+                count(*) OVER ()::int AS decision_count
+         FROM public.purchase_requisitions AS pr
+         JOIN public.workflow_approval_assignments AS waa ON waa.entity_id=pr.id AND waa.item_type='purchase_requisition'
+         JOIN public.approval_decision_audit AS ada ON ada.entity_id=pr.id AND ada.item_type='purchase_requisition'
+         WHERE pr.id=$1::uuid`,
+        [reqId],
+      );
+      assert(evidence.rows[0].requisition_status === "approved", "Delegated decision did not transition requisition");
+      assert(evidence.rows[0].assignment_status === "approved", "Assignment was not resolved by business transition");
+      assert(evidence.rows[0].actual_actor_user_id === COST_CTRL, "Actual delegate actor was not recorded");
+      assert(evidence.rows[0].original_assignee_user_id === APPROVER, "Original assignee attribution is wrong");
+      assert(evidence.rows[0].delegated_from_user_id === APPROVER, "Delegator attribution is wrong");
+      assert(evidence.rows[0].decision_count === 1, "Idempotent replay duplicated decision audit");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-41 period template versions require two actors and used versions are immutable", async (client) => {
+    await client.query("BEGIN");
+    try {
+      await grantRoleForTest(client, FINANCE, "legal_entity_administrator");
+      await grantRoleForTest(client, APPROVER, "legal_entity_administrator");
+      await authAs(client, FINANCE);
+      const created = await client.query(
+        `SELECT public.rpc_period_template_create(
+           $1::uuid,'projects','UM-PROJECT-CLOSE','Project close','إغلاق المشروع',CURRENT_DATE,$2,NULL
+         ) AS r`,
+        [ENTITY, "idem-um41-create-v1"],
+      );
+      const templateId = created.rows[0].r.entity_id;
+      const replay = await client.query(
+        `SELECT public.rpc_period_template_create(
+           $1::uuid,'projects','UM-PROJECT-CLOSE','Project close','إغلاق المشروع',CURRENT_DATE,$2,NULL
+         ) AS r`,
+        [ENTITY, "idem-um41-create-v1"],
+      );
+      assert(replay.rows[0].r.entity_id === templateId, "Period template create replay was not idempotent");
+      const item = await client.query(
+        `SELECT public.rpc_period_template_add_item(
+           $1::uuid,1::smallint,'Project reconciliation','تسوية المشروع',NULL,'manual',
+           'finance_user',true,true,NULL,$2,NULL
+         ) AS r`,
+        [templateId, "idem-um41-item-v1"],
+      );
+      assert(item.rows[0].r.ok, `Period item create failed: ${JSON.stringify(item.rows[0].r)}`);
+      const submitted = await client.query(
+        `SELECT public.rpc_period_template_submit($1::uuid,'draft',$2,NULL) AS r`,
+        [templateId, "idem-um41-submit-v1"],
+      );
+      assert(submitted.rows[0].r.ok, "Period template submission failed");
+      const selfApprove = await client.query(
+        `SELECT public.rpc_period_template_approve($1::uuid,'submitted',$2,NULL) AS r`,
+        [templateId, "idem-um41-self-approve"],
+      );
+      assert(!selfApprove.rows[0].r.ok, "Period template creator self-approved");
+
+      await authAs(client, APPROVER);
+      const approved = await client.query(
+        `SELECT public.rpc_period_template_approve($1::uuid,'submitted',$2,NULL) AS r`,
+        [templateId, "idem-um41-approve-v1"],
+      );
+      assert(approved.rows[0].r.ok, `Period template approval failed: ${JSON.stringify(approved.rows[0].r)}`);
+
+      await authAs(client, FINANCE);
+      const v2 = await client.query(
+        `SELECT public.rpc_period_template_create(
+           $1::uuid,'projects','UM-PROJECT-CLOSE','Project close v2','إغلاق المشروع 2',CURRENT_DATE,$2,NULL
+         ) AS r`,
+        [ENTITY, "idem-um41-create-v2"],
+      );
+      assert(v2.rows[0].r.version_number === 2, "Second period template version was not created");
+      await client.query(
+        `SELECT public.rpc_period_template_add_item(
+           $1::uuid,1::smallint,'Project reconciliation v2','تسوية المشروع 2',NULL,'manual',
+           'finance_user',true,true,NULL,$2,NULL
+         )`,
+        [v2.rows[0].r.entity_id, "idem-um41-item-v2"],
+      );
+      await client.query(`SELECT public.rpc_period_template_submit($1::uuid,'draft',$2,NULL)`, [v2.rows[0].r.entity_id, "idem-um41-submit-v2"]);
+      await authAs(client, APPROVER);
+      await client.query(`SELECT public.rpc_period_template_approve($1::uuid,'submitted',$2,NULL)`, [v2.rows[0].r.entity_id, "idem-um41-approve-v2"]);
+
+      await client.query("SET LOCAL role postgres");
+      const periodId = await fiscalPeriodId(client, 6);
+      await client.query(
+        `INSERT INTO public.period_close_instances (legal_entity_id,fiscal_period_id,module,template_id,created_by)
+         VALUES ($1::uuid,$2::uuid,'projects',$3::uuid,$4::uuid)`,
+        [ENTITY, periodId, v2.rows[0].r.entity_id, FINANCE],
+      );
+      await client.query("SAVEPOINT period_template_immutable");
+      let immutable = false;
+      try {
+        await client.query(`UPDATE public.period_close_checklist_templates SET name_en='tampered' WHERE id=$1::uuid`, [v2.rows[0].r.entity_id]);
+      } catch {
+        immutable = true;
+        await client.query("ROLLBACK TO SAVEPOINT period_template_immutable");
+      }
+      assert(immutable, "Used period template definition was mutable");
+      const status = await client.query(
+        `SELECT count(*) FILTER (WHERE governance_status='approved' AND is_active)::int AS active_count,
+                count(*) FILTER (WHERE id=$2::uuid AND governance_status='inactive' AND NOT is_active)::int AS superseded_count
+         FROM public.period_close_checklist_templates
+         WHERE legal_entity_id=$1::uuid AND module='projects'`,
+        [ENTITY, templateId],
+      );
+      assert(status.rows[0].active_count === 1, "Period template activation uniqueness failed");
+      assert(status.rows[0].superseded_count === 1, "Prior period template version was not retired");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-42 appraisal templates, goals, and participant fields follow controlled ownership", async (client) => {
+    await client.query("BEGIN");
+    try {
+      await grantRoleForTest(client, FINANCE, "legal_entity_administrator");
+      await grantRoleForTest(client, APPROVER, "legal_entity_administrator");
+      await authAs(client, FINANCE);
+      const template = await client.query(
+        `SELECT public.rpc_appraisal_template_create(
+           $1::uuid,'UM-APPRAISAL','Controlled appraisal','تقييم محكوم',NULL,NULL,5,$2,NULL
+         ) AS r`,
+        [ENTITY, "idem-um42-template-v1"],
+      );
+      const templateId = template.rows[0].r.entity_id;
+      await client.query(
+        `SELECT public.rpc_appraisal_template_add_criterion(
+           $1::uuid,1,'delivery','Delivery quality','جودة التسليم',100,5,$2,NULL
+         )`,
+        [templateId, "idem-um42-criterion-v1"],
+      );
+      await client.query(`SELECT public.rpc_appraisal_template_submit($1::uuid,'draft',$2,NULL)`, [templateId, "idem-um42-submit-v1"]);
+      const selfApprove = await client.query(
+        `SELECT public.rpc_appraisal_template_approve($1::uuid,'submitted',$2,NULL) AS r`,
+        [templateId, "idem-um42-self-approve"],
+      );
+      assert(!selfApprove.rows[0].r.ok, "Appraisal template creator self-approved");
+      await authAs(client, APPROVER);
+      const approved = await client.query(
+        `SELECT public.rpc_appraisal_template_approve($1::uuid,'submitted',$2,NULL) AS r`,
+        [templateId, "idem-um42-approve-v1"],
+      );
+      assert(approved.rows[0].r.ok, `Appraisal template approval failed: ${JSON.stringify(approved.rows[0].r)}`);
+
+      await authAs(client, FINANCE);
+      const assignment = await client.query(
+        `SELECT public.rpc_appraisal_assignment_create(
+           $1::uuid,'dddddddd-dddd-dddd-dddd-ddddddddd401'::uuid,$2::uuid,$3::uuid,$4::uuid,
+           NULL,NULL,$5,NULL
+         ) AS r`,
+        [ENTITY, templateId, VIEWER, MANAGER, "idem-um42-assignment"],
+      );
+      assert(assignment.rows[0].r.ok, `Appraisal assignment failed: ${JSON.stringify(assignment.rows[0].r)}`);
+      const assignmentId = assignment.rows[0].r.entity_id;
+      const goal = await client.query(
+        `SELECT public.rpc_appraisal_goal_create(
+           $1::uuid,'Deliver the governed outcome','100%','percent',100,$2,NULL
+         ) AS r`,
+        [assignmentId, "idem-um42-goal"],
+      );
+      const goalReplay = await client.query(
+        `SELECT public.rpc_appraisal_goal_create(
+           $1::uuid,'Deliver the governed outcome','100%','percent',100,$2,NULL
+         ) AS r`,
+        [assignmentId, "idem-um42-goal"],
+      );
+      assert(goalReplay.rows[0].r.entity_id === goal.rows[0].r.entity_id, "Goal create replay was not idempotent");
+
+      await client.query("SET LOCAL role postgres");
+      await client.query("SAVEPOINT appraisal_criterion_immutable");
+      let criterionFrozen = false;
+      try {
+        await client.query(`UPDATE public.appraisal_template_criteria SET weight=50 WHERE template_id=$1::uuid`, [templateId]);
+      } catch {
+        criterionFrozen = true;
+        await client.query("ROLLBACK TO SAVEPOINT appraisal_criterion_immutable");
+      }
+      assert(criterionFrozen, "Published appraisal criterion was mutable");
+
+      await authAs(client, VIEWER);
+      const employeeUpdate = await client.query(
+        `SELECT public.rpc_appraisal_goal_employee_update($1::uuid,'On track',$2,NULL) AS r`,
+        [goal.rows[0].r.entity_id, "idem-um42-employee-goal"],
+      );
+      assert(employeeUpdate.rows[0].r.ok, "Assigned employee could not update own goal comment");
+      const criterion = await client.query(`SELECT id FROM public.appraisal_template_criteria WHERE template_id=$1::uuid`, [templateId]);
+      const selfSubmit = await client.query(
+        `SELECT public.rpc_appraisal_self_submit(
+           $1::uuid,jsonb_build_array(jsonb_build_object(
+             'criterion_id',$2::uuid,'self_rating',4,'self_comment','Evidence supplied'
+           )),'employee_self_review',$3,NULL
+         ) AS r`,
+        [assignmentId, criterion.rows[0].id, "idem-um42-self-submit"],
+      );
+      assert(selfSubmit.rows[0].r.ok, "Employee self submission failed");
+
+      await authAs(client, MANAGER);
+      const managerGoal = await client.query(
+        `SELECT public.rpc_appraisal_goal_manager_update($1::uuid,4,'Validated',$2,NULL) AS r`,
+        [goal.rows[0].r.entity_id, "idem-um42-manager-goal"],
+      );
+      assert(managerGoal.rows[0].r.ok, `Assigned manager could not rate goal: ${JSON.stringify(managerGoal.rows[0].r)}`);
+
+      await authAs(client, FINANCE);
+      const v2 = await client.query(
+        `SELECT public.rpc_appraisal_template_create(
+           $1::uuid,'UM-APPRAISAL','Controlled appraisal v2','تقييم محكوم 2',NULL,NULL,5,$2,NULL
+         ) AS r`,
+        [ENTITY, "idem-um42-template-v2"],
+      );
+      assert(v2.rows[0].r.version_number === 2, "Second appraisal template version was not created");
+      await client.query(
+        `SELECT public.rpc_appraisal_template_add_criterion(
+           $1::uuid,1,'delivery','Delivery quality v2','جودة التسليم 2',100,5,$2,NULL
+         )`,
+        [v2.rows[0].r.entity_id, "idem-um42-criterion-v2"],
+      );
+      await client.query(`SELECT public.rpc_appraisal_template_submit($1::uuid,'draft',$2,NULL)`, [v2.rows[0].r.entity_id, "idem-um42-submit-v2"]);
+      await authAs(client, APPROVER);
+      await client.query(`SELECT public.rpc_appraisal_template_approve($1::uuid,'submitted',$2,NULL)`, [v2.rows[0].r.entity_id, "idem-um42-approve-v2"]);
+      await client.query("SET LOCAL role postgres");
+      const evidence = await client.query(
+        `SELECT ag.employee_comment,ag.manager_rating::numeric AS manager_rating,
+           aa.template_id,
+           (SELECT count(*)::int FROM public.appraisal_templates WHERE legal_entity_id=$1::uuid AND code='UM-APPRAISAL' AND governance_status='approved' AND is_active) AS active_count,
+           (SELECT count(*)::int FROM public.audit_events WHERE entity_type='appraisal_goal' AND entity_id=ag.id) AS goal_audits
+         FROM public.appraisal_goals AS ag
+         JOIN public.appraisal_assignments AS aa ON aa.id=ag.assignment_id
+         WHERE ag.id=$2::uuid`,
+        [ENTITY, goal.rows[0].r.entity_id],
+      );
+      assert(evidence.rows[0].employee_comment === "On track", "Employee goal comment was not stored");
+      assert(Number(evidence.rows[0].manager_rating) === 4, "Manager goal rating was not stored");
+      assert(evidence.rows[0].template_id === templateId, "Existing assignment did not preserve its original template baseline");
+      assert(evidence.rows[0].active_count === 1, "Appraisal template activation uniqueness failed");
+      assert(evidence.rows[0].goal_audits === 3, "Goal create/update audit count is wrong");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-43 governed master approval binds, revises, and deactivates the operational vendor", async (client) => {
+    await client.query("BEGIN");
+    try {
+      await authAs(client, FINANCE);
+      const created = await client.query(
+        `SELECT public.rpc_master_record_create_draft(
+           $1::uuid,'vendor','UM-VENDOR','Governed Vendor','مورد محكوم',NULL,NULL,
+           jsonb_build_object('currency_code','SAR','country','SA'),CURRENT_DATE,NULL,
+           'Initial governed vendor',$2,NULL
+         ) AS r`,
+        [ENTITY, "idem-um43-create"],
+      );
+      const recordId = created.rows[0].r.entity_id;
+      await client.query(`SELECT public.rpc_master_record_submit($1::uuid,'draft',$2,NULL)`, [recordId, "idem-um43-submit"]);
+      await authAs(client, COST_CTRL);
+      const approved = await client.query(
+        `SELECT public.rpc_master_record_approve($1::uuid,'submitted',$2,NULL) AS r`,
+        [recordId, "idem-um43-approve"],
+      );
+      assert(approved.rows[0].r.ok, `Master approval failed: ${JSON.stringify(approved.rows[0].r)}`);
+      await client.query("SET LOCAL role postgres");
+      const binding = await client.query(
+        `SELECT gmb.operational_record_id,v.name_en,v.status
+         FROM public.governed_master_bindings AS gmb
+         JOIN public.vendors AS v ON v.id=gmb.operational_record_id
+         WHERE gmb.governed_record_id=$1::uuid`,
+        [recordId],
+      );
+      assert(binding.rows.length === 1 && binding.rows[0].name_en === "Governed Vendor", "Approved governed vendor did not reach operational master");
+      const operationalId = binding.rows[0].operational_record_id;
+
+      await authAs(client, FINANCE);
+      const revision = await client.query(
+        `SELECT public.rpc_master_record_create_revision(
+           $1::uuid,'Governed Vendor Revised','مورد محكوم محدث',NULL,NULL,
+           jsonb_build_object('currency_code','SAR','country','SA'),CURRENT_DATE,NULL,
+           'Approved vendor name change',$2,NULL
+         ) AS r`,
+        [recordId, "idem-um43-revision"],
+      );
+      assert(revision.rows[0].r.revision_number === 2, "Master revision number is wrong");
+      await client.query(`SELECT public.rpc_master_record_submit($1::uuid,'draft',$2,NULL)`, [revision.rows[0].r.entity_id, "idem-um43-revision-submit"]);
+      await authAs(client, COST_CTRL);
+      await client.query(`SELECT public.rpc_master_record_approve($1::uuid,'submitted',$2,NULL)`, [revision.rows[0].r.entity_id, "idem-um43-revision-approve"]);
+      await client.query("SET LOCAL role postgres");
+      const revised = await client.query(
+        `SELECT v.id,v.name_en,v.status,old.is_current AS old_current,old.governance_status AS old_status,
+                current.is_current AS new_current
+         FROM public.vendors AS v
+         JOIN public.governed_master_records AS old ON old.id=$1::uuid
+         JOIN public.governed_master_records AS current ON current.id=$2::uuid
+         WHERE v.id=$3::uuid`,
+        [recordId, revision.rows[0].r.entity_id, operationalId],
+      );
+      assert(revised.rows[0].name_en === "Governed Vendor Revised", "Master revision did not update exact operational vendor");
+      assert(!revised.rows[0].old_current && revised.rows[0].old_status === "inactive", "Superseded master revision remained current");
+      assert(revised.rows[0].new_current, "Approved replacement master revision is not current");
+
+      await authAs(client, FINANCE);
+      const deactivated = await client.query(
+        `SELECT public.rpc_master_record_deactivate($1::uuid,'approved','Vendor retired after review',$2,NULL) AS r`,
+        [revision.rows[0].r.entity_id, "idem-um43-deactivate"],
+      );
+      assert(deactivated.rows[0].r.ok, `Master deactivation failed: ${JSON.stringify(deactivated.rows[0].r)}`);
+      await client.query("SET LOCAL role postgres");
+      const inactive = await client.query(`SELECT status FROM public.vendors WHERE id=$1::uuid`, [operationalId]);
+      assert(inactive.rows[0].status === "inactive", "Governed deactivation did not deactivate operational vendor");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-44 payment reject and cancel transitions are audited and idempotent", async (client) => {
+    await client.query("BEGIN");
+    try {
+      const invoiceId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee973";
+      await seedApprovedInvoice(client, { invId: invoiceId, poId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeee974", gross: 500 });
+      await authAs(client, FINANCE);
+      const first = await client.query(
+        `SELECT public.rpc_payment_request_create($1::uuid,$2::uuid,200,CURRENT_DATE+7,'reject path',$3,NULL) AS r`,
+        [ENTITY, invoiceId, "idem-um44-create-reject"],
+      );
+      await client.query(`SELECT public.rpc_payment_request_submit($1::uuid,'draft',$2,NULL)`, [first.rows[0].r.entity_id, "idem-um44-submit-reject"]);
+      await authAs(client, APPROVER);
+      const rejected = await client.query(
+        `SELECT public.rpc_payment_request_reject($1::uuid,'Rejected after review','submitted',$2,NULL) AS r`,
+        [first.rows[0].r.entity_id, "idem-um44-reject"],
+      );
+      const replay = await client.query(
+        `SELECT public.rpc_payment_request_reject($1::uuid,'Rejected after review','submitted',$2,NULL) AS r`,
+        [first.rows[0].r.entity_id, "idem-um44-reject"],
+      );
+      assert(rejected.rows[0].r.ok && replay.rows[0].r.ok, "Payment rejection or replay failed");
+
+      await authAs(client, FINANCE);
+      const second = await client.query(
+        `SELECT public.rpc_payment_request_create($1::uuid,$2::uuid,100,CURRENT_DATE+7,'cancel path',$3,NULL) AS r`,
+        [ENTITY, invoiceId, "idem-um44-create-cancel"],
+      );
+      const cancelled = await client.query(
+        `SELECT public.rpc_payment_request_cancel($1::uuid,'Cancelled before submit','draft',$2,NULL) AS r`,
+        [second.rows[0].r.entity_id, "idem-um44-cancel"],
+      );
+      assert(cancelled.rows[0].r.ok, "Payment cancellation failed");
+      await client.query("SET LOCAL role postgres");
+      const evidence = await client.query(
+        `SELECT
+           (SELECT request_status FROM public.payment_requests WHERE id=$1::uuid) AS rejected_status,
+           (SELECT request_status FROM public.payment_requests WHERE id=$2::uuid) AS cancelled_status,
+           (SELECT count(*)::int FROM public.audit_events WHERE entity_type='payment_request' AND entity_id=$1::uuid AND action='reject') AS reject_audits,
+           (SELECT count(*)::int FROM public.audit_events WHERE entity_type='payment_request' AND entity_id=$2::uuid AND action='cancel') AS cancel_audits`,
+        [first.rows[0].r.entity_id, second.rows[0].r.entity_id],
+      );
+      assert(evidence.rows[0].rejected_status === "rejected", "Rejected payment status is wrong");
+      assert(evidence.rows[0].cancelled_status === "cancelled", "Cancelled payment status is wrong");
+      assert(evidence.rows[0].reject_audits === 1, "Idempotent rejection duplicated audit evidence");
+      assert(evidence.rows[0].cancel_audits === 1, "Payment cancellation audit count is wrong");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-45 controlled RPCs reject cross-entity mutation references in all five modules", async (client) => {
+    await client.query("BEGIN");
+    try {
+      const otherEntity = "11111111-1111-1111-1111-111111111103";
+      const foreignVendor = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee980";
+      const foreignPo = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee981";
+      const foreignAssignment = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee982";
+      const foreignEntityId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee983";
+      await grantRoleForTest(client, FINANCE, "legal_entity_administrator");
+      await client.query(
+        `INSERT INTO public.vendors (id,legal_entity_id,code,name_en,name_ar,status)
+         VALUES ($1::uuid,$2::uuid,'UM-FOREIGN','Foreign Vendor','مورد أجنبي','active')`,
+        [foreignVendor, otherEntity],
+      );
+      await client.query(
+        `INSERT INTO public.purchase_orders (
+           id,legal_entity_id,vendor_id,po_number,po_status,currency_code,total_amount,created_by
+         ) VALUES ($1::uuid,$2::uuid,$3::uuid,'UM-FOREIGN-PO','issued','SAR',100,$4::uuid)`,
+        [foreignPo, otherEntity, foreignVendor, APPROVER],
+      );
+      await client.query(
+        `INSERT INTO public.workflow_approval_assignments (
+           id,legal_entity_id,item_type,workflow_type,permission_code,entity_id,title_en,title_ar,
+           requester_id,original_assignee_id,financial_amount
+         ) VALUES (
+           $1::uuid,$2::uuid,'purchase_requisition','purchase_requisition','commitment.approve',
+           $3::uuid,'Foreign approval','موافقة أجنبية',$4::uuid,$5::uuid,100
+         )`,
+        [foreignAssignment, otherEntity, foreignEntityId, FINANCE, APPROVER],
+      );
+
+      await authAs(client, FINANCE);
+      const procurement = await client.query(
+        `SELECT public.rpc_supplier_invoice_create(
+           $1::uuid,$2::uuid,$3::uuid,'UM-FOREIGN-INV',CURRENT_DATE,100,100,0,NULL,'[]'::jsonb,
+           NULL,$4,NULL
+         ) AS r`,
+        [otherEntity, foreignPo, foreignVendor, "idem-um45-procurement"],
+      );
+      const master = await client.query(
+        `SELECT public.rpc_master_record_create_draft(
+           $1::uuid,'vendor','UM-FOREIGN-MASTER','Foreign Master','سجل أجنبي',NULL,NULL,'{}'::jsonb,
+           CURRENT_DATE,NULL,'Foreign entity attempt',$2,NULL
+         ) AS r`,
+        [otherEntity, "idem-um45-master"],
+      );
+      const period = await client.query(
+        `SELECT public.rpc_period_template_create(
+           $1::uuid,'projects','UM-FOREIGN-CLOSE','Foreign Close','إغلاق أجنبي',CURRENT_DATE,$2,NULL
+         ) AS r`,
+        [otherEntity, "idem-um45-period"],
+      );
+      const appraisal = await client.query(
+        `SELECT public.rpc_appraisal_template_create(
+           $1::uuid,'UM-FOREIGN-APP','Foreign Appraisal','تقييم أجنبي',NULL,NULL,5,$2,NULL
+         ) AS r`,
+        [otherEntity, "idem-um45-appraisal"],
+      );
+      for (const [module, result] of [
+        ["procurement", procurement.rows[0].r],
+        ["master", master.rows[0].r],
+        ["period", period.rows[0].r],
+        ["appraisal", appraisal.rows[0].r],
+      ]) {
+        assert(!result.ok && (result.error_code ?? result.code) === "FORBIDDEN", `${module} accepted or misclassified a cross-entity mutation: ${JSON.stringify(result)}`);
+      }
+
+      await authAs(client, COST_CTRL);
+      const delegated = await client.query(
+        `SELECT public.rpc_approval_act_as_delegate(
+           'purchase_requisition',$1::uuid,'approve',$2::uuid,$3::uuid,
+           'Cross-entity delegation attempt',$4,NULL
+         ) AS r`,
+        [foreignEntityId, APPROVER, DELEGATION, "idem-um45-delegation"],
+      );
+      assert(!delegated.rows[0].r.ok && (delegated.rows[0].r.error_code ?? delegated.rows[0].r.code) === "DELEGATION_INVALID",
+        `Delegation crossed legal entities: ${JSON.stringify(delegated.rows[0].r)}`);
+      await client.query("SET LOCAL role postgres");
+      const state = await client.query(
+        `SELECT assignment_status,
+           (SELECT count(*)::int FROM public.approval_decision_audit
+            WHERE item_type='purchase_requisition' AND entity_id=$2::uuid) AS decisions
+         FROM public.workflow_approval_assignments WHERE id=$1::uuid`,
+        [foreignAssignment, foreignEntityId],
+      );
+      assert(state.rows[0].assignment_status === "pending" && state.rows[0].decisions === 0,
+        "Cross-entity delegated attempt mutated workflow evidence");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-46 delegation preserves requester self-approval segregation", async (client) => {
+    await client.query("BEGIN");
+    try {
+      const reqId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee984";
+      await seedApprovedRequisition(client, {
+        reqId,
+        line1Id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeee985",
+        line2Id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeee986",
+        requester: COST_CTRL,
+      });
+      await client.query(
+        `UPDATE public.purchase_requisitions
+         SET requisition_status='budget_checked',approved_by=NULL,approved_at=NULL
+         WHERE id=$1::uuid`,
+        [reqId],
+      );
+      await authAs(client, COST_CTRL);
+      const review = await client.query(
+        `SELECT public.rpc_requisition_procurement_review($1::uuid,'budget_checked',$2,NULL) AS r`,
+        [reqId, "idem-um46-review"],
+      );
+      assert(review.rows[0].r.ok, "Unable to establish delegated SOD test assignment");
+      const decision = await client.query(
+        `SELECT public.rpc_approval_act_as_delegate(
+           'purchase_requisition',$1::uuid,'approve',$2::uuid,$3::uuid,
+           'Requester must not self-approve through delegation',$4,NULL
+         ) AS r`,
+        [reqId, APPROVER, DELEGATION, "idem-um46-decision"],
+      );
+      assert(!decision.rows[0].r.ok && (decision.rows[0].r.error_code ?? decision.rows[0].r.code) === "SOD_VIOLATION",
+        `Delegation bypassed requester SOD: ${JSON.stringify(decision.rows[0].r)}`);
+      await client.query("SET LOCAL role postgres");
+      const state = await client.query(
+        `SELECT pr.requisition_status,waa.assignment_status,
+           (SELECT count(*)::int FROM public.approval_decision_audit AS ada
+            WHERE ada.item_type='purchase_requisition' AND ada.entity_id=pr.id) AS decisions
+         FROM public.purchase_requisitions AS pr
+         JOIN public.workflow_approval_assignments AS waa
+           ON waa.item_type='purchase_requisition' AND waa.entity_id=pr.id
+         WHERE pr.id=$1::uuid`,
+        [reqId],
+      );
+      assert(state.rows[0].requisition_status === "procurement_review"
+        && state.rows[0].assignment_status === "pending" && state.rows[0].decisions === 0,
+      "Failed delegated SOD attempt changed business or approval state");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-47 appraisal assignment rejects overlapping employee, manager, and reviewer", async (client) => {
+    await client.query("BEGIN");
+    try {
+      await authAs(client, FINANCE);
+      const result = await client.query(
+        `SELECT public.rpc_appraisal_assignment_create(
+           $1::uuid,'dddddddd-dddd-dddd-dddd-ddddddddd401'::uuid,
+           'dddddddd-dddd-dddd-dddd-ddddddddd402'::uuid,$2::uuid,$2::uuid,$3::uuid,
+           NULL,$4,NULL
+         ) AS r`,
+        [ENTITY, VIEWER, MANAGER, "idem-um47-appraisal-sod"],
+      );
+      assert(!result.rows[0].r.ok && (result.rows[0].r.error_code ?? result.rows[0].r.code) === "SOD_VIOLATION",
+        `Appraisal participant SOD was bypassed: ${JSON.stringify(result.rows[0].r)}`);
     } finally {
       await client.query("ROLLBACK");
     }

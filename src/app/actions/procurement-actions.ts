@@ -33,7 +33,9 @@ import {
   goodsReceiptCreate,
   invoiceMatchOverride,
   paymentRequestApprove,
+  paymentRequestCancel,
   paymentRequestCreate,
+  paymentRequestReject,
   paymentRequestSubmit,
   poApprove,
   poCancel,
@@ -56,6 +58,7 @@ import {
   supplierInvoiceApprove,
   supplierInvoiceCreate,
   supplierInvoiceMatch,
+  supplierInvoiceReverseAndReplace,
 } from "@/lib/commands";
 import { withActivePermission } from "@/lib/auth/action-guard";
 
@@ -593,6 +596,25 @@ export async function approveSupplierInvoiceAction(supplierInvoiceId: string) {
   });
 }
 
+export async function reverseSupplierInvoiceAction(params: {
+  supplierInvoiceId: string;
+  reason: string;
+  replacementInvoiceNumber?: string;
+  replacementInvoiceDate?: string;
+}) {
+  return withActivePermission("commitment", "update", async ({ db }) => {
+    const result = await supplierInvoiceReverseAndReplace(db, params);
+    const ids = [params.supplierInvoiceId];
+    if (result.replacement_invoice_id) ids.push(result.replacement_invoice_id as string);
+    const { data, error } = await db
+      .from("supplier_invoices")
+      .select("*, purchase_orders(po_number), vendors(name_en, name_ar)")
+      .in("id", ids);
+    if (error || !data?.length) throw new DataAccessError("Invoice not found.", "NOT_FOUND");
+    return data;
+  });
+}
+
 export async function createPaymentRequestAction(params: {
   supplierInvoiceId: string;
   amount: string;
@@ -631,6 +653,36 @@ export async function approvePaymentRequestAction(paymentRequestId: string) {
       .from("payment_requests")
       .select("*, supplier_invoices(invoice_number)")
       .eq("id", paymentRequestId)
+      .single();
+    if (error || !data) throw new DataAccessError("Payment request not found.", "NOT_FOUND");
+    return data;
+  });
+}
+
+export async function rejectPaymentRequestAction(params: { paymentRequestId: string; reason: string }) {
+  return withActivePermission("commitment", "approve", async ({ db }) => {
+    await paymentRequestReject(db, params);
+    const { data, error } = await db
+      .from("payment_requests")
+      .select("*, supplier_invoices(invoice_number)")
+      .eq("id", params.paymentRequestId)
+      .single();
+    if (error || !data) throw new DataAccessError("Payment request not found.", "NOT_FOUND");
+    return data;
+  });
+}
+
+export async function cancelPaymentRequestAction(params: {
+  paymentRequestId: string;
+  reason: string;
+  expectedStatus: "draft" | "submitted" | "approved";
+}) {
+  return withActivePermission("commitment", "update", async ({ db }) => {
+    await paymentRequestCancel(db, params);
+    const { data, error } = await db
+      .from("payment_requests")
+      .select("*, supplier_invoices(invoice_number)")
+      .eq("id", params.paymentRequestId)
       .single();
     if (error || !data) throw new DataAccessError("Payment request not found.", "NOT_FOUND");
     return data;

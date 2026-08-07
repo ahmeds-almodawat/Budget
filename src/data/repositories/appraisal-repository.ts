@@ -25,6 +25,11 @@ export interface AppraisalTemplateRow {
   name_ar: string;
   rating_scale_max: number;
   is_active: boolean;
+  version_number: number;
+  governance_status: string;
+  created_by: string | null;
+  submitted_by: string | null;
+  approved_by: string | null;
 }
 
 export interface AppraisalCriterionRow {
@@ -65,6 +70,18 @@ export interface AppraisalRatingRow {
   manager_comment: string | null;
 }
 
+export interface AppraisalGoalRow {
+  id: string;
+  assignment_id: string;
+  description: string;
+  target_text: string | null;
+  measure_unit: string | null;
+  weight: number | string;
+  employee_comment: string | null;
+  manager_rating: number | string | null;
+  manager_comment: string | null;
+}
+
 export interface AppraisalPeerIdentityRow {
   id: string;
   full_name_en: string | null;
@@ -86,8 +103,8 @@ export async function listAppraisalTemplates(db: SupabaseClient, legalEntityId: 
     .from("appraisal_templates")
     .select("*")
     .eq("legal_entity_id", legalEntityId)
-    .eq("is_active", true)
-    .order("code");
+    .order("code")
+    .order("version_number", { ascending: false });
   if (error) throw new DataAccessError(error.message, "DATABASE");
   return (data ?? []) as AppraisalTemplateRow[];
 }
@@ -164,4 +181,14 @@ export async function getAssignmentRatings(db: SupabaseClient, assignmentId: str
     .eq("assignment_id", assignmentId);
   if (error) throw new DataAccessError(error.message, "DATABASE");
   return (data ?? []) as AppraisalRatingRow[];
+}
+
+export async function getAssignmentGoals(db: SupabaseClient, assignmentId: string) {
+  const { data, error } = await db
+    .from("appraisal_goals")
+    .select("*")
+    .eq("assignment_id", assignmentId)
+    .order("created_at");
+  if (error) throw new DataAccessError(error.message, "DATABASE");
+  return (data ?? []) as AppraisalGoalRow[];
 }

@@ -35,7 +35,7 @@ export async function actAsDelegateAction(params: {
   delegationId: string;
   comments?: string;
 }) {
-  return withActivePermission("approval", "approve", async ({ db }) => {
+  return withActivePermission("approval", "read", async ({ db }) => {
     await approvalActAsDelegate(db, params);
     return { ok: true as const };
   });
