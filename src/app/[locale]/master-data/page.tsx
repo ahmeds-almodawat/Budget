@@ -22,6 +22,7 @@ export default async function MasterDataPage({
     canCreate: hasPermission(roles, "master_data", "create", entityId),
     canSubmit: hasPermission(roles, "master_data", "update", entityId),
     canApprove: hasPermission(roles, "master_data", "approve", entityId),
+    canDeactivate: hasPermission(roles, "master_data", "update", entityId),
   };
 
   let records: Awaited<ReturnType<typeof fetchMasterRecordsAction>> = [];
