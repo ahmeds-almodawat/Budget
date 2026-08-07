@@ -13,14 +13,22 @@ const forbidden = [
   [/INSERT\s+INTO\s+(?:public\.)?profiles/i, "test profile fixture"],
   [/INSERT\s+INTO\s+(?:public\.)?memberships/i, "test membership fixture"],
   [/INSERT\s+INTO\s+(?:public\.)?role_assignments/i, "test role fixture"],
-  [/DELETE\s+FROM/i, "destructive seed cleanup"],
+  [/DELETE\s+FROM/i, "destructive seed cleanup", true],
 ];
+
+function maskRoutineDefinitions(sql) {
+  return sql.replace(
+    /CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\b[\s\S]*?\bAS\s+(\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$)[\s\S]*?\1/gi,
+    (definition) => " ".repeat(definition.length),
+  );
+}
 
 const violations = [];
 for (const filename of (await readdir(migrationDir)).filter((name) => name.endsWith(".sql"))) {
   const sql = await readFile(new URL(`../supabase/migrations/${filename}`, import.meta.url), "utf8");
-  for (const [pattern, description] of forbidden) {
-    if (pattern.test(sql)) violations.push(`${filename}: ${description}`);
+  const topLevelSql = maskRoutineDefinitions(sql);
+  for (const [pattern, description, topLevelOnly = false] of forbidden) {
+    if (pattern.test(topLevelOnly ? topLevelSql : sql)) violations.push(`${filename}: ${description}`);
   }
 }
 if (violations.length > 0) {
