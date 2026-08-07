@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { fetchApprovalInboxAction } from "@/app/actions/approval-actions";
+import { actAsDelegateAction, fetchApprovalInboxAction } from "@/app/actions/approval-actions";
 import type { ApprovalTab } from "@/data/repositories/approval-repository";
 import { pickLocalized } from "@/lib/i18n/display";
 
@@ -18,21 +18,30 @@ interface InboxItem {
   approval_status: string;
   submitted_at: string;
   due_date: string | null;
+  original_assignee_id?: string | null;
+  effective_assignee_id?: string | null;
+  delegation_id?: string | null;
+  requester_id?: string | null;
 }
 
 export function ApprovalsWorkspace({
   initialTab,
   initialItems,
   counts,
+  currentUserId,
 }: {
   initialTab: ApprovalTab;
   initialItems: InboxItem[];
   counts: Record<ApprovalTab, number>;
+  currentUserId: string;
 }) {
   const locale = useLocale();
   const t = useTranslations("approvals");
+  const tCommon = useTranslations("common");
   const [tab, setTab] = useState<ApprovalTab>(initialTab);
   const [items, setItems] = useState(initialItems);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function switchTab(next: ApprovalTab) {
@@ -43,20 +52,56 @@ export function ApprovalsWorkspace({
     });
   }
 
-const APPROVAL_TYPE_KEYS = [
-  "budget",
-  "budget_change",
-  "import_batch",
-  "milestone_progress",
-  "milestone_completion",
-  "schedule_extension",
-  "variance_explanation",
-  "contingency_use",
-] as const;
+  const APPROVAL_TYPE_KEYS = [
+    "budget",
+    "budget_change",
+    "import_batch",
+    "milestone_progress",
+    "milestone_completion",
+    "schedule_extension",
+    "variance_explanation",
+    "contingency_use",
+    "delegation",
+    "purchase_requisition",
+    "approval_rule",
+    "purchase_order",
+    "payment_request",
+    "period_reopen",
+    "appraisal",
+  ] as const;
 
-function isApprovalType(value: string): value is (typeof APPROVAL_TYPE_KEYS)[number] {
-  return (APPROVAL_TYPE_KEYS as readonly string[]).includes(value);
-}
+  function isApprovalType(value: string): value is (typeof APPROVAL_TYPE_KEYS)[number] {
+    return (APPROVAL_TYPE_KEYS as readonly string[]).includes(value);
+  }
+
+  function isDelegated(item: InboxItem) {
+    return Boolean(item.delegation_id) && item.effective_assignee_id === currentUserId;
+  }
+
+  function decide(item: InboxItem, decision: "approved" | "rejected") {
+    startTransition(async () => {
+      setError(null);
+      setMessage(null);
+      try {
+        if (item.delegation_id && item.original_assignee_id) {
+          await actAsDelegateAction({
+            itemType: item.item_type,
+            entityId: item.entity_id,
+            decision,
+            originalAssigneeId: item.original_assignee_id,
+            delegationId: item.delegation_id,
+          });
+          setMessage(t(decision === "approved" ? "delegatedApproved" : "delegatedRejected"));
+          const refreshed = await fetchApprovalInboxAction(tab);
+          setItems(refreshed ?? []);
+        } else {
+          setError(t("directDecisionHint"));
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t("actionError"));
+      }
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -74,30 +119,67 @@ function isApprovalType(value: string): value is (typeof APPROVAL_TYPE_KEYS)[num
         ))}
       </div>
 
+      {message ? <p className="text-sm text-success">{message}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
+
       <Card>
         <CardHeader>
           <CardTitle>{t(tab)}</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-3">
-            {items.map((item) => (
-              <li key={`${item.item_type}-${item.entity_id}`} className="border-b pb-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="font-medium">
-                    {pickLocalized(locale, item.title_en, item.title_ar)}
-                  </span>
-                  <span className="text-muted-foreground">{item.approval_status}</span>
-                </div>
-                <div className="text-text-secondary">
-                  {isApprovalType(item.item_type)
-                    ? t(`types.${item.item_type}` as Parameters<typeof t>[0])
-                    : item.item_type}
-                  {" · "}
-                  {new Date(item.submitted_at).toLocaleDateString(locale)}
-                  {item.due_date && ` · due ${item.due_date}`}
-                </div>
-              </li>
-            ))}
+            {items.map((item) => {
+              const delegated = isDelegated(item);
+              return (
+                <li key={`${item.item_type}-${item.entity_id}`} className="border-b border-border pb-3 text-sm">
+                  <div className="flex justify-between gap-2">
+                    <span className="font-medium">
+                      {pickLocalized(locale, item.title_en, item.title_ar)}
+                    </span>
+                    <span className="text-muted-foreground">{item.approval_status}</span>
+                  </div>
+                  <div className="text-text-secondary">
+                    {isApprovalType(item.item_type)
+                      ? t(`types.${item.item_type}` as Parameters<typeof t>[0])
+                      : item.item_type}
+                    {" · "}
+                    {new Date(item.submitted_at).toLocaleDateString(locale)}
+                    {item.due_date && ` · due ${item.due_date}`}
+                  </div>
+                  {delegated ? (
+                    <p className="mt-1 text-xs text-text-secondary">
+                      {t("actingFor", {
+                        original: item.original_assignee_id?.slice(0, 8) ?? "—",
+                      })}
+                    </p>
+                  ) : item.original_assignee_id &&
+                    item.effective_assignee_id &&
+                    item.original_assignee_id !== item.effective_assignee_id ? (
+                    <p className="mt-1 text-xs text-text-secondary">
+                      {t("originalVsEffective", {
+                        original: item.original_assignee_id.slice(0, 8),
+                        effective: item.effective_assignee_id.slice(0, 8),
+                      })}
+                    </p>
+                  ) : null}
+                  {delegated && (tab === "awaiting" || tab === "delegated" || tab === "overdue") ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button size="sm" disabled={pending} onClick={() => decide(item, "approved")}>
+                        {tCommon("approve")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={pending}
+                        onClick={() => decide(item, "rejected")}
+                      >
+                        {tCommon("reject")}
+                      </Button>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
             {items.length === 0 && (
               <li className="text-muted-foreground">{t("noItems")}</li>
             )}

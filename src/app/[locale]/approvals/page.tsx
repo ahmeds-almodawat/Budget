@@ -10,7 +10,7 @@ export default async function ApprovalsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  await requireRoutePermission("approval", "read");
+  const session = await requireRoutePermission("approval", "read");
   const t = await getTranslations("pages.approvals");
 
   const [items, counts] = await Promise.all([
@@ -25,6 +25,7 @@ export default async function ApprovalsPage({
         initialTab="awaiting"
         initialItems={items ?? []}
         counts={counts ?? { awaiting: 0, submitted: 0, approved: 0, rejected: 0, delegated: 0, overdue: 0 }}
+        currentUserId={session.ctx.userId}
       />
     </div>
   );
