@@ -1012,5 +1012,112 @@
     "reviewerSubmit": "Submit calibration",
     "reviewerSubmitted": "Calibration submitted.",
     "actionError": "Appraisal action failed."
+  },
+  "analytics": {
+    "sections": {
+      "kpis": "Executive KPIs",
+      "revenueTrend": "Revenue budget vs actual",
+      "utilization": "Budget utilization by classification",
+      "profitabilityTrend": "Profitability trend",
+      "grossToNet": "Gross-to-net revenue bridge",
+      "profitabilityBridge": "Profitability bridge",
+      "exceptions": "Management exceptions",
+      "insights": "Management insights",
+      "pipeline": "Procurement pipeline",
+      "evm": "Earned value",
+      "timeline": "Schedule timeline",
+      "roadmap": "Executive roadmap",
+      "riskMatrix": "Risk matrix",
+      "closeReadiness": "Period-close readiness",
+      "approvalAge": "Approval age",
+      "branchComparison": "Branch comparison",
+      "forecastTrend": "Budget / actual / forecast",
+      "favorableVariances": "Top favorable variances",
+      "unfavorableVariances": "Top unfavorable variances",
+      "appraisalCompletion": "Appraisal completion",
+      "expenseTrend": "Expense budget vs actual"
+    },
+    "modes": {
+      "revenue": "Revenue",
+      "expense": "Expense",
+      "profitability": "Profitability"
+    },
+    "kpi": {
+      "revenue": "Net revenue",
+      "revenueVsBudget": "Revenue vs budget",
+      "grossProfit": "Gross profit",
+      "grossMargin": "Gross margin %",
+      "operatingContribution": "Operating contribution",
+      "actualOperatingCost": "Actual operating cost",
+      "openCommitments": "Open commitments",
+      "capex": "CAPEX",
+      "foodCost": "Food cost",
+      "readiness": "Close readiness",
+      "bac": "Budget at completion",
+      "fac": "Forecast at completion",
+      "cpi": "CPI",
+      "spi": "SPI",
+      "currentApprovedFac": "Current approved FAC",
+      "underReviewFac": "Under review forecast",
+      "draftFac": "Draft forecast total",
+      "versionCount": "Forecast versions",
+      "completedAppraisals": "Completed appraisals"
+    },
+    "series": {
+      "budget": "Budget",
+      "actual": "Actual",
+      "commitment": "Commitment",
+      "remaining": "Remaining",
+      "netRevenue": "Net revenue",
+      "grossProfit": "Gross profit",
+      "operatingContribution": "Operating contribution",
+      "forecast": "Forecast",
+      "pv": "Planned value",
+      "ev": "Earned value",
+      "ac": "Actual cost"
+    },
+    "bridge": {
+      "gross": "Gross revenue",
+      "rejections": "Rejections",
+      "discounts": "Discounts",
+      "refunds": "Refunds",
+      "creditNotes": "Credit notes",
+      "otherDeductions": "Other deductions",
+      "adjustments": "Adjustments",
+      "net": "Net revenue",
+      "costOfRevenue": "Cost of revenue",
+      "payroll": "Payroll",
+      "operatingExpenses": "Operating expenses"
+    },
+    "classification": {
+      "costOfRevenue": "Cost of revenue",
+      "payroll": "Payroll",
+      "operatingExpenses": "Operating expenses",
+      "capex": "CAPEX"
+    },
+    "exceptions": {
+      "matchExceptions": "Invoice match exceptions",
+      "unmapped": "Unmapped actuals",
+      "periodBlockers": "Period-close blockers"
+    },
+    "empty": {
+      "period": "No data available for the selected period",
+      "timeline": "No project timeline data is available.",
+      "pipeline": "No procurement pipeline data is available.",
+      "match": "No procurement match exceptions.",
+      "errorHint": "Unable to load analytics for the active legal entity."
+    },
+    "pipelineStages": {
+      "requisition": "Requisition",
+      "rfq": "RFQ",
+      "quotation": "Quotation",
+      "evaluation": "Evaluation",
+      "award": "Award",
+      "purchase_order": "Purchase order",
+      "receipt": "Receipt / service entry",
+      "invoice": "Invoice",
+      "matching": "Matching",
+      "payment_ready": "Payment readiness"
+    }
   }
 }
