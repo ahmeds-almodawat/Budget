@@ -5,6 +5,8 @@ import { fetchProjectTimelineAction } from "@/app/actions/project-actions";
 import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
 import { pickLocalized } from "@/lib/i18n/display";
 import { loadRouteData, requireRoutePermission } from "@/lib/auth/route-authorization";
+import { buildProjectGanttItems } from "@/domain/analytics/timeline";
+import { ProjectTimelineAnalytics } from "@/components/dashboard/project-timeline-analytics";
 
 export default async function ProjectTimelinePage({
   params,
@@ -16,6 +18,7 @@ export default async function ProjectTimelinePage({
   await requireRoutePermission("project", "read");
   const t = await getTranslations("timeline");
   const tPages = await getTranslations("pages.projects");
+  const tAnalytics = await getTranslations("analytics");
 
   const scopeId = id === "cs-khamis-hospital" ? CONTROL_SCOPE_KM_HOSPITAL : id;
   const timeline = await loadRouteData(() => fetchProjectTimelineAction(scopeId));
@@ -36,6 +39,36 @@ export default async function ProjectTimelinePage({
     project.control_scopes?.name_ar,
   );
 
+  const ganttItems = buildProjectGanttItems({
+    projectId: project.id,
+    projectLabel: scopeName,
+    project: {
+      baseline_start: project.baseline_start,
+      baseline_end: project.baseline_end,
+      forecast_start: project.forecast_start,
+      forecast_end: project.forecast_end,
+      actual_end: project.actual_end,
+    },
+    phases: phases.map((p) => ({
+      id: p.id,
+      name: pickLocalized(locale, p.name_en, p.name_ar),
+      baseline_start: p.baseline_start,
+      baseline_end: p.baseline_end,
+      forecast_start: p.forecast_start,
+      forecast_end: p.forecast_end,
+      actual_end: p.actual_end,
+    })),
+    milestones: milestones.map((m) => ({
+      id: m.id,
+      name: pickLocalized(locale, m.name_en, m.name_ar),
+      phase_id: m.phase_id,
+      baseline_date: m.baseline_date,
+      forecast_date: m.forecast_date,
+      actual_date: m.actual_date,
+      approved_progress: m.approved_progress,
+    })),
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -55,6 +88,15 @@ export default async function ProjectTimelinePage({
           </Link>
         </div>
       </div>
+
+      <ProjectTimelineAnalytics
+        items={ganttItems}
+        titles={{
+          timeline: tAnalytics("sections.timeline"),
+          roadmap: tAnalytics("sections.roadmap"),
+          empty: tAnalytics("empty.timeline"),
+        }}
+      />
 
       <Card>
         <CardHeader>

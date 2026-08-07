@@ -5,6 +5,23 @@ import { fetchRisksAction } from "@/app/actions/governance-actions";
 import { formatMoney } from "@/lib/money";
 import { pickLocalized } from "@/lib/i18n/display";
 import { requireRoutePermission } from "@/lib/auth/route-authorization";
+import { RisksAnalyticsPanel } from "@/components/dashboard/risks-analytics-panel";
+import type { RiskPlotPoint } from "@/domain/analytics/types";
+
+function readScale(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  if (value < 1 || value > 5) return null;
+  return value;
+}
+
+/** True only when 1–5 probability/impact scales exist — not percent/money fields. */
+function hasNumericRiskScales(risk: Record<string, unknown>): boolean {
+  const probability = readScale(
+    risk.probability ?? risk.probability_score ?? risk.probability_scale,
+  );
+  const impact = readScale(risk.impact ?? risk.impact_score ?? risk.impact_scale);
+  return probability != null && impact != null;
+}
 
 export default async function RisksPage({
   params,
@@ -15,7 +32,32 @@ export default async function RisksPage({
   setRequestLocale(locale);
   await requireRoutePermission("project", "read");
   const t = await getTranslations("pages.risks");
+  const tAnalytics = await getTranslations("analytics");
   const risks = (await fetchRisksAction()) ?? [];
+
+  const openRisks = risks.filter((r) => {
+    const status = String(r.status ?? "").toLowerCase();
+    return status === "open" || status === "active" || status === "monitoring";
+  });
+  const scalesAvailable = risks.some((r) => hasNumericRiskScales(r as Record<string, unknown>));
+
+  const matrixRisks: RiskPlotPoint[] = scalesAvailable
+    ? risks
+        .filter((r) => hasNumericRiskScales(r as Record<string, unknown>))
+        .map((r) => {
+          const row = r as Record<string, unknown>;
+          return {
+            id: r.id,
+            label: pickLocalized(locale, r.title_en, r.title_ar),
+            probability: readScale(
+              row.probability ?? row.probability_score ?? row.probability_scale,
+            )!,
+            impact: readScale(row.impact ?? row.impact_score ?? row.impact_scale)!,
+            status: r.status,
+            owner: r.owner_id ?? null,
+          };
+        })
+    : [];
 
   return (
     <div className="space-y-6">
@@ -33,6 +75,22 @@ export default async function RisksPage({
           </Link>
         </div>
       </div>
+
+      <RisksAnalyticsPanel
+        showMatrix={scalesAvailable}
+        matrixRisks={matrixRisks}
+        openException={{
+          id: "open-risks",
+          label: t("title"),
+          count: openRisks.length,
+          tone: openRisks.length > 0 ? "warning" : "neutral",
+        }}
+        titles={{
+          riskMatrix: tAnalytics("sections.riskMatrix"),
+          exceptions: tAnalytics("sections.exceptions"),
+          empty: tAnalytics("empty.period"),
+        }}
+      />
 
       <div className="grid gap-4">
         {risks.map((r) => (
