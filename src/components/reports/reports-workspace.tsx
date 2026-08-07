@@ -24,6 +24,10 @@ const REPORT_TYPES: ReportType[] = [
   "variance_explanations",
   "unmapped_actuals",
   "audit_history",
+  "procurement_pipeline",
+  "invoice_match_exceptions",
+  "period_close_readiness",
+  "appraisal_cycle_completion",
 ];
 
 const REPORT_KEYS = {
@@ -38,6 +42,10 @@ const REPORT_KEYS = {
   variance_explanations: "varianceExplanations",
   unmapped_actuals: "unmappedActuals",
   audit_history: "auditHistory",
+  procurement_pipeline: "procurementPipeline",
+  invoice_match_exceptions: "invoiceMatchExceptions",
+  period_close_readiness: "periodCloseReadiness",
+  appraisal_cycle_completion: "appraisalCycleCompletion",
 } as const satisfies Record<ReportType, string>;
 
 const MONEY_COLUMNS = new Set([

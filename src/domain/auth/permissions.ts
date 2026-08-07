@@ -41,7 +41,9 @@ export type PermissionResource =
   | "master_data"
   | "approval"
   | "audit"
-  | "report";
+  | "report"
+  | "period_close"
+  | "appraisal";
 
 const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, PermissionAction[]>>> = {
   system_administrator: {
@@ -58,6 +60,8 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     approval: ["read", "approve"],
     audit: ["read", "export"],
     report: ["read", "export"],
+    period_close: ["create", "read", "update", "approve"],
+    appraisal: ["create", "read", "update", "approve"],
   },
   group_executive: {
     budget: ["read", "approve", "export"],
@@ -68,6 +72,8 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     variance: ["read", "approve"],
     report: ["read", "export"],
     audit: ["read"],
+    period_close: ["read"],
+    appraisal: ["read"],
   },
   legal_entity_administrator: {
     organization: ["create", "read", "update", "approve"],
@@ -76,6 +82,8 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     master_data: ["create", "read", "update", "approve"],
     report: ["read", "export"],
     audit: ["read"],
+    period_close: ["create", "read", "update", "approve"],
+    appraisal: ["create", "read", "update", "approve"],
   },
   pmo_director: {
     project: ["create", "read", "update", "approve"],
@@ -83,6 +91,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     task: ["create", "read", "update", "approve"],
     forecast: ["create", "read", "update", "approve"],
     report: ["read", "export"],
+    appraisal: ["read"],
   },
   project_manager: {
     project: ["create", "read", "update"],
@@ -93,6 +102,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     forecast: ["create", "read", "update"],
     variance: ["create", "read", "update"],
     report: ["read", "export"],
+    appraisal: ["read", "update"],
   },
   cost_controller: {
     budget: ["create", "read", "update"],
@@ -103,6 +113,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     master_data: ["read", "create", "update"],
     approval: ["read", "create", "approve"],
     report: ["read", "export"],
+    period_close: ["create", "read", "update", "approve"],
   },
   finance_user: {
     budget: ["read", "export"],
@@ -113,6 +124,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     master_data: ["read", "create", "update"],
     approval: ["read", "create"],
     report: ["read", "export"],
+    period_close: ["create", "read", "update", "approve"],
   },
   procurement_user: {
     commitment: ["create", "read", "update"],
@@ -126,6 +138,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     task: ["read", "update"],
     variance: ["create", "read", "update"],
     report: ["read"],
+    appraisal: ["read", "update", "approve"],
   },
   budget_owner: {
     budget: ["create", "read", "update"],
@@ -154,10 +167,14 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     actual: ["read"],
     audit: ["read", "export"],
     report: ["read", "export"],
+    period_close: ["read"],
+    appraisal: ["read"],
+    master_data: ["read"],
   },
   employee: {
     task: ["read", "update"],
     milestone: ["read", "update"],
+    appraisal: ["read", "update"],
   },
   viewer: {
     budget: ["read"],

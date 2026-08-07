@@ -15,7 +15,11 @@ export type ReportType =
   | "team_milestone_performance"
   | "variance_explanations"
   | "unmapped_actuals"
-  | "audit_history";
+  | "audit_history"
+  | "procurement_pipeline"
+  | "invoice_match_exceptions"
+  | "period_close_readiness"
+  | "appraisal_cycle_completion";
 
 export async function getBudgetVsActualReport(db: SupabaseClient, legalEntityId: string) {
   const { data, error } = await db
@@ -204,4 +208,165 @@ export async function getVarianceExplanationsReport(db: SupabaseClient, legalEnt
 
 export async function getAuditHistoryReport(db: SupabaseClient, legalEntityId: string) {
   return searchAuditEvents(db, legalEntityId, { limit: 200 });
+}
+
+export async function getProcurementPipelineReport(db: SupabaseClient, legalEntityId: string) {
+  const [requisitions, rfqs, awards, purchaseOrders] = await Promise.all([
+    db
+      .from("purchase_requisitions")
+      .select("id, requisition_number, requisition_status, estimated_total, submitted_at, approved_at")
+      .eq("legal_entity_id", legalEntityId)
+      .order("created_at", { ascending: false })
+      .limit(200),
+    db
+      .from("rfqs")
+      .select("id, rfq_number, rfq_status, requisition_id, created_at")
+      .eq("legal_entity_id", legalEntityId)
+      .order("created_at", { ascending: false })
+      .limit(200),
+    db
+      .from("sourcing_awards")
+      .select("id, award_status, total_amount, vendor_id, rfq_id, submitted_at, approved_at")
+      .eq("legal_entity_id", legalEntityId)
+      .order("created_at", { ascending: false })
+      .limit(200),
+    db
+      .from("purchase_orders")
+      .select("id, po_number, po_status, total_amount, vendor_id, award_id, issued_at")
+      .eq("legal_entity_id", legalEntityId)
+      .order("created_at", { ascending: false })
+      .limit(200),
+  ]);
+
+  for (const result of [requisitions, rfqs, awards, purchaseOrders]) {
+    if (result.error) throw new DataAccessError(result.error.message, "DATABASE");
+  }
+
+  const rows: Record<string, unknown>[] = [];
+  for (const row of requisitions.data ?? []) {
+    rows.push({ stage: "requisition", document_number: row.requisition_number, status: row.requisition_status, amount: row.estimated_total, reference_id: row.id });
+  }
+  for (const row of rfqs.data ?? []) {
+    rows.push({ stage: "rfq", document_number: row.rfq_number, status: row.rfq_status, amount: null, reference_id: row.id });
+  }
+  for (const row of awards.data ?? []) {
+    rows.push({ stage: "award", document_number: row.id, status: row.award_status, amount: row.total_amount, reference_id: row.id });
+  }
+  for (const row of purchaseOrders.data ?? []) {
+    rows.push({ stage: "purchase_order", document_number: row.po_number, status: row.po_status, amount: row.total_amount, reference_id: row.id });
+  }
+  return rows;
+}
+
+export async function getInvoiceMatchExceptionsReport(db: SupabaseClient, legalEntityId: string) {
+  const { data, error } = await db
+    .from("invoice_match_exceptions")
+    .select(
+      "id, exception_code, severity, message, amount, is_resolved, created_at, supplier_invoices!inner(id, invoice_number, legal_entity_id, match_status, gross_amount)",
+    )
+    .eq("supplier_invoices.legal_entity_id", legalEntityId)
+    .eq("is_resolved", false)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw new DataAccessError(error.message, "DATABASE");
+  return (data ?? []).map((row) => {
+    const invoice = Array.isArray(row.supplier_invoices) ? row.supplier_invoices[0] : row.supplier_invoices;
+    return {
+      exception_id: row.id,
+      invoice_number: invoice?.invoice_number ?? null,
+      match_status: invoice?.match_status ?? null,
+      exception_code: row.exception_code,
+      severity: row.severity,
+      message: row.message,
+      amount: row.amount,
+      invoice_gross: invoice?.gross_amount ?? null,
+      created_at: row.created_at,
+    };
+  });
+}
+
+export async function getPeriodCloseReadinessReport(db: SupabaseClient, legalEntityId: string) {
+  const { data: controls, error } = await db
+    .from("fiscal_period_module_controls")
+    .select("id, module, control_state, fiscal_period_id, fiscal_periods(period_number, start_date, end_date)")
+    .eq("legal_entity_id", legalEntityId)
+    .order("module");
+  if (error) throw new DataAccessError(error.message, "DATABASE");
+
+  const { data: instances, error: instanceError } = await db
+    .from("period_close_instances")
+    .select("id, fiscal_period_id, module, readiness_snapshot")
+    .eq("legal_entity_id", legalEntityId);
+  if (instanceError) throw new DataAccessError(instanceError.message, "DATABASE");
+
+  const { data: results, error: resultsError } = await db
+    .from("period_close_item_results")
+    .select("instance_id, item_status, checklist_item_id, period_close_checklist_items(is_blocking, name_en)");
+  if (resultsError) throw new DataAccessError(resultsError.message, "DATABASE");
+
+  const byKey = new Map((instances ?? []).map((row) => [`${row.fiscal_period_id}:${row.module}`, row]));
+
+  return (controls ?? []).map((control) => {
+    const period = Array.isArray(control.fiscal_periods) ? control.fiscal_periods[0] : control.fiscal_periods;
+    const instance = byKey.get(`${control.fiscal_period_id}:${control.module}`);
+    const itemRows = (results ?? []).filter((row) => row.instance_id === instance?.id);
+    const blockingIncomplete = itemRows.filter((row) => {
+      const item = Array.isArray(row.period_close_checklist_items)
+        ? row.period_close_checklist_items[0]
+        : row.period_close_checklist_items;
+      return item?.is_blocking && !["passed", "waived"].includes(row.item_status);
+    }).length;
+    return {
+      module: control.module,
+      control_state: control.control_state,
+      period_number: period?.period_number ?? null,
+      period_start: period?.start_date ?? null,
+      period_end: period?.end_date ?? null,
+      checklist_items: itemRows.length,
+      blocking_incomplete: blockingIncomplete,
+      ready_for_hard_close: control.control_state === "soft_close" && blockingIncomplete === 0,
+    };
+  });
+}
+
+/** Aggregate-only appraisal cycle completion (no narrative comments). */
+export async function getAppraisalCycleCompletionReport(db: SupabaseClient, legalEntityId: string) {
+  const { data: cycles, error } = await db
+    .from("appraisal_cycles")
+    .select("id, name_en, name_ar, cycle_status, period_start, period_end")
+    .eq("legal_entity_id", legalEntityId)
+    .order("period_start", { ascending: false });
+  if (error) throw new DataAccessError(error.message, "DATABASE");
+
+  const { data: assignments, error: assignmentError } = await db
+    .from("appraisal_assignments")
+    .select("id, cycle_id, assignment_status, final_score")
+    .eq("legal_entity_id", legalEntityId);
+  if (assignmentError) throw new DataAccessError(assignmentError.message, "DATABASE");
+
+  return (cycles ?? []).map((cycle) => {
+    const rows = (assignments ?? []).filter((row) => row.cycle_id === cycle.id);
+    const finalized = rows.filter((row) =>
+      ["finalized", "employee_acknowledged"].includes(row.assignment_status),
+    ).length;
+    const acknowledged = rows.filter((row) => row.assignment_status === "employee_acknowledged").length;
+    const scored = rows.filter((row) => row.final_score != null);
+    const avgScore =
+      scored.length === 0
+        ? null
+        : scored.reduce((sum, row) => sum + Number(row.final_score ?? 0), 0) / scored.length;
+    return {
+      cycle_id: cycle.id,
+      cycle_name_en: cycle.name_en,
+      cycle_name_ar: cycle.name_ar,
+      cycle_status: cycle.cycle_status,
+      period_start: cycle.period_start,
+      period_end: cycle.period_end,
+      assignment_count: rows.length,
+      finalized_count: finalized,
+      acknowledged_count: acknowledged,
+      completion_rate: rows.length === 0 ? 0 : Number(((finalized / rows.length) * 100).toFixed(2)),
+      average_final_score: avgScore == null ? null : Number(avgScore.toFixed(4)),
+    };
+  });
 }

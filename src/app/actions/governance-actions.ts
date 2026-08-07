@@ -18,12 +18,19 @@ import {
   delegationRevoke,
   delegationSubmit,
   masterRecordCreateDraft,
+  masterRecordDeactivate,
+  masterRecordReject,
+  periodCloseEvaluateReadiness,
   periodHardClose,
+  periodHardCloseGated,
   periodReopen,
+  periodReopenApprove,
+  periodReopenRequest,
   periodSoftClose,
   requisitionCreateDraft,
   requisitionSubmit,
 } from "@/lib/commands";
+import { getPeriodChecklistWorkspace } from "@/data/repositories/period-close-repository";
 import { withActivePermission } from "@/lib/auth/action-guard";
 
 export async function fetchRisksAction() {
@@ -150,6 +157,7 @@ export async function createMasterRecordDraftAction(params: {
   nameEn: string;
   nameAr: string;
   description?: string;
+  parentId?: string;
   changeReason?: string;
 }) {
   return withActivePermission("master_data", "create", async ({ legalEntityId, db }) => {
@@ -196,6 +204,32 @@ export async function submitMasterRecordAction(recordId: string) {
 
 export async function approveMasterRecordAction(recordId: string) {
   return masterRecordTransition(recordId, "rpc_master_record_approve", "submitted");
+}
+
+export async function rejectMasterRecordAction(recordId: string, changeReason?: string) {
+  return withActivePermission("master_data", "approve", async ({ db }) => {
+    await masterRecordReject(db, { recordId, changeReason });
+    const { data, error } = await db
+      .from("governed_master_records")
+      .select("*")
+      .eq("id", recordId)
+      .single();
+    if (error || !data) throw new DataAccessError("Master record not found.", "NOT_FOUND");
+    return data;
+  });
+}
+
+export async function deactivateMasterRecordAction(recordId: string, changeReason?: string) {
+  return withActivePermission("master_data", "update", async ({ db }) => {
+    await masterRecordDeactivate(db, { recordId, changeReason });
+    const { data, error } = await db
+      .from("governed_master_records")
+      .select("*")
+      .eq("id", recordId)
+      .single();
+    if (error || !data) throw new DataAccessError("Master record not found.", "NOT_FOUND");
+    return data;
+  });
 }
 
 export async function fetchDelegationsAction() {
@@ -274,35 +308,55 @@ export async function submitRequisitionAction(requisitionId: string) {
   });
 }
 
+async function reloadPeriodControls(db: SupabaseClient, legalEntityId: string) {
+  const { data, error } = await db
+    .from("fiscal_period_module_controls")
+    .select("*, fiscal_periods(period_number, start_date, end_date, fiscal_year_id)")
+    .eq("legal_entity_id", legalEntityId)
+    .order("updated_at", { ascending: false });
+  if (error) throw new DataAccessError(error.message, "DATABASE");
+  return data ?? [];
+}
+
 export async function fetchPeriodControlsAction() {
-  return withActivePermission("budget", "read", async ({ legalEntityId, db }) => {
-    const { data, error } = await db
-      .from("fiscal_period_module_controls")
-      .select("*, fiscal_periods(period_number, start_date, end_date, fiscal_year_id)")
-      .eq("legal_entity_id", legalEntityId)
-      .order("updated_at", { ascending: false });
-    if (error) throw new DataAccessError(error.message, "DATABASE");
-    return data ?? [];
-  });
+  return withActivePermission("period_close", "read", async ({ legalEntityId, db }) =>
+    reloadPeriodControls(db, legalEntityId),
+  );
+}
+
+export async function fetchPeriodChecklistAction(params: {
+  fiscalPeriodId: string;
+  module: string;
+}) {
+  return withActivePermission("period_close", "read", async ({ legalEntityId, db }) =>
+    getPeriodChecklistWorkspace(db, legalEntityId, params.fiscalPeriodId, params.module),
+  );
+}
+
+export async function evaluatePeriodReadinessAction(params: {
+  fiscalPeriodId: string;
+  module: string;
+}) {
+  return withActivePermission("period_close", "read", async ({ legalEntityId, db }) =>
+    periodCloseEvaluateReadiness(db, {
+      fiscalPeriodId: params.fiscalPeriodId,
+      legalEntityId,
+      module: params.module,
+    }),
+  );
 }
 
 export async function softClosePeriodAction(params: {
   fiscalPeriodId: string;
   module: string;
 }) {
-  return withActivePermission("budget", "approve", async ({ legalEntityId, db }) => {
+  return withActivePermission("period_close", "approve", async ({ legalEntityId, db }) => {
     await periodSoftClose(db, {
       fiscalPeriodId: params.fiscalPeriodId,
       legalEntityId,
       module: params.module,
     });
-    const { data, error } = await db
-      .from("fiscal_period_module_controls")
-      .select("*, fiscal_periods(period_number, start_date, end_date, fiscal_year_id)")
-      .eq("legal_entity_id", legalEntityId)
-      .order("updated_at", { ascending: false });
-    if (error) throw new DataAccessError(error.message, "DATABASE");
-    return data ?? [];
+    return reloadPeriodControls(db, legalEntityId);
   });
 }
 
@@ -377,20 +431,57 @@ export async function cancelDelegationAction(delegationId: string) {
 export async function hardClosePeriodAction(params: {
   fiscalPeriodId: string;
   module: string;
+  gated?: boolean;
 }) {
-  return withActivePermission("budget", "approve", async ({ legalEntityId, db }) => {
-    await periodHardClose(db, {
+  return withActivePermission("period_close", "approve", async ({ legalEntityId, db }) => {
+    const args = {
       fiscalPeriodId: params.fiscalPeriodId,
       legalEntityId,
       module: params.module,
+    };
+    if (params.gated !== false) {
+      await periodHardCloseGated(db, args);
+    } else {
+      await periodHardClose(db, args);
+    }
+    return reloadPeriodControls(db, legalEntityId);
+  });
+}
+
+export async function requestPeriodReopenAction(params: {
+  fiscalPeriodId: string;
+  module: string;
+  reason: string;
+  evidenceReference?: string;
+}) {
+  return withActivePermission("period_close", "create", async ({ legalEntityId, db }) => {
+    await periodReopenRequest(db, {
+      fiscalPeriodId: params.fiscalPeriodId,
+      legalEntityId,
+      module: params.module,
+      reason: params.reason,
+      evidenceReference: params.evidenceReference,
     });
-    const { data, error } = await db
-      .from("fiscal_period_module_controls")
-      .select("*, fiscal_periods(period_number, start_date, end_date, fiscal_year_id)")
-      .eq("legal_entity_id", legalEntityId)
-      .order("updated_at", { ascending: false });
-    if (error) throw new DataAccessError(error.message, "DATABASE");
-    return data ?? [];
+    return getPeriodChecklistWorkspace(db, legalEntityId, params.fiscalPeriodId, params.module);
+  });
+}
+
+export async function approvePeriodReopenAction(params: {
+  reopenRequestId: string;
+  fiscalPeriodId: string;
+  module: string;
+  decisionReason?: string;
+}) {
+  return withActivePermission("period_close", "approve", async ({ legalEntityId, db }) => {
+    await periodReopenApprove(db, {
+      reopenRequestId: params.reopenRequestId,
+      decisionReason: params.decisionReason,
+    });
+    const [controls, checklist] = await Promise.all([
+      reloadPeriodControls(db, legalEntityId),
+      getPeriodChecklistWorkspace(db, legalEntityId, params.fiscalPeriodId, params.module),
+    ]);
+    return { controls, checklist };
   });
 }
 
@@ -399,20 +490,14 @@ export async function reopenPeriodAction(params: {
   module: string;
   reason: string;
 }) {
-  return withActivePermission("budget", "approve", async ({ legalEntityId, db }) => {
+  return withActivePermission("period_close", "approve", async ({ legalEntityId, db }) => {
     await periodReopen(db, {
       fiscalPeriodId: params.fiscalPeriodId,
       legalEntityId,
       module: params.module,
       reason: params.reason,
     });
-    const { data, error } = await db
-      .from("fiscal_period_module_controls")
-      .select("*, fiscal_periods(period_number, start_date, end_date, fiscal_year_id)")
-      .eq("legal_entity_id", legalEntityId)
-      .order("updated_at", { ascending: false });
-    if (error) throw new DataAccessError(error.message, "DATABASE");
-    return data ?? [];
+    return reloadPeriodControls(db, legalEntityId);
   });
 }
 

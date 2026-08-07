@@ -12,6 +12,10 @@ import {
   getAuditHistoryReport,
   getRestaurantReport,
   getUnmappedActualsReport,
+  getProcurementPipelineReport,
+  getInvoiceMatchExceptionsReport,
+  getPeriodCloseReadinessReport,
+  getAppraisalCycleCompletionReport,
   type ReportType,
 } from "@/data/repositories/report-repository";
 import { buildSafeXlsxBuffer, rowsToSafeCsv } from "@/lib/export/spreadsheet-safe";
@@ -44,6 +48,14 @@ async function fetchReportData(
       return getUnmappedActualsReport(db, legalEntityId);
     case "budget_actual_commitments":
       return getBudgetVsActualReport(db, legalEntityId);
+    case "procurement_pipeline":
+      return getProcurementPipelineReport(db, legalEntityId);
+    case "invoice_match_exceptions":
+      return getInvoiceMatchExceptionsReport(db, legalEntityId);
+    case "period_close_readiness":
+      return getPeriodCloseReadinessReport(db, legalEntityId);
+    case "appraisal_cycle_completion":
+      return getAppraisalCycleCompletionReport(db, legalEntityId);
     default:
       return [];
   }

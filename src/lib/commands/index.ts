@@ -9,7 +9,13 @@ async function invokeRpc<T extends CommandResult>(
   args: Record<string, unknown>,
 ): Promise<T> {
   const { data, error } = await db.rpc(fn, args);
-  if (error) throw new DataAccessError(error.message, "DATABASE");
+  if (error) {
+    const msg = error.message ?? "Database error";
+    if (/cycle|own parent|weights must|READINESS|CHECKLIST/i.test(msg)) {
+      throw new DataAccessError(msg, "VALIDATION");
+    }
+    throw new DataAccessError(msg, "DATABASE");
+  }
   if (!data || typeof data !== "object") {
     throw new DataAccessError("Invalid command response", "DATABASE");
   }
@@ -17,7 +23,19 @@ async function invokeRpc<T extends CommandResult>(
   if (!result.ok) {
     const code = result.error_code ?? "COMMAND_FAILED";
     if (code === "NOT_FOUND") throw new DataAccessError(result.message ?? "Not found", "NOT_FOUND");
-    if (code === "STATE_MISMATCH" || code === "STATE_CONFLICT" || code === "SCOPE_MISMATCH" || code === "INVALID_TRANSITION" || code === "VALIDATION" || code === "RECONCILIATION") {
+    if (
+      code === "STATE_MISMATCH" ||
+      code === "STATE_CONFLICT" ||
+      code === "SCOPE_MISMATCH" ||
+      code === "INVALID_TRANSITION" ||
+      code === "INVALID_STATE" ||
+      code === "VALIDATION" ||
+      code === "RECONCILIATION" ||
+      code === "READINESS" ||
+      code === "CHECKLIST" ||
+      code === "CYCLE" ||
+      code === "PERIOD_CLOSED"
+    ) {
       throw new DataAccessError(result.message ?? "Validation failed", "VALIDATION");
     }
     if (code === "FORBIDDEN" || code === "SOD_VIOLATION" || code === "UNAUTHENTICATED") {
@@ -527,6 +545,651 @@ export async function requisitionSubmit(
   );
 }
 
+export async function requisitionUpsertLine(
+  db: SupabaseClient,
+  params: {
+    requisitionId: string;
+    lineNumber: number;
+    description: string;
+    quantity: string | number;
+    unitPrice: string | number;
+    costNodeId?: string;
+    uom?: string;
+    organizationUnitId?: string;
+    preferredVendorId?: string;
+    requiredBy?: string;
+    lineId?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_requisition_upsert_line", {
+      p_requisition_id: params.requisitionId,
+      p_line_number: params.lineNumber,
+      p_description: params.description,
+      p_quantity: params.quantity,
+      p_unit_price: params.unitPrice,
+      p_cost_node_id: params.costNodeId ?? null,
+      p_uom: params.uom ?? null,
+      p_organization_unit_id: params.organizationUnitId ?? null,
+      p_preferred_vendor_id: params.preferredVendorId ?? null,
+      p_required_by: params.requiredBy ?? null,
+      p_line_id: params.lineId ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function requisitionDepartmentApprove(
+  db: SupabaseClient,
+  requisitionId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_requisition_department_approve", {
+      p_requisition_id: requisitionId,
+      p_expected_status: options.expectedStatus ?? "submitted",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function requisitionBudgetCheck(
+  db: SupabaseClient,
+  requisitionId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_requisition_budget_check", {
+      p_requisition_id: requisitionId,
+      p_expected_status: options.expectedStatus ?? "department_approved",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function requisitionProcurementReview(
+  db: SupabaseClient,
+  requisitionId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_requisition_procurement_review", {
+      p_requisition_id: requisitionId,
+      p_expected_status: options.expectedStatus ?? "budget_checked",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function requisitionApprove(
+  db: SupabaseClient,
+  requisitionId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_requisition_approve", {
+      p_requisition_id: requisitionId,
+      p_expected_status: options.expectedStatus ?? "procurement_review",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function rfqCreateFromRequisition(
+  db: SupabaseClient,
+  params: {
+    requisitionId: string;
+    rfqNumber: string;
+    titleEn?: string;
+    titleAr?: string;
+    responseDeadline?: string;
+    currencyCode?: string;
+    terms?: string;
+    deliveryLocation?: string;
+    lineIds?: string[];
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_rfq_create_from_requisition", {
+      p_requisition_id: params.requisitionId,
+      p_rfq_number: params.rfqNumber,
+      p_title_en: params.titleEn ?? null,
+      p_title_ar: params.titleAr ?? null,
+      p_response_deadline: params.responseDeadline ?? null,
+      p_currency_code: params.currencyCode ?? null,
+      p_terms: params.terms ?? null,
+      p_delivery_location: params.deliveryLocation ?? null,
+      p_line_ids: params.lineIds ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function rfqInviteSupplier(
+  db: SupabaseClient,
+  params: { rfqId: string; vendorId: string; idempotencyKey?: string },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_rfq_invite_supplier", {
+      p_rfq_id: params.rfqId,
+      p_vendor_id: params.vendorId,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function rfqIssue(
+  db: SupabaseClient,
+  params: {
+    rfqId: string;
+    issueDate?: string;
+    responseDeadline?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_rfq_issue", {
+      p_rfq_id: params.rfqId,
+      p_issue_date: params.issueDate ?? null,
+      p_response_deadline: params.responseDeadline ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function rfqCloseResponses(
+  db: SupabaseClient,
+  rfqId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_rfq_close_responses", {
+      p_rfq_id: rfqId,
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function quotationCreate(
+  db: SupabaseClient,
+  params: {
+    rfqId: string;
+    vendorId: string;
+    supplierQuoteReference: string;
+    lines: unknown[];
+    currencyCode?: string;
+    validUntil?: string;
+    paymentTerms?: string;
+    deliveryTerms?: string;
+    vatAmount?: string | number;
+    notes?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_quotation_create", {
+      p_rfq_id: params.rfqId,
+      p_vendor_id: params.vendorId,
+      p_supplier_quote_reference: params.supplierQuoteReference,
+      p_lines: params.lines,
+      p_currency_code: params.currencyCode ?? null,
+      p_valid_until: params.validUntil ?? null,
+      p_payment_terms: params.paymentTerms ?? null,
+      p_delivery_terms: params.deliveryTerms ?? null,
+      p_vat_amount: params.vatAmount ?? 0,
+      p_notes: params.notes ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function evaluationSubmit(
+  db: SupabaseClient,
+  params: {
+    rfqId: string;
+    quotationId: string;
+    scores: unknown[];
+    criteria?: unknown[];
+    recommendation?: string;
+    comments?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_evaluation_submit", {
+      p_rfq_id: params.rfqId,
+      p_quotation_id: params.quotationId,
+      p_scores: params.scores,
+      p_criteria: params.criteria ?? null,
+      p_recommendation: params.recommendation ?? null,
+      p_comments: params.comments ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function awardCreateAndSubmit(
+  db: SupabaseClient,
+  params: {
+    rfqId: string;
+    quotationId: string;
+    lines: unknown[];
+    justification?: string;
+    evaluationId?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_award_create_and_submit", {
+      p_rfq_id: params.rfqId,
+      p_quotation_id: params.quotationId,
+      p_lines: params.lines,
+      p_justification: params.justification ?? null,
+      p_evaluation_id: params.evaluationId ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function awardApprove(
+  db: SupabaseClient,
+  awardId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_award_approve", {
+      p_award_id: awardId,
+      p_expected_status: options.expectedStatus ?? "submitted",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function poCreateFromAward(
+  db: SupabaseClient,
+  params: {
+    awardId: string;
+    fiscalPeriodId?: string;
+    description?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_po_create_from_award", {
+      p_award_id: params.awardId,
+      p_fiscal_period_id: params.fiscalPeriodId ?? null,
+      p_description: params.description ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function poSubmit(
+  db: SupabaseClient,
+  poId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_po_submit", {
+      p_po_id: poId,
+      p_expected_status: options.expectedStatus ?? "draft",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function poApprove(
+  db: SupabaseClient,
+  poId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_po_approve", {
+      p_po_id: poId,
+      p_expected_status: options.expectedStatus ?? "submitted",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function poIssue(
+  db: SupabaseClient,
+  poId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_po_issue", {
+      p_po_id: poId,
+      p_expected_status: options.expectedStatus ?? "approved",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function poCancel(
+  db: SupabaseClient,
+  params: {
+    poId: string;
+    reason?: string;
+    expectedStatus?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_po_cancel", {
+      p_po_id: params.poId,
+      p_reason: params.reason ?? null,
+      p_expected_status: params.expectedStatus ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function contractCreate(
+  db: SupabaseClient,
+  params: {
+    legalEntityId: string;
+    vendorId: string;
+    contractNumber: string;
+    titleEn: string;
+    titleAr: string;
+    startDate: string;
+    endDate: string;
+    ceilingValue?: string | number;
+    awardId?: string;
+    currencyCode?: string;
+    controlScopeId?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_contract_create", {
+      p_legal_entity_id: params.legalEntityId,
+      p_vendor_id: params.vendorId,
+      p_contract_number: params.contractNumber,
+      p_title_en: params.titleEn,
+      p_title_ar: params.titleAr,
+      p_start_date: params.startDate,
+      p_end_date: params.endDate,
+      p_ceiling_value: params.ceilingValue ?? 0,
+      p_award_id: params.awardId ?? null,
+      p_currency_code: params.currencyCode ?? "SAR",
+      p_control_scope_id: params.controlScopeId ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function contractApprove(
+  db: SupabaseClient,
+  contractId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_contract_approve", {
+      p_contract_id: contractId,
+      p_expected_status: options.expectedStatus ?? "submitted",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function contractActivate(
+  db: SupabaseClient,
+  contractId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_contract_activate", {
+      p_contract_id: contractId,
+      p_expected_status: options.expectedStatus ?? "approved",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function goodsReceiptCreate(
+  db: SupabaseClient,
+  params: {
+    purchaseOrderId: string;
+    receiptNumber: string;
+    receiptDate?: string;
+    deliveryNote?: string;
+    lines?: unknown[];
+    fiscalPeriodId?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_goods_receipt_create", {
+      p_purchase_order_id: params.purchaseOrderId,
+      p_receipt_number: params.receiptNumber,
+      p_receipt_date: params.receiptDate ?? null,
+      p_delivery_note: params.deliveryNote ?? null,
+      p_lines: params.lines ?? [],
+      p_fiscal_period_id: params.fiscalPeriodId ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function goodsReceiptAccept(
+  db: SupabaseClient,
+  goodsReceiptId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_goods_receipt_accept", {
+      p_goods_receipt_id: goodsReceiptId,
+      p_expected_status: options.expectedStatus ?? "draft",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function serviceEntryCreate(
+  db: SupabaseClient,
+  params: {
+    legalEntityId: string;
+    vendorId: string;
+    entryNumber: string;
+    description: string;
+    purchaseOrderId?: string;
+    contractId?: string;
+    lines?: unknown[];
+    fiscalPeriodId?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_service_entry_create", {
+      p_legal_entity_id: params.legalEntityId,
+      p_vendor_id: params.vendorId,
+      p_entry_number: params.entryNumber,
+      p_description: params.description,
+      p_purchase_order_id: params.purchaseOrderId ?? null,
+      p_contract_id: params.contractId ?? null,
+      p_lines: params.lines ?? [],
+      p_fiscal_period_id: params.fiscalPeriodId ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function serviceEntryAccept(
+  db: SupabaseClient,
+  serviceEntryId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_service_entry_accept", {
+      p_service_entry_id: serviceEntryId,
+      p_expected_status: options.expectedStatus ?? "draft",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function supplierInvoiceCreate(
+  db: SupabaseClient,
+  params: {
+    legalEntityId: string;
+    purchaseOrderId: string;
+    vendorId: string;
+    invoiceNumber: string;
+    invoiceDate: string;
+    grossAmount: string | number;
+    subtotalExVat?: string | number;
+    vatAmount?: string | number;
+    dueDate?: string;
+    lines?: unknown[];
+    fiscalPeriodId?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_supplier_invoice_create", {
+      p_legal_entity_id: params.legalEntityId,
+      p_purchase_order_id: params.purchaseOrderId,
+      p_vendor_id: params.vendorId,
+      p_invoice_number: params.invoiceNumber,
+      p_invoice_date: params.invoiceDate,
+      p_gross_amount: params.grossAmount,
+      p_subtotal_ex_vat: params.subtotalExVat ?? null,
+      p_vat_amount: params.vatAmount ?? 0,
+      p_due_date: params.dueDate ?? null,
+      p_lines: params.lines ?? [],
+      p_fiscal_period_id: params.fiscalPeriodId ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function supplierInvoiceMatch(
+  db: SupabaseClient,
+  supplierInvoiceId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_supplier_invoice_match", {
+      p_supplier_invoice_id: supplierInvoiceId,
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function invoiceMatchOverride(
+  db: SupabaseClient,
+  params: { supplierInvoiceId: string; reason: string; idempotencyKey?: string },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_invoice_match_override", {
+      p_supplier_invoice_id: params.supplierInvoiceId,
+      p_reason: params.reason,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function supplierInvoiceApprove(
+  db: SupabaseClient,
+  supplierInvoiceId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_supplier_invoice_approve", {
+      p_supplier_invoice_id: supplierInvoiceId,
+      p_expected_status: options.expectedStatus ?? "matched",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function paymentRequestCreate(
+  db: SupabaseClient,
+  params: {
+    legalEntityId: string;
+    supplierInvoiceId: string;
+    amount: string | number;
+    dueDate?: string;
+    reason?: string;
+    idempotencyKey?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_payment_request_create", {
+      p_legal_entity_id: params.legalEntityId,
+      p_supplier_invoice_id: params.supplierInvoiceId,
+      p_amount: params.amount,
+      p_due_date: params.dueDate ?? null,
+      p_reason: params.reason ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: null,
+    }),
+  );
+}
+
+export async function paymentRequestSubmit(
+  db: SupabaseClient,
+  paymentRequestId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_payment_request_submit", {
+      p_payment_request_id: paymentRequestId,
+      p_expected_status: options.expectedStatus ?? "draft",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function paymentRequestApprove(
+  db: SupabaseClient,
+  paymentRequestId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_payment_request_approve", {
+      p_payment_request_id: paymentRequestId,
+      p_expected_status: options.expectedStatus ?? "submitted",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
 export async function periodSoftClose(
   db: SupabaseClient,
   params: { fiscalPeriodId: string; legalEntityId: string; module: string; idempotencyKey?: string },
@@ -620,6 +1283,92 @@ export async function periodHardClose(
   );
 }
 
+export async function periodHardCloseGated(
+  db: SupabaseClient,
+  params: {
+    fiscalPeriodId: string;
+    legalEntityId: string;
+    module: string;
+    expectedState?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_period_hard_close_gated", {
+      p_fiscal_period_id: params.fiscalPeriodId,
+      p_legal_entity_id: params.legalEntityId,
+      p_module: params.module,
+      p_expected_state: params.expectedState ?? "soft_close",
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function periodCloseEvaluateReadiness(
+  db: SupabaseClient,
+  params: {
+    fiscalPeriodId: string;
+    legalEntityId: string;
+    module?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_period_close_evaluate_readiness", {
+      p_fiscal_period_id: params.fiscalPeriodId,
+      p_legal_entity_id: params.legalEntityId,
+      p_module: params.module ?? "actuals",
+    }),
+  );
+}
+
+export async function periodReopenRequest(
+  db: SupabaseClient,
+  params: {
+    fiscalPeriodId: string;
+    legalEntityId: string;
+    module: string;
+    reason: string;
+    evidenceReference?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_period_reopen_request", {
+      p_fiscal_period_id: params.fiscalPeriodId,
+      p_legal_entity_id: params.legalEntityId,
+      p_module: params.module,
+      p_reason: params.reason,
+      p_evidence_reference: params.evidenceReference ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function periodReopenApprove(
+  db: SupabaseClient,
+  params: {
+    reopenRequestId: string;
+    decisionReason?: string;
+    expectedStatus?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_period_reopen_approve", {
+      p_reopen_request_id: params.reopenRequestId,
+      p_decision_reason: params.decisionReason ?? null,
+      p_expected_status: params.expectedStatus ?? "submitted",
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
 export async function periodReopen(
   db: SupabaseClient,
   params: {
@@ -639,6 +1388,197 @@ export async function periodReopen(
       p_expected_state: "hard_close",
       p_idempotency_key: params.idempotencyKey ?? null,
       p_correlation_id: null,
+    }),
+  );
+}
+
+export async function approvalActAsDelegate(
+  db: SupabaseClient,
+  params: {
+    itemType: string;
+    entityId: string;
+    decision: string;
+    originalAssigneeId: string;
+    delegationId: string;
+    comments?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_approval_act_as_delegate", {
+      p_item_type: params.itemType,
+      p_entity_id: params.entityId,
+      p_decision: params.decision,
+      p_original_assignee_id: params.originalAssigneeId,
+      p_delegation_id: params.delegationId,
+      p_comments: params.comments ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function appraisalCycleActivate(
+  db: SupabaseClient,
+  cycleId: string,
+  options: CommandOptions & { expectedStatus?: string } = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_cycle_activate", {
+      p_cycle_id: cycleId,
+      p_expected_status: options.expectedStatus ?? "draft",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function appraisalAssignmentCreate(
+  db: SupabaseClient,
+  params: {
+    legalEntityId: string;
+    cycleId: string;
+    templateId: string;
+    employeeId: string;
+    managerId: string;
+    reviewerId?: string;
+    organizationUnitId?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_assignment_create", {
+      p_legal_entity_id: params.legalEntityId,
+      p_cycle_id: params.cycleId,
+      p_template_id: params.templateId,
+      p_employee_id: params.employeeId,
+      p_manager_id: params.managerId,
+      p_reviewer_id: params.reviewerId ?? null,
+      p_organization_unit_id: params.organizationUnitId ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function appraisalSelfSubmit(
+  db: SupabaseClient,
+  params: {
+    assignmentId: string;
+    ratings?: Array<{ criterion_id: string; self_rating?: number | string; self_comment?: string }>;
+    expectedStatus?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_self_submit", {
+      p_assignment_id: params.assignmentId,
+      p_ratings: params.ratings ?? [],
+      p_expected_status: params.expectedStatus ?? "employee_self_review",
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function appraisalManagerSubmit(
+  db: SupabaseClient,
+  params: {
+    assignmentId: string;
+    ratings?: Array<{ criterion_id: string; manager_rating?: number | string; manager_comment?: string }>;
+    expectedStatus?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_manager_submit", {
+      p_assignment_id: params.assignmentId,
+      p_ratings: params.ratings ?? [],
+      p_expected_status: params.expectedStatus ?? "self_submitted",
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function appraisalFinalize(
+  db: SupabaseClient,
+  assignmentId: string,
+  options: CommandOptions & { expectedStatus?: string } = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_finalize", {
+      p_assignment_id: assignmentId,
+      p_expected_status: options.expectedStatus ?? "manager_submitted",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function appraisalAcknowledge(
+  db: SupabaseClient,
+  params: {
+    assignmentId: string;
+    comments?: string;
+    expectedStatus?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_acknowledge", {
+      p_assignment_id: params.assignmentId,
+      p_comments: params.comments ?? null,
+      p_expected_status: params.expectedStatus ?? "finalized",
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function masterRecordDeactivate(
+  db: SupabaseClient,
+  params: {
+    recordId: string;
+    expectedStatus?: string;
+    changeReason?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_master_record_deactivate", {
+      p_record_id: params.recordId,
+      p_expected_status: params.expectedStatus ?? "approved",
+      p_change_reason: params.changeReason ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function masterRecordReject(
+  db: SupabaseClient,
+  params: {
+    recordId: string;
+    expectedStatus?: string;
+    changeReason?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_master_record_reject", {
+      p_record_id: params.recordId,
+      p_expected_status: params.expectedStatus ?? "submitted",
+      p_change_reason: params.changeReason ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
     }),
   );
 }
