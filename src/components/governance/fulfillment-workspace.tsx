@@ -33,6 +33,8 @@ import {
 import { formatMoney } from "@/lib/money";
 import { lineTotal } from "@/domain/procurement/calculations";
 import { pickLocalized } from "@/lib/i18n/display";
+import { ChartCard, ExceptionSummary } from "@/components/analytics";
+import { toNumber } from "@/domain/analytics/format";
 
 function firstRel<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
@@ -644,6 +646,62 @@ export function SupplierInvoiceWorkspace({
       ) : null}
       {message ? <p className="text-sm text-success">{message}</p> : null}
       {error ? <p className="text-sm text-danger">{error}</p> : null}
+      <div data-testid="invoice-match-visual">
+      <ChartCard
+        title={t("matchVisualTitle")}
+        empty={rows.length === 0}
+        emptyTitle={t("emptyMatchVisual")}
+      >
+        <ExceptionSummary
+          items={[
+            {
+              id: "matched",
+              label: "matched",
+              count: rows.filter((r) => r.match_status === "matched").length,
+              tone: "neutral",
+            },
+            {
+              id: "tolerance",
+              label: "matched_within_tolerance",
+              count: rows.filter((r) => r.match_status === "matched_within_tolerance").length,
+              tone: "warning",
+            },
+            {
+              id: "exception",
+              label: "exception",
+              count: rows.filter((r) => r.match_status === "exception").length,
+              tone: "danger",
+            },
+            {
+              id: "overridden",
+              label: "overridden",
+              count: rows.filter((r) => r.match_status === "overridden").length,
+              tone: "warning",
+            },
+          ]}
+        />
+        <ul className="mt-4 space-y-2 text-xs text-text-secondary">
+          {rows
+            .filter((inv) => inv.match_status)
+            .slice(0, 8)
+            .map((inv) => {
+              const po = firstRel(inv.purchase_orders);
+              return (
+                <li key={inv.id} className="flex flex-wrap justify-between gap-2 border-b border-border/60 py-1">
+                  <span>
+                    {inv.invoice_number}
+                    {po ? ` · PO ${po.po_number}` : ""}
+                  </span>
+                  <span className="tabular-nums">
+                    {inv.match_status} · {formatMoney(inv.gross_amount, "SAR")}
+                  </span>
+                  <span className="sr-only">amount {toNumber(inv.gross_amount)}</span>
+                </li>
+              );
+            })}
+        </ul>
+      </ChartCard>
+      </div>
       <ul className="space-y-2">
         {rows.map((inv) => {
           const vendor = firstRel(inv.vendors);

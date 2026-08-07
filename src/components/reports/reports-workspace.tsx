@@ -11,6 +11,9 @@ import {
 } from "@/app/actions/report-actions";
 import type { ReportType } from "@/data/repositories/report-repository";
 import { formatMoney } from "@/lib/money";
+import { ChartCard, CategoryBarChart, ProgressBar } from "@/components/analytics";
+import { toNumber } from "@/domain/analytics/format";
+import type { ChartPoint } from "@/domain/analytics/types";
 
 const REPORT_TYPES: ReportType[] = [
   "budget_vs_actual",
@@ -76,12 +79,63 @@ export function ReportsWorkspace({
   canViewAudit: boolean;
 }) {
   const t = useTranslations("reports");
+  const tAnalytics = useTranslations("analytics");
   const [selected, setSelected] = useState<ReportType>("budget_vs_actual");
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [pending, startTransition] = useTransition();
   const reportTypes = canViewAudit
     ? REPORT_TYPES
     : REPORT_TYPES.filter((type) => type !== "audit_history");
+
+  const chartPreview: { points: ChartPoint[]; readiness?: number } | null = (() => {
+    if (!rows.length) return null;
+    if (selected === "procurement_pipeline") {
+      const map = new Map<string, ChartPoint>();
+      for (const row of rows) {
+        const stage = String(row.stage ?? row.status ?? "other");
+        const existing = map.get(stage) ?? { key: stage, label: stage, amount: 0, count: 0 };
+        existing.amount = (existing.amount as number) + toNumber(row.amount as string | number | undefined);
+        existing.count = (existing.count as number) + toNumber((row.count as string | number | undefined) ?? 1);
+        map.set(stage, existing);
+      }
+      return { points: Array.from(map.values()) };
+    }
+    if (selected === "budget_vs_actual" || selected === "budget_actual_commitments") {
+      const map = new Map<string, ChartPoint>();
+      for (const row of rows) {
+        const key = String(row.financial_reporting_group ?? row.period_number ?? "row");
+        const existing = map.get(key) ?? {
+          key,
+          label: key,
+          budget: 0,
+          actual: 0,
+        };
+        existing.budget =
+          (existing.budget as number) +
+          toNumber((row.current_approved_amount ?? row.monthly_budget) as string | number | undefined);
+        existing.actual =
+          (existing.actual as number) + toNumber((row.actual_amount ?? row.mtd_actual) as string | number | undefined);
+        map.set(key, existing);
+      }
+      return { points: Array.from(map.values()).slice(0, 12) };
+    }
+    if (selected === "period_close_readiness") {
+      const rates = rows
+        .map((r) => toNumber((r.readiness_percent ?? r.completion_rate) as string | number | undefined))
+        .filter((n) => !Number.isNaN(n));
+      if (!rates.length) return null;
+      const avg = rates.reduce((a, b) => a + b, 0) / rates.length;
+      return { points: [], readiness: avg };
+    }
+    if (selected === "appraisal_cycle_completion") {
+      const rates = rows
+        .map((r) => toNumber(r.completion_rate as string | number | undefined))
+        .filter((n) => !Number.isNaN(n));
+      if (!rates.length) return null;
+      return { points: [], readiness: rates.reduce((a, b) => a + b, 0) / rates.length };
+    }
+    return null;
+  })();
 
   function loadReport(type: ReportType) {
     setSelected(type);
@@ -150,6 +204,29 @@ export function ReportsWorkspace({
             {t("exportExcel")}
           </Button>
         </div>
+      ) : null}
+
+      {chartPreview ? (
+        <ChartCard title={tAnalytics("sections.insights")} empty={false}>
+          {chartPreview.readiness != null ? (
+            <ProgressBar value={chartPreview.readiness} label={tAnalytics("kpi.readiness")} />
+          ) : null}
+          {chartPreview.points.length > 0 ? (
+            <CategoryBarChart
+              data={chartPreview.points}
+              series={
+                selected === "procurement_pipeline"
+                  ? [{ key: "amount", label: tAnalytics("series.actual"), token: "chart-3" }]
+                  : [
+                      { key: "budget", label: tAnalytics("series.budget"), token: "chart-2" },
+                      { key: "actual", label: tAnalytics("series.actual"), token: "chart-1" },
+                    ]
+              }
+              layout="horizontal"
+              height={280}
+            />
+          ) : null}
+        </ChartCard>
       ) : null}
 
       <Card>

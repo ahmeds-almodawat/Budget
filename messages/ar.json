@@ -861,6 +861,8 @@
     "invoiceCreated": "تم إنشاء الفاتورة.",
     "matchInvoice": "مطابقة",
     "invoiceMatched": "تمت مطابقة الفاتورة.",
+    "matchVisualTitle": "حالة مطابقة الفاتورة",
+    "emptyMatchVisual": "لا توجد استثناءات مطابقة للمشتريات.",
     "overrideMatch": "تجاوز المطابقة",
     "overrideReason": "سبب التجاوز",
     "matchOverridden": "تم تجاوز المطابقة.",

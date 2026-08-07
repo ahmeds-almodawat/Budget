@@ -861,6 +861,8 @@
     "invoiceCreated": "Invoice created.",
     "matchInvoice": "Match",
     "invoiceMatched": "Invoice matched.",
+    "matchVisualTitle": "Invoice match status",
+    "emptyMatchVisual": "No procurement match exceptions.",
     "overrideMatch": "Override match",
     "overrideReason": "Override reason",
     "matchOverridden": "Match overridden.",
