@@ -3,7 +3,14 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
 import { fetchHospitalDashboardAction, createVarianceExplanationAction } from "@/app/actions/budget-actions";
-import { isVarianceExplanationRequired } from "@/domain/financial/calculations";
+import {
+  classifyExpenseVarianceStatus,
+  calculateVariancePercentage,
+  isVarianceExplanationRequired,
+} from "@/domain/financial/calculations";
+import { formatCompactMoney, toNumber } from "@/domain/analytics/format";
+import type { ChartPoint, ChartSeriesDef, KpiMetric } from "@/domain/analytics/types";
+import { HospitalAnalyticsPanel } from "@/components/dashboard/hospital-analytics-panel";
 import { CONTROL_ACCOUNT_PHARM_INJ } from "@/types/database";
 import { requireRoutePermission } from "@/lib/auth/route-authorization";
 
@@ -17,6 +24,9 @@ export default async function HospitalDashboardPage({
   await requireRoutePermission("budget", "read");
   const t = await getTranslations("dashboard.hospital");
   const tLabels = await getTranslations("dashboardLabels");
+  const tAnalytics = await getTranslations("analytics");
+  const arabicCurrency = locale.startsWith("ar");
+  const moneyLocale = locale.startsWith("ar") ? "ar-SA" : "en-SA";
 
   let performance = null;
   let dbError: string | null = null;
@@ -61,6 +71,92 @@ export default async function HospitalDashboardPage({
     }).catch(() => undefined);
   }
 
+  const fmt = (v: number) =>
+    formatCompactMoney(v, { locale: moneyLocale, arabicCurrency });
+
+  const mtdBudget = toNumber(performance.mtdBudget);
+  const mtdActual = toNumber(performance.mtdActual);
+  const ytdBudget = toNumber(performance.ytdBudget);
+  const ytdActual = toNumber(performance.ytdActual);
+  const currentApproved = toNumber(performance.currentApproved);
+  const fullYearForecast = toNumber(performance.fullYearForecast);
+  const remainingBudget = toNumber(performance.remainingBudget);
+
+  const mtdStatus = classifyExpenseVarianceStatus(mtdBudget, mtdActual);
+  const mtdVarPct = calculateVariancePercentage({
+    varianceAmount: mtdBudget - mtdActual,
+    budgetAmount: mtdBudget,
+  });
+
+  const kpis: KpiMetric[] = [
+    {
+      id: "mtd-actual",
+      label: t("mtd"),
+      value: mtdActual,
+      formattedValue: fmt(mtdActual),
+      subtitle: `${tLabels("budget")}: ${fmt(mtdBudget)}`,
+      variance: mtdBudget - mtdActual,
+      variancePercent: mtdVarPct?.toNumber() ?? null,
+      varianceStatus: mtdStatus,
+    },
+    {
+      id: "ytd-actual",
+      label: t("ytd"),
+      value: ytdActual,
+      formattedValue: fmt(ytdActual),
+      subtitle: `${tLabels("budget")}: ${fmt(ytdBudget)}`,
+    },
+    {
+      id: "current-approved",
+      label: tLabels("currentApproved"),
+      value: currentApproved,
+      formattedValue: fmt(currentApproved),
+    },
+    {
+      id: "forecast",
+      label: t("fullYearForecast"),
+      value: fullYearForecast,
+      formattedValue: fmt(fullYearForecast),
+      subtitle: remainingBudget
+        ? `${tAnalytics("series.remaining")}: ${fmt(remainingBudget)}`
+        : undefined,
+    },
+  ];
+
+  // No multi-period series is returned by fetchHospitalDashboardAction — empty trend.
+  const trend: ChartPoint[] = [];
+  const trendSeries: ChartSeriesDef[] = [
+    { key: "budget", label: tAnalytics("series.budget"), token: "chart-1", type: "area" },
+    { key: "actual", label: tAnalytics("series.actual"), token: "chart-2", type: "area" },
+    { key: "forecast", label: tAnalytics("series.forecast"), token: "chart-3", type: "line" },
+  ];
+
+  const utilization: ChartPoint[] = [];
+  if (mtdBudget !== 0 || mtdActual !== 0) {
+    utilization.push({
+      key: "mtd",
+      label: t("mtd"),
+      budget: mtdBudget,
+      actual: mtdActual,
+      remaining: Math.max(0, mtdBudget - mtdActual),
+    });
+  }
+  if (ytdBudget !== 0 || ytdActual !== 0) {
+    utilization.push({
+      key: "ytd",
+      label: t("ytd"),
+      budget: ytdBudget,
+      actual: ytdActual,
+      remaining: Math.max(0, ytdBudget - ytdActual),
+    });
+  }
+
+  const utilizationSeries: ChartSeriesDef[] = [
+    { key: "budget", label: tAnalytics("series.budget"), token: "chart-1", type: "bar" },
+    { key: "actual", label: tAnalytics("series.actual"), token: "chart-2", type: "bar" },
+    { key: "remaining", label: tAnalytics("series.remaining"), token: "chart-6", type: "bar" },
+  ];
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t("title")}</h1>
@@ -88,6 +184,21 @@ export default async function HospitalDashboardPage({
           <CardContent>{formatMoney(performance.fullYearForecast, "SAR")}</CardContent>
         </Card>
       </div>
+
+      <HospitalAnalyticsPanel
+        locale={locale}
+        kpis={kpis}
+        utilization={utilization}
+        utilizationSeries={utilizationSeries}
+        trend={trend}
+        trendSeries={trendSeries}
+        titles={{
+          kpis: tAnalytics("sections.kpis"),
+          forecastTrend: tAnalytics("sections.forecastTrend"),
+          utilization: tAnalytics("sections.utilization"),
+          empty: tAnalytics("empty.period"),
+        }}
+      />
 
       {explanationRequired ? (
         <Card className="border-warning/40 bg-warning-surface">
