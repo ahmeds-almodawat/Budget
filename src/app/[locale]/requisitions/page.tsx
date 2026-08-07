@@ -2,7 +2,7 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { RequisitionWorkspace } from "@/components/governance/requisition-workspace";
 import { WorkspaceError } from "@/components/governance/workspace-state";
-import { fetchRequisitionsAction } from "@/app/actions/governance-actions";
+import { fetchRequisitionsWithLinesAction } from "@/app/actions/procurement-actions";
 import { getFiscalPeriods } from "@/data/repositories/budget-repository";
 import { hasPermission } from "@/domain/auth/permissions";
 import { FISCAL_YEAR_2027 } from "@/types/database";
@@ -21,14 +21,15 @@ export default async function RequisitionsPage({
   const roles = session.ctx.roleAssignments;
   const canCreate = hasPermission(roles, "commitment", "create", entityId);
   const canSubmit = hasPermission(roles, "commitment", "update", entityId);
+  const canApprove = hasPermission(roles, "commitment", "approve", entityId);
 
-  let requisitions: Awaited<ReturnType<typeof fetchRequisitionsAction>> = [];
+  let requisitions: Awaited<ReturnType<typeof fetchRequisitionsWithLinesAction>> = [];
   let fiscalPeriodId = "";
   let errorMessage: string | null = null;
   try {
     const periods = await getFiscalPeriods(session.db, FISCAL_YEAR_2027);
     fiscalPeriodId = periods[0]?.id ?? "";
-    requisitions = await fetchRequisitionsAction();
+    requisitions = await fetchRequisitionsWithLinesAction();
   } catch (e) {
     errorMessage = e instanceof Error ? e.message : t("loadError");
   }
@@ -40,10 +41,11 @@ export default async function RequisitionsPage({
         <WorkspaceError message={errorMessage} />
       ) : (
         <RequisitionWorkspace
-          initialRequisitions={requisitions}
+          initialRequisitions={requisitions as never}
           fiscalPeriodId={fiscalPeriodId}
           canCreate={canCreate}
           canSubmit={canSubmit}
+          canApprove={canApprove}
         />
       )}
     </div>
