@@ -74,43 +74,15 @@ const INSERT_TABLES = [
   "issues", "milestone_progress_updates", "milestones", "progress_evidence", "projects",
   "register_actions", "register_dependencies", "risks", "schedule_change_requests",
   "unmapped_transaction_queue", "variance_explanations",
-  "governed_master_records", "approval_delegations", "fiscal_period_module_controls",
-  "purchase_requisitions", "purchase_requisition_lines", "purchase_orders", "purchase_order_lines",
-  "supplier_invoices", "supplier_invoice_lines", "payment_requests", "approval_rule_versions",
+  "approval_rule_versions",
   "payers", "service_lines",
-  "rfqs", "rfq_lines", "rfq_suppliers",
-  "supplier_quotations", "supplier_quotation_lines",
-  "evaluation_criteria", "sourcing_evaluations", "sourcing_evaluation_scores",
-  "sourcing_awards", "sourcing_award_lines",
-  "procurement_policies", "procurement_contracts", "procurement_contract_lines",
-  "goods_receipts", "goods_receipt_lines",
-  "service_entries", "service_entry_lines",
-  "invoice_match_results", "invoice_match_exceptions",
-  "appraisal_acknowledgements", "appraisal_assignments", "appraisal_cycles",
-  "appraisal_goals", "appraisal_ratings", "appraisal_template_criteria", "appraisal_templates",
-  "period_close_checklist_templates", "period_close_checklist_items",
-  "period_close_instances", "period_close_item_results", "period_reopen_requests",
 ];
 const UPDATE_TABLES = [
   "actual_transactions", "approval_requests", "budget_change_requests", "budget_lines",
   "budget_versions", "commitments", "import_batches", "milestone_progress_updates",
   "milestones", "projects", "risks", "schedule_change_requests", "variance_explanations",
-  "governed_master_records", "approval_delegations", "fiscal_period_module_controls",
-  "purchase_requisitions", "purchase_requisition_lines", "purchase_orders", "purchase_order_lines",
-  "supplier_invoices", "supplier_invoice_lines", "payment_requests", "approval_rule_versions",
+  "approval_rule_versions",
   "payers", "service_lines",
-  "rfqs", "rfq_lines", "rfq_suppliers",
-  "supplier_quotations", "supplier_quotation_lines",
-  "evaluation_criteria", "sourcing_evaluations", "sourcing_evaluation_scores",
-  "sourcing_awards", "sourcing_award_lines",
-  "procurement_policies", "procurement_contracts", "procurement_contract_lines",
-  "goods_receipts", "goods_receipt_lines",
-  "service_entries", "service_entry_lines",
-  "invoice_match_results", "invoice_match_exceptions",
-  "appraisal_acknowledgements", "appraisal_assignments", "appraisal_cycles",
-  "appraisal_goals", "appraisal_ratings", "appraisal_template_criteria", "appraisal_templates",
-  "period_close_checklist_templates", "period_close_checklist_items",
-  "period_close_instances", "period_close_item_results", "period_reopen_requests",
 ];
 
 async function asRole(client, role, userId, fn) {
@@ -557,7 +529,7 @@ test("authorization catalog is complete and emits a machine-readable matrix", as
     WHERE schemaname = 'public'
     ORDER BY tablename, policyname
   `);
-  assert(policies.length === 206, `Expected 206 reviewed policies, found ${policies.length}`);
+  assert(policies.length === 205, `Expected 205 reviewed policies, found ${policies.length}`);
   assert(
     policies.every((policy) => String(policy.roles) === "{authenticated}"),
     "Every policy must explicitly target authenticated",
@@ -673,7 +645,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
     WHERE n.nspname = 'public'
     ORDER BY p.proname
   `);
-  assert(publicFunctions.length === 87, `Expected 87 public RPC wrappers, found ${publicFunctions.length}`);
+  assert(publicFunctions.length === 96, `Expected 96 public RPC wrappers, found ${publicFunctions.length}`);
   for (const fn of publicFunctions) {
     assert(fn.proname.startsWith("rpc_"), `Unexpected public function ${fn.proname}`);
     assert(fn.prosecdef, `${fn.proname} must be SECURITY DEFINER`);
@@ -705,6 +677,7 @@ test("functions have hardened schemas, paths, security modes, and ACLs", async (
   const triggerOnly = new Set([
     "deny_audit_mutation", "enforce_allocation_tenant_consistency", "enforce_leaf_posting",
     "prevent_cost_node_cycle", "prevent_inactive_cost_posting", "prevent_org_unit_cycle", "master_record_cycle_guard",
+    "enforce_governed_master_parent_scope",
     "protect_immutable_budget_line", "protect_immutable_budget_monthly", "protect_locked_budget_version",
     "protect_immutable_forecast_line", "protect_locked_forecast_version",
     "protect_milestone_baseline", "protect_phase_baseline", "protect_posted_actual",

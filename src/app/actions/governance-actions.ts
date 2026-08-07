@@ -20,10 +20,9 @@ import {
   masterRecordCreateDraft,
   masterRecordDeactivate,
   masterRecordReject,
+  periodChecklistSetResult,
   periodCloseEvaluateReadiness,
-  periodHardClose,
   periodHardCloseGated,
-  periodReopen,
   periodReopenApprove,
   periodReopenRequest,
   periodSoftClose,
@@ -431,20 +430,29 @@ export async function cancelDelegationAction(delegationId: string) {
 export async function hardClosePeriodAction(params: {
   fiscalPeriodId: string;
   module: string;
-  gated?: boolean;
 }) {
   return withActivePermission("period_close", "approve", async ({ legalEntityId, db }) => {
-    const args = {
+    await periodHardCloseGated(db, {
       fiscalPeriodId: params.fiscalPeriodId,
       legalEntityId,
       module: params.module,
-    };
-    if (params.gated !== false) {
-      await periodHardCloseGated(db, args);
-    } else {
-      await periodHardClose(db, args);
-    }
+    });
     return reloadPeriodControls(db, legalEntityId);
+  });
+}
+
+export async function setPeriodChecklistResultAction(params: {
+  itemResultId: string;
+  fiscalPeriodId: string;
+  module: string;
+  itemStatus: "passed" | "failed" | "waived";
+  evidenceReference?: string;
+  comments?: string;
+  waiverReason?: string;
+}) {
+  return withActivePermission("period_close", "approve", async ({ legalEntityId, db }) => {
+    await periodChecklistSetResult(db, params);
+    return getPeriodChecklistWorkspace(db, legalEntityId, params.fiscalPeriodId, params.module);
   });
 }
 
@@ -482,22 +490,6 @@ export async function approvePeriodReopenAction(params: {
       getPeriodChecklistWorkspace(db, legalEntityId, params.fiscalPeriodId, params.module),
     ]);
     return { controls, checklist };
-  });
-}
-
-export async function reopenPeriodAction(params: {
-  fiscalPeriodId: string;
-  module: string;
-  reason: string;
-}) {
-  return withActivePermission("period_close", "approve", async ({ legalEntityId, db }) => {
-    await periodReopen(db, {
-      fiscalPeriodId: params.fiscalPeriodId,
-      legalEntityId,
-      module: params.module,
-      reason: params.reason,
-    });
-    return reloadPeriodControls(db, legalEntityId);
   });
 }
 

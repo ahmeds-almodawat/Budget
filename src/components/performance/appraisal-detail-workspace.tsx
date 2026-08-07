@@ -10,6 +10,7 @@ import {
   acknowledgeAppraisalAction,
   finalizeAppraisalAction,
   managerSubmitAppraisalAction,
+  reviewerSubmitAppraisalAction,
   selfSubmitAppraisalAction,
 } from "@/app/actions/appraisal-actions";
 import {
@@ -64,10 +65,17 @@ export function AppraisalDetailWorkspace({
 
   const isEmployee = assignment.employee_id === currentUserId;
   const isManager = assignment.manager_id === currentUserId;
+  const isReviewer = assignment.reviewer_id === currentUserId;
+  const isParticipant = isEmployee || isManager || isReviewer;
 
   const updateLocal = (
     criterionId: string,
-    field: "self_rating" | "manager_rating" | "self_comment" | "manager_comment",
+    field:
+      | "self_rating"
+      | "manager_rating"
+      | "calibrated_rating"
+      | "self_comment"
+      | "manager_comment",
     value: string,
   ) => {
     setRatings((prev) =>
@@ -76,7 +84,9 @@ export function AppraisalDetailWorkspace({
           ? {
               ...r,
               [field]:
-                field === "self_rating" || field === "manager_rating"
+                field === "self_rating" ||
+                field === "manager_rating" ||
+                field === "calibrated_rating"
                   ? value === ""
                     ? null
                     : value
@@ -118,7 +128,7 @@ export function AppraisalDetailWorkspace({
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-2">
+              <CardContent className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
                   <label className="text-xs text-text-secondary">{t("selfRating")}</label>
                   <Input
@@ -157,6 +167,17 @@ export function AppraisalDetailWorkspace({
                     }
                     value={rating?.manager_comment ?? ""}
                     onChange={(e) => updateLocal(c.id, "manager_comment", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-text-secondary">{t("calibratedRating")}</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={c.max_scale}
+                    disabled={!isReviewer || assignment.assignment_status !== "reviewer_review"}
+                    value={rating?.calibrated_rating ?? ""}
+                    onChange={(e) => updateLocal(c.id, "calibrated_rating", e.target.value)}
                   />
                 </div>
               </CardContent>
@@ -221,8 +242,33 @@ export function AppraisalDetailWorkspace({
           </Button>
         ) : null}
 
-        {canManage &&
-        ["manager_submitted", "reviewer_review"].includes(assignment.assignment_status) ? (
+        {isReviewer && assignment.assignment_status === "reviewer_review" ? (
+          <Button
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                setError(null);
+                try {
+                  const updated = await reviewerSubmitAppraisalAction({
+                    assignmentId: assignment.id,
+                    ratings: ratings.map((rating) => ({
+                      criterion_id: rating.criterion_id,
+                      calibrated_rating: rating.calibrated_rating ?? undefined,
+                    })),
+                  });
+                  setAssignment(updated);
+                  setMessage(t("reviewerSubmitted"));
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : t("actionError"));
+                }
+              })
+            }
+          >
+            {t("reviewerSubmit")}
+          </Button>
+        ) : null}
+
+        {canManage && !isParticipant && assignment.assignment_status === "manager_submitted" ? (
           <Button
             disabled={pending}
             onClick={() =>

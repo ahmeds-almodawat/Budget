@@ -11,6 +11,7 @@ import {
   fetchPeriodChecklistAction,
   hardClosePeriodAction,
   requestPeriodReopenAction,
+  setPeriodChecklistResultAction,
   softClosePeriodAction,
 } from "@/app/actions/governance-actions";
 import { pickLocalized } from "@/lib/i18n/display";
@@ -49,6 +50,7 @@ export function PeriodCloseWorkspace({
   const [reopenReason, setReopenReason] = useState("");
   const [evidenceRef, setEvidenceRef] = useState("");
   const [decisionReason, setDecisionReason] = useState("");
+  const [itemEvidence, setItemEvidence] = useState<Record<string, string>>({});
   const [readiness, setReadiness] = useState<ReadinessPayload | null>(null);
   const [checklist, setChecklist] = useState<ChecklistPayload | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -114,11 +116,41 @@ export function PeriodCloseWorkspace({
         const updated = (await hardClosePeriodAction({
           fiscalPeriodId: selectedPeriod,
           module,
-          gated: true,
         })) as PeriodControlRow[];
         setControls(updated);
         setMessage(t("hardClosed", { module: t(`modules.${module}`) }));
         loadChecklistAndReadiness(selectedPeriod, module);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t("actionError"));
+      }
+    });
+  };
+
+  const handleChecklistResult = (
+    resultId: string,
+    status: "passed" | "failed" | "waived",
+  ) => {
+    startTransition(async () => {
+      setError(null);
+      setMessage(null);
+      try {
+        const detail = itemEvidence[resultId]?.trim();
+        const updated = await setPeriodChecklistResultAction({
+          itemResultId: resultId,
+          fiscalPeriodId: selectedPeriod,
+          module: selectedModule,
+          itemStatus: status,
+          evidenceReference: status === "passed" ? detail || undefined : undefined,
+          comments: status === "failed" ? detail || undefined : undefined,
+          waiverReason: status === "waived" ? detail || undefined : undefined,
+        });
+        setChecklist(updated);
+        setMessage(t("checklistResultSaved"));
+        const ready = await evaluatePeriodReadinessAction({
+          fiscalPeriodId: selectedPeriod,
+          module: selectedModule,
+        });
+        setReadiness(ready);
       } catch (err) {
         setError(err instanceof Error ? err.message : t("actionError"));
       }
@@ -288,6 +320,47 @@ export function PeriodCloseWorkspace({
                     ) : null}
                   </div>
                   <Badge variant="outline">{item.result_status ?? "pending"}</Badge>
+                  {canClose && item.item_type !== "automatic" && item.result_id ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        aria-label={t("itemEvidence")}
+                        className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                        value={itemEvidence[item.result_id] ?? ""}
+                        onChange={(event) =>
+                          setItemEvidence((current) => ({
+                            ...current,
+                            [item.result_id as string]: event.target.value,
+                          }))
+                        }
+                        placeholder={t("itemEvidence")}
+                      />
+                      <Button
+                        size="sm"
+                        disabled={pending}
+                        onClick={() => handleChecklistResult(item.result_id as string, "passed")}
+                      >
+                        {t("markPassed")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={pending}
+                        onClick={() => handleChecklistResult(item.result_id as string, "failed")}
+                      >
+                        {t("markFailed")}
+                      </Button>
+                      {canApproveReopen ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={pending || (itemEvidence[item.result_id]?.trim().length ?? 0) < 5}
+                          onClick={() => handleChecklistResult(item.result_id as string, "waived")}
+                        >
+                          {t("waiveItem")}
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>

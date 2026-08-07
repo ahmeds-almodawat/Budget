@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { actAsDelegateAction, fetchApprovalInboxAction } from "@/app/actions/approval-actions";
+import { fetchApprovalInboxAction } from "@/app/actions/approval-actions";
 import type { ApprovalTab } from "@/data/repositories/approval-repository";
 import { pickLocalized } from "@/lib/i18n/display";
 
@@ -37,11 +37,8 @@ export function ApprovalsWorkspace({
 }) {
   const locale = useLocale();
   const t = useTranslations("approvals");
-  const tCommon = useTranslations("common");
   const [tab, setTab] = useState<ApprovalTab>(initialTab);
   const [items, setItems] = useState(initialItems);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function switchTab(next: ApprovalTab) {
@@ -78,31 +75,6 @@ export function ApprovalsWorkspace({
     return Boolean(item.delegation_id) && item.effective_assignee_id === currentUserId;
   }
 
-  function decide(item: InboxItem, decision: "approved" | "rejected") {
-    startTransition(async () => {
-      setError(null);
-      setMessage(null);
-      try {
-        if (item.delegation_id && item.original_assignee_id) {
-          await actAsDelegateAction({
-            itemType: item.item_type,
-            entityId: item.entity_id,
-            decision,
-            originalAssigneeId: item.original_assignee_id,
-            delegationId: item.delegation_id,
-          });
-          setMessage(t(decision === "approved" ? "delegatedApproved" : "delegatedRejected"));
-          const refreshed = await fetchApprovalInboxAction(tab);
-          setItems(refreshed ?? []);
-        } else {
-          setError(t("directDecisionHint"));
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : t("actionError"));
-      }
-    });
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
@@ -118,9 +90,6 @@ export function ApprovalsWorkspace({
           </Button>
         ))}
       </div>
-
-      {message ? <p className="text-sm text-success">{message}</p> : null}
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       <Card>
         <CardHeader>
@@ -163,19 +132,7 @@ export function ApprovalsWorkspace({
                     </p>
                   ) : null}
                   {delegated && (tab === "awaiting" || tab === "delegated" || tab === "overdue") ? (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Button size="sm" disabled={pending} onClick={() => decide(item, "approved")}>
-                        {tCommon("approve")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={pending}
-                        onClick={() => decide(item, "rejected")}
-                      >
-                        {tCommon("reject")}
-                      </Button>
-                    </div>
+                    <p className="mt-2 text-xs text-warning">{t("delegatedReadOnly")}</p>
                   ) : null}
                 </li>
               );

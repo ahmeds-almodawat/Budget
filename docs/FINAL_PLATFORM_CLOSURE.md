@@ -1,6 +1,6 @@
 # Final Platform Closure
 
-**Status:** REQUIRED MODULES COMPLETE (LOCAL ULTRA MEGA) — NOT PRODUCTION READY
+**Status:** FINAL AUDIT CHECKPOINT — REQUIRED MODULE BLOCKERS REMAIN
 **Repository:** `ahmeds-almodawat/Budget`
 **Branch:** `feat/mega-finish-platform`
 **Prior closure checkpoint SHA:** `99ca3959a4c6b87af18327538f2b8b0e43af361c`
@@ -9,7 +9,7 @@
 
 ## Executive decision
 
-The earlier route-authorization and primary-route closure checkpoint remains valid. On top of SHA `d448c39…`, the ULTRA MEGA tranche implements the previously missing **required modules**: procurement lifecycle from RFQ through payment readiness (stop before bank), delegation effective-assignee inbox resolution, master-data hierarchy and deactivate, period-close checklist with gated hard close and senior reopen, and employee appraisal lifecycle with privacy RLS.
+The earlier route-authorization and primary-route closure checkpoint remains valid. The subsequent independent final audit found that the ULTRA MEGA tranche is only partial: route surfaces exist, but procurement matching/commitment integrity, delegated assignment routing, governed configuration paths, and parts of appraisal administration are not complete. `CODEX_FINAL_ULTRA_MEGA_AUDIT.md` is the controlling evidence.
 
 This is **not** production readiness. Banking execution, production IdP/storage/email, remote deploy/runbooks, and the moderate `exceljs`/`uuid` audit finding remain excluded or open. Do not label the platform production-ready.
 
@@ -31,11 +31,11 @@ Work is limited to the local repository and local Supabase stack. No production 
 - Fifteen report types with permission-aware audit/export access and formula-injection-safe exports.
 - Dual-theme E2E path without arbitrary one-second waits; active-entity selector without mount-time waterfalls.
 
-### ULTRA MEGA required modules (now complete locally)
+### ULTRA MEGA required modules (partial; final-audit blockers remain)
 
 - **Procurement:** RFQ → quotation → evaluation/award → PO (commitment on **issue**) → receipt/service entry → supplier invoice match → payment request **ready-for-payment**. No automatic `actual_transactions` from procurement. Supplier = extended `vendors` table.
 - **SOD:** Requisition, award, PO/contract/invoice/payment, period reopen, and appraisal self-management controls enforced in RPCs.
-- **Delegation:** `resolve_effective_approver` + `v_approval_inbox` / `v_delegated_approval_inbox` + act-as-delegate UI.
+- **Delegation:** decision actions now fail closed and the delegated inbox is empty until real workflow assignees and atomic underlying transitions are implemented.
 - **Master data:** Full governed record-type set in UI, hierarchy browse, deactivate/reject.
 - **Period close:** Checklist blockers, gated hard close, senior-admin reopen approval with SOD.
 - **Appraisals:** Cycle/template/assignment lifecycle with employee/manager privacy RLS; scorecard retained alongside appraisals.
@@ -60,7 +60,7 @@ Status reflects the live route after ULTRA MEGA. Production IdP/storage/bank rem
 | `/actuals` | Functional | Posted actual, import, duplicate, mapping, and allocation queues |
 | `/administration` | Functional partial | Read-only membership/role inventory; **production identity administration excluded** |
 | `/approval-rules` | Functional partial | Version catalog and simulation; **rule retention on submit remains** |
-| `/approvals` | Functional | Delegated inbox resolution and act-as-delegate decisions |
+| `/approvals` | Functional partial | Ordinary approval views work; delegated decisions are intentionally disabled pending atomic assignee-aware routing |
 | `/audit` | Functional | Tenant-scoped append-only audit search RPC |
 | `/budgets` | Functional | Hospital and revenue budget workflows |
 | `/budgets/transactions/[lineId]` | Functional | Budget-line transaction drill-down |
@@ -112,7 +112,7 @@ The machine-readable inventory in `src/config/route-inventory.ts` is exact-compa
 | Evaluation / award | Yes | Submit evaluation; create/approve award | Yes | Complete (local) |
 | Purchase order | Yes | Create-from-award, submit, approve, issue, cancel | Yes | Complete (local) |
 | Commitment on issue | Yes | Atomic with PO issue | Commitments workspace | Complete (local) |
-| Contract | Yes | Create, approve, activate | Yes | Complete (local) |
+| Contract | Yes | Create, submit, approve/reject, activate, close/terminate/expire | Yes | Lifecycle corrected; wider procurement blockers remain |
 | Goods receipt / service entry | Yes | Create and accept | Yes | Complete (local) |
 | Supplier invoice + matching | Yes | Create, match, override, approve | Yes | Complete (local) |
 | Payment request | Yes | Create, submit, approve (= ready-for-payment) | Yes | Complete through readiness |
@@ -146,7 +146,7 @@ Treat the prior table as historical for the authorization checkpoint. Re-run acc
 
 ## Remaining production exclusions and open items
 
-Required modules for ULTRA MEGA local scope are complete. Remaining blockers to any production claim:
+Required modules are not complete. In addition to the intentional exclusions below, the final audit records merge-blocking procurement, delegation, master-data, period-configuration, and appraisal gaps:
 
 1. **No bank / payment execution** — stop at ready-for-payment (intentional).
 2. **No production IdP / OAuth administration** — administration stays read-only inventory.
@@ -161,4 +161,4 @@ Required modules for ULTRA MEGA local scope are complete. Remaining blockers to 
 
 Review ULTRA MEGA as **required-module completion for local enterprise control**, not as production cutover. Keep production readiness as a separately authorized effort. Do not open a “platform complete / production ready” PR on documentation alone.
 
-**Final status:** REQUIRED MODULES COMPLETE (LOCAL ULTRA MEGA) — NOT PRODUCTION READY
+**Final status:** FINAL AUDIT CHECKPOINT — REQUIRED MODULE BLOCKERS REMAIN

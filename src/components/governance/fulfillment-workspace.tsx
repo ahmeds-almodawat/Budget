@@ -13,14 +13,19 @@ import {
   approveContractAction,
   approvePaymentRequestAction,
   approveSupplierInvoiceAction,
+  closeContractAction,
   createContractAction,
   createGoodsReceiptAction,
   createPaymentRequestAction,
   createServiceEntryAction,
   createSupplierInvoiceAction,
+  expireContractAction,
   matchSupplierInvoiceAction,
   overrideInvoiceMatchAction,
+  rejectContractAction,
+  submitContractAction,
   submitPaymentRequestAction,
+  terminateContractAction,
 } from "@/app/actions/procurement-actions";
 import { formatMoney } from "@/lib/money";
 import { pickLocalized } from "@/lib/i18n/display";
@@ -65,6 +70,32 @@ export function ContractWorkspace({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const transitionContract = (
+    contractId: string,
+    action: (id: string) => Promise<unknown>,
+    successKey:
+      | "contractSubmitted"
+      | "contractApproved"
+      | "contractActivated"
+      | "contractRejected"
+      | "contractClosed"
+      | "contractTerminated"
+      | "contractExpired",
+  ) => {
+    startTransition(async () => {
+      setError(null);
+      try {
+        const updated = await action(contractId);
+        setRows((prev) =>
+          prev.map((row) => (row.id === contractId ? (updated as (typeof rows)[0]) : row)),
+        );
+        setMessage(t(successKey));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t("actionError"));
+      }
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -140,42 +171,70 @@ export function ContractWorkspace({
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline">{c.contract_status}</Badge>
-                {canApprove && c.contract_status === "submitted" ? (
+                {canUpdate && c.contract_status === "draft" ? (
                   <Button
                     size="sm"
                     disabled={pending}
-                    onClick={() => {
-                      startTransition(async () => {
-                        try {
-                          const updated = await approveContractAction(c.id);
-                          setRows((prev) => prev.map((r) => (r.id === c.id ? (updated as (typeof rows)[0]) : r)));
-                          setMessage(t("contractApproved"));
-                        } catch (err) {
-                          setError(err instanceof Error ? err.message : t("actionError"));
-                        }
-                      });
-                    }}
+                    onClick={() => transitionContract(c.id, submitContractAction, "contractSubmitted")}
                   >
-                    {t("approveContract")}
+                    {t("submitContract")}
                   </Button>
+                ) : null}
+                {canApprove && c.contract_status === "submitted" ? (
+                  <>
+                    <Button
+                      size="sm"
+                      disabled={pending}
+                      onClick={() => transitionContract(c.id, approveContractAction, "contractApproved")}
+                    >
+                      {t("approveContract")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() => transitionContract(c.id, rejectContractAction, "contractRejected")}
+                    >
+                      {t("rejectContract")}
+                    </Button>
+                  </>
                 ) : null}
                 {canUpdate && c.contract_status === "approved" ? (
                   <Button
                     size="sm"
                     disabled={pending}
-                    onClick={() => {
-                      startTransition(async () => {
-                        try {
-                          const updated = await activateContractAction(c.id);
-                          setRows((prev) => prev.map((r) => (r.id === c.id ? (updated as (typeof rows)[0]) : r)));
-                          setMessage(t("contractActivated"));
-                        } catch (err) {
-                          setError(err instanceof Error ? err.message : t("actionError"));
-                        }
-                      });
-                    }}
+                    onClick={() => transitionContract(c.id, activateContractAction, "contractActivated")}
                   >
                     {t("activateContract")}
+                  </Button>
+                ) : null}
+                {canUpdate && c.contract_status === "active" ? (
+                  <>
+                    <Button
+                      size="sm"
+                      disabled={pending}
+                      onClick={() => transitionContract(c.id, closeContractAction, "contractClosed")}
+                    >
+                      {t("closeContract")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() => transitionContract(c.id, expireContractAction, "contractExpired")}
+                    >
+                      {t("expireContract")}
+                    </Button>
+                  </>
+                ) : null}
+                {canApprove && c.contract_status === "active" ? (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={pending}
+                    onClick={() => transitionContract(c.id, terminateContractAction, "contractTerminated")}
+                  >
+                    {t("terminateContract")}
                   </Button>
                 ) : null}
               </div>

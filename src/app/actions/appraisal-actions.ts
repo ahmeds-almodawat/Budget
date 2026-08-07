@@ -4,13 +4,14 @@ import { withActivePermission } from "@/lib/auth/action-guard";
 import {
   appraisalAcknowledge,
   appraisalAssignmentCreate,
+  appraisalCycleCreate,
   appraisalCycleActivate,
   appraisalFinalize,
   appraisalManagerSubmit,
+  appraisalReviewerSubmit,
   appraisalSelfSubmit,
 } from "@/lib/commands";
 import {
-  createAppraisalCycle,
   getAppraisalAssignment,
   getAssignmentRatings,
   listAllAssignments,
@@ -70,13 +71,19 @@ export async function createAppraisalCycleAction(params: {
   managerDeadline?: string;
   reviewDeadline?: string;
 }) {
-  return withActivePermission("appraisal", "create", async ({ ctx, legalEntityId, db }) =>
-    createAppraisalCycle(db, {
+  return withActivePermission("appraisal", "create", async ({ legalEntityId, db }) => {
+    const result = await appraisalCycleCreate(db, {
       legalEntityId,
-      createdBy: ctx.userId,
       ...params,
-    }),
-  );
+    });
+    const { data, error } = await db
+      .from("appraisal_cycles")
+      .select("*")
+      .eq("id", result.entity_id as string)
+      .single();
+    if (error || !data) throw new DataAccessError("Cycle not found.", "NOT_FOUND");
+    return data;
+  });
 }
 
 export async function activateAppraisalCycleAction(cycleId: string) {
@@ -118,6 +125,16 @@ export async function managerSubmitAppraisalAction(params: {
 }) {
   return withActivePermission("appraisal", "approve", async ({ db }) => {
     await appraisalManagerSubmit(db, params);
+    return getAppraisalAssignment(db, params.assignmentId);
+  });
+}
+
+export async function reviewerSubmitAppraisalAction(params: {
+  assignmentId: string;
+  ratings: Array<{ criterion_id: string; calibrated_rating?: number | string }>;
+}) {
+  return withActivePermission("appraisal", "approve", async ({ db }) => {
+    await appraisalReviewerSubmit(db, params);
     return getAppraisalAssignment(db, params.assignmentId);
   });
 }

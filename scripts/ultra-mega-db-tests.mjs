@@ -495,6 +495,17 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
       );
       assert(po.rows[0].r.ok, `PO from award failed: ${JSON.stringify(po.rows[0].r)}`);
       assert(po.rows[0].r.entity_id, "PO entity_id missing");
+      const duplicate = await client.query(
+        `SELECT public.rpc_po_create_from_award($1::uuid, $2::uuid, 'duplicate', $3, NULL) AS r`,
+        [award.rows[0].r.entity_id, periodId, `idem-po-duplicate-${Date.now()}`],
+      );
+      assert(!duplicate.rows[0].r.ok, "A second live PO for the same award must fail");
+      const count = await client.query(
+        `SELECT count(*)::int AS c FROM public.purchase_orders
+         WHERE award_id = $1::uuid AND po_status <> 'cancelled'`,
+        [award.rows[0].r.entity_id],
+      );
+      assert(count.rows[0].c === 1, `Expected one live PO, found ${count.rows[0].c}`);
     } finally {
       await client.query("ROLLBACK");
     }
@@ -701,13 +712,15 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
   });
 
   test("UM-15 active delegation resolves finance assignee to cost controller", async (client) => {
-    const { rows } = await client.query(
-      `SELECT effective_assignee_id, delegation_id
-       FROM private.resolve_effective_approver($1::uuid, $2::uuid, 'purchase_requisition')`,
-      [FINANCE, ENTITY],
-    );
-    assert(rows[0].effective_assignee_id === COST_CTRL, "Delegation did not resolve to cost controller");
-    assert(rows[0].delegation_id === DELEGATION, "Unexpected delegation id");
+    await asRole(client, "authenticated", COST_CTRL, async () => {
+      const { rows } = await client.query(
+        `SELECT effective_assignee_id, delegation_id
+         FROM private.resolve_effective_approver($1::uuid, $2::uuid, 'purchase_requisition')`,
+        [FINANCE, ENTITY],
+      );
+      assert(rows[0].effective_assignee_id === COST_CTRL, "Delegation did not resolve to cost controller");
+      assert(rows[0].delegation_id === DELEGATION, "Unexpected delegation id");
+    });
   });
 
   test("UM-16 revoked delegation restores original assignee", async (client) => {
@@ -719,6 +732,7 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
          WHERE id = $2::uuid`,
         [APPROVER, DELEGATION],
       );
+      await authAs(client, COST_CTRL);
       const { rows } = await client.query(
         `SELECT effective_assignee_id, delegation_id
          FROM private.resolve_effective_approver($1::uuid, $2::uuid, 'purchase_requisition')`,
@@ -970,6 +984,440 @@ export function registerUltraMegaDbTests(test, assert, asRole) {
         [req.rows[0].r.entity_id, `idem-reopen-admin-${Date.now()}`],
       );
       assert(approved.rows[0].r.ok, `admin reopen approve failed: ${JSON.stringify(approved.rows[0].r)}`);
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-29 lifecycle tables are read-only to ordinary authenticated SQL", async (client) => {
+    const sensitiveTables = [
+      "purchase_requisitions", "purchase_requisition_lines", "rfqs", "rfq_lines",
+      "supplier_quotations", "sourcing_evaluations", "sourcing_awards",
+      "purchase_orders", "purchase_order_lines", "procurement_contracts",
+      "goods_receipts", "service_entries", "supplier_invoices", "payment_requests",
+      "approval_delegations", "fiscal_period_module_controls", "period_close_instances",
+      "period_close_item_results", "period_reopen_requests", "appraisal_cycles",
+      "appraisal_assignments", "appraisal_ratings", "appraisal_goals",
+      "appraisal_acknowledgements", "governed_master_records",
+    ];
+    for (const table of sensitiveTables) {
+      const { rows } = await client.query(
+        `SELECT
+           has_table_privilege('authenticated', format('public.%I', $1::text), 'SELECT') AS can_select,
+           has_table_privilege('authenticated', format('public.%I', $1::text), 'INSERT') AS can_insert,
+           has_table_privilege('authenticated', format('public.%I', $1::text), 'UPDATE') AS can_update,
+           has_table_privilege('authenticated', format('public.%I', $1::text), 'DELETE') AS can_delete`,
+        [table],
+      );
+      assert(rows[0].can_select, `${table} lost required SELECT`);
+      assert(!rows[0].can_insert, `${table} retained direct INSERT`);
+      assert(!rows[0].can_update, `${table} retained direct UPDATE`);
+      assert(!rows[0].can_delete, `${table} retained direct DELETE`);
+    }
+  });
+
+  test("UM-30 contract follows draft → submitted → approved → active → closed", async (client) => {
+    await client.query("BEGIN");
+    try {
+      await authAs(client, COST_CTRL);
+      const created = await client.query(
+        `SELECT public.rpc_contract_create(
+           $1::uuid, $2::uuid, $3, 'Lifecycle Contract', 'عقد دورة حياة',
+           CURRENT_DATE, CURRENT_DATE + 30, 1000, NULL, 'SAR', NULL, $4, NULL
+         ) AS r`,
+        [ENTITY, VENDOR_A, `UM-CTR-${Date.now()}`, `idem-contract-create-${Date.now()}`],
+      );
+      assert(created.rows[0].r.ok, `Contract create failed: ${JSON.stringify(created.rows[0].r)}`);
+      const contractId = created.rows[0].r.entity_id;
+
+      const submitted = await client.query(
+        `SELECT public.rpc_contract_submit($1::uuid, 'draft', $2, NULL) AS r`,
+        [contractId, `idem-contract-submit-${Date.now()}`],
+      );
+      assert(submitted.rows[0].r.contract_status === "submitted", "Contract did not submit");
+
+      const secondSubmit = await client.query(
+        `SELECT public.rpc_contract_submit($1::uuid, 'draft', $2, NULL) AS r`,
+        [contractId, `idem-contract-submit-again-${Date.now()}`],
+      );
+      assert(!secondSubmit.rows[0].r.ok, "Conflicting second contract transition must fail");
+
+      await authAs(client, APPROVER);
+      const approved = await client.query(
+        `SELECT public.rpc_contract_approve($1::uuid, 'submitted', $2, NULL) AS r`,
+        [contractId, `idem-contract-approve-${Date.now()}`],
+      );
+      assert(approved.rows[0].r.contract_status === "approved", "Contract did not approve");
+
+      await authAs(client, GROUP_ADMIN);
+      const activated = await client.query(
+        `SELECT public.rpc_contract_activate($1::uuid, 'approved', $2, NULL) AS r`,
+        [contractId, `idem-contract-activate-${Date.now()}`],
+      );
+      assert(activated.rows[0].r.contract_status === "active", "Contract did not activate");
+      const closed = await client.query(
+        `SELECT public.rpc_contract_close($1::uuid, 'active', $2, NULL) AS r`,
+        [contractId, `idem-contract-close-${Date.now()}`],
+      );
+      assert(closed.rows[0].r.contract_status === "closed", "Contract did not close");
+
+      const state = await client.query(
+        `SELECT contract_status, created_by, submitted_by, approved_by
+         FROM public.procurement_contracts WHERE id = $1::uuid`,
+        [contractId],
+      );
+      assert(state.rows[0].contract_status === "closed", "Stored contract state is not closed");
+      assert(state.rows[0].created_by === COST_CTRL, "Contract creator audit actor is wrong");
+      assert(state.rows[0].submitted_by === COST_CTRL, "Contract submit actor is wrong");
+      assert(state.rows[0].approved_by === APPROVER, "Contract approver actor is wrong");
+
+      await client.query("SET LOCAL role postgres");
+      const audits = await client.query(
+        `SELECT count(*)::int AS c FROM public.audit_events
+         WHERE entity_type = 'procurement_contract' AND entity_id = $1::uuid`,
+        [contractId],
+      );
+      assert(audits.rows[0].c === 5, `Expected five contract audit events, found ${audits.rows[0].c}`);
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-31 delegated decision fails closed without item or audit mutation", async (client) => {
+    await client.query("BEGIN");
+    try {
+      const fakeEntity = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee901";
+      const before = await client.query(
+        `SELECT count(*)::int AS c FROM public.approval_decision_audit
+         WHERE item_type = 'purchase_requisition' AND entity_id = $1::uuid`,
+        [fakeEntity],
+      );
+      await authAs(client, COST_CTRL);
+      const decision = await client.query(
+        `SELECT public.rpc_approval_act_as_delegate(
+           'purchase_requisition', $1::uuid, 'approved', $2::uuid, $3::uuid,
+           'must not record', $4, NULL
+         ) AS r`,
+        [fakeEntity, FINANCE, DELEGATION, `idem-delegate-disabled-${Date.now()}`],
+      );
+      assert(!decision.rows[0].r.ok, "Disabled delegated decision unexpectedly succeeded");
+      const after = await client.query(
+        `SELECT count(*)::int AS c FROM public.approval_decision_audit
+         WHERE item_type = 'purchase_requisition' AND entity_id = $1::uuid`,
+        [fakeEntity],
+      );
+      assert(after.rows[0].c === before.rows[0].c, "Failed delegated decision wrote decision evidence");
+      const inbox = await client.query(
+        `SELECT count(*)::int AS c FROM public.v_delegated_approval_inbox`,
+      );
+      assert(inbox.rows[0].c === 0, "Delegated inbox exposed requester-derived pseudo-assignments");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-32 required checklist absence blocks hard close", async (client) => {
+    await client.query("BEGIN");
+    try {
+      const periodId = await fiscalPeriodId(client, 11);
+      await client.query(
+        `INSERT INTO public.period_close_checklist_templates (
+           id, legal_entity_id, module, code, name_en, name_ar, is_active
+         ) VALUES (
+           'eeeeeeee-eeee-eeee-eeee-eeeeeeeee911', $1::uuid, 'forecasts',
+           'UM-FORECAST-CLOSE', 'Forecast close', 'إغلاق التوقع', true
+         )`,
+        [ENTITY],
+      );
+      await client.query(
+        `INSERT INTO public.period_close_checklist_items (
+           id, template_id, sequence_no, name_en, name_ar, item_type,
+           owner_role_code, is_required, is_blocking
+         ) VALUES (
+           'eeeeeeee-eeee-eeee-eeee-eeeeeeeee912',
+           'eeeeeeee-eeee-eeee-eeee-eeeeeeeee911', 1,
+           'Forecast evidence', 'دليل التوقع', 'manual', 'finance_user', true, true
+         )`,
+      );
+      await client.query(
+        `INSERT INTO public.fiscal_period_module_controls (
+           fiscal_period_id, legal_entity_id, module, control_state
+         ) VALUES ($1::uuid, $2::uuid, 'forecasts', 'soft_close')
+         ON CONFLICT (fiscal_period_id, legal_entity_id, module)
+         DO UPDATE SET control_state = 'soft_close'`,
+        [periodId, ENTITY],
+      );
+      await authAs(client, FINANCE);
+      const closed = await client.query(
+        `SELECT public.rpc_period_hard_close_gated(
+           $1::uuid, $2::uuid, 'forecasts', 'soft_close', $3, NULL
+         ) AS r`,
+        [periodId, ENTITY, `idem-missing-checklist-${Date.now()}`],
+      );
+      assert(!closed.rows[0].r.ok, "Hard close succeeded without required checklist instance");
+      const state = await client.query(
+        `SELECT control_state FROM public.fiscal_period_module_controls
+         WHERE fiscal_period_id = $1::uuid AND legal_entity_id = $2::uuid AND module = 'forecasts'`,
+        [periodId, ENTITY],
+      );
+      assert(state.rows[0].control_state === "soft_close", "Failed hard close changed period state");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-33 completed audited checklist permits hard close", async (client) => {
+    await client.query("BEGIN");
+    try {
+      const periodId = await fiscalPeriodId(client, 12);
+      const templateId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee921";
+      const itemId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee922";
+      const instanceId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee923";
+      const resultId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee924";
+      await client.query(
+        `INSERT INTO public.period_close_checklist_templates (
+           id, legal_entity_id, module, code, name_en, name_ar, is_active
+         ) VALUES ($1::uuid, $2::uuid, 'forecasts', 'UM-FORECAST-CLOSE-PASS',
+           'Forecast close', 'إغلاق التوقع', true)`,
+        [templateId, ENTITY],
+      );
+      await client.query(
+        `INSERT INTO public.period_close_checklist_items (
+           id, template_id, sequence_no, name_en, name_ar, item_type,
+           owner_role_code, is_required, is_blocking
+         ) VALUES ($1::uuid, $2::uuid, 1, 'Forecast evidence', 'دليل التوقع',
+           'manual', 'finance_user', true, true)`,
+        [itemId, templateId],
+      );
+      await client.query(
+        `INSERT INTO public.period_close_instances (
+           id, legal_entity_id, fiscal_period_id, module, template_id, created_by
+         ) VALUES ($1::uuid, $2::uuid, $3::uuid, 'forecasts', $4::uuid, $5::uuid)`,
+        [instanceId, ENTITY, periodId, templateId, FINANCE],
+      );
+      await client.query(
+        `INSERT INTO public.period_close_item_results (
+           id, instance_id, checklist_item_id, item_status
+         ) VALUES ($1::uuid, $2::uuid, $3::uuid, 'pending')`,
+        [resultId, instanceId, itemId],
+      );
+      await client.query(
+        `INSERT INTO public.fiscal_period_module_controls (
+           fiscal_period_id, legal_entity_id, module, control_state
+         ) VALUES ($1::uuid, $2::uuid, 'forecasts', 'soft_close')
+         ON CONFLICT (fiscal_period_id, legal_entity_id, module)
+         DO UPDATE SET control_state = 'soft_close'`,
+        [periodId, ENTITY],
+      );
+
+      await authAs(client, FINANCE);
+      const completed = await client.query(
+        `SELECT public.rpc_period_checklist_set_result(
+           $1::uuid, 'passed', 'evidence://um-33', 'reconciled', NULL, $2, NULL
+         ) AS r`,
+        [resultId, `idem-checklist-pass-${Date.now()}`],
+      );
+      assert(completed.rows[0].r.ok, `Checklist completion failed: ${JSON.stringify(completed.rows[0].r)}`);
+      const closed = await client.query(
+        `SELECT public.rpc_period_hard_close_gated(
+           $1::uuid, $2::uuid, 'forecasts', 'soft_close', $3, NULL
+         ) AS r`,
+        [periodId, ENTITY, `idem-checklist-close-${Date.now()}`],
+      );
+      assert(closed.rows[0].r.ok, `Completed checklist did not close: ${JSON.stringify(closed.rows[0].r)}`);
+      const state = await client.query(
+        `SELECT control_state FROM public.fiscal_period_module_controls
+         WHERE fiscal_period_id = $1::uuid AND legal_entity_id = $2::uuid AND module = 'forecasts'`,
+        [periodId, ENTITY],
+      );
+      assert(state.rows[0].control_state === "hard_close", "Hard close state was not stored");
+      await client.query("SET LOCAL role postgres");
+      const audits = await client.query(
+        `SELECT count(*)::int AS c FROM public.audit_events
+         WHERE entity_type = 'period_close_item_result' AND entity_id = $1::uuid
+           AND actor_id = $2::uuid`,
+        [resultId, FINANCE],
+      );
+      assert(audits.rows[0].c === 1, "Checklist completion audit actor or count is wrong");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-34 appraisal field ownership rejects direct writes and accepts self RPC", async (client) => {
+    await client.query("BEGIN");
+    try {
+      await client.query(
+        `INSERT INTO public.appraisal_ratings (assignment_id, criterion_id)
+         VALUES ($1::uuid, $2::uuid), ($1::uuid, $3::uuid)
+         ON CONFLICT (assignment_id, criterion_id) DO UPDATE SET
+           self_rating = NULL, manager_rating = NULL, calibrated_rating = NULL`,
+        [APPRAISAL_ASSIGNMENT, CRITERION_DELIVERY, CRITERION_COLLAB],
+      );
+      await client.query(
+        `UPDATE public.appraisal_assignments SET assignment_status = 'employee_self_review',
+           final_score = NULL, finalized_at = NULL, finalized_by = NULL
+         WHERE id = $1::uuid`,
+        [APPRAISAL_ASSIGNMENT],
+      );
+      await authAs(client, EMPLOYEE);
+
+      await client.query("SAVEPOINT appraisal_direct_write");
+      let directFailed = false;
+      try {
+        await client.query(
+          `UPDATE public.appraisal_ratings SET manager_rating = 999
+           WHERE assignment_id = $1::uuid`,
+          [APPRAISAL_ASSIGNMENT],
+        );
+      } catch {
+        directFailed = true;
+        await client.query("ROLLBACK TO SAVEPOINT appraisal_direct_write");
+      }
+      assert(directFailed, "Employee directly altered manager appraisal fields");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+
+    await client.query("BEGIN");
+    try {
+      await client.query(
+        `INSERT INTO public.appraisal_ratings (assignment_id, criterion_id)
+         VALUES ($1::uuid, $2::uuid), ($1::uuid, $3::uuid)
+         ON CONFLICT (assignment_id, criterion_id) DO UPDATE SET self_rating = NULL`,
+        [APPRAISAL_ASSIGNMENT, CRITERION_DELIVERY, CRITERION_COLLAB],
+      );
+      await client.query(
+        `UPDATE public.appraisal_assignments SET assignment_status = 'employee_self_review'
+         WHERE id = $1::uuid`,
+        [APPRAISAL_ASSIGNMENT],
+      );
+      await authAs(client, EMPLOYEE);
+      const submitted = await client.query(
+        `SELECT public.rpc_appraisal_self_submit(
+           $1::uuid,
+           jsonb_build_array(
+             jsonb_build_object('criterion_id', $2::uuid, 'self_rating', 5, 'self_comment', 'delivery'),
+             jsonb_build_object('criterion_id', $3::uuid, 'self_rating', 4, 'self_comment', 'collaboration')
+           ), 'employee_self_review', $4, NULL
+         ) AS r`,
+        [APPRAISAL_ASSIGNMENT, CRITERION_DELIVERY, CRITERION_COLLAB, `idem-self-exact-${Date.now()}`],
+      );
+      assert(submitted.rows[0].r.assignment_status === "self_submitted", "Self RPC did not transition assignment");
+      const stored = await client.query(
+        `SELECT assignment_status, count(*) FILTER (WHERE self_rating IS NOT NULL)::int AS rated
+         FROM public.appraisal_assignments AS aa
+         JOIN public.appraisal_ratings AS ar ON ar.assignment_id = aa.id
+         WHERE aa.id = $1::uuid GROUP BY aa.assignment_status`,
+        [APPRAISAL_ASSIGNMENT],
+      );
+      assert(stored.rows[0].assignment_status === "self_submitted", "Stored self-submit state is wrong");
+      assert(stored.rows[0].rated === 2, "Self-submit did not store every rating");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-35 appraisal peer identity RPC is names-only and relationship-scoped", async (client) => {
+    await asRole(client, "authenticated", EMPLOYEE, async () => {
+      const { rows } = await client.query(
+        `SELECT * FROM public.rpc_appraisal_peer_identities($1::uuid)`,
+        [ENTITY],
+      );
+      assert(rows.length >= 2, "Employee could not resolve appraisal relationship names");
+      assert(
+        Object.keys(rows[0]).sort().join(",") === "full_name_ar,full_name_en,id",
+        `Peer RPC exposed unexpected columns: ${Object.keys(rows[0]).join(",")}`,
+      );
+    });
+    await asRole(client, "authenticated", VIEWER, async () => {
+      const { rows } = await client.query(
+        `SELECT * FROM public.rpc_appraisal_peer_identities($1::uuid)`,
+        [ENTITY],
+      );
+      assert(rows.length === 0, "Unrelated employee saw appraisal peer identities");
+    });
+  });
+
+  test("UM-36 fiscal period and workflow legal entity cannot be mixed", async (client) => {
+    await client.query("BEGIN");
+    try {
+      const otherEntity = "11111111-1111-1111-1111-111111111103";
+      const otherYear = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee941";
+      const otherPeriod = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee942";
+      await client.query(
+        `INSERT INTO public.fiscal_years (
+           id, legal_entity_id, year_label, start_date, end_date
+         ) VALUES ($1::uuid, $2::uuid, 'UM-OTHER-2028', '2028-01-01', '2028-12-31')`,
+        [otherYear, otherEntity],
+      );
+      await client.query(
+        `INSERT INTO public.fiscal_periods (
+           id, fiscal_year_id, period_number, start_date, end_date
+         ) VALUES ($1::uuid, $2::uuid, 1, '2028-01-01', '2028-01-31')`,
+        [otherPeriod, otherYear],
+      );
+      await client.query("SAVEPOINT period_entity_scope");
+      let blocked = false;
+      try {
+        await client.query(
+          `INSERT INTO public.fiscal_period_module_controls (
+             fiscal_period_id, legal_entity_id, module, control_state
+           ) VALUES ($1::uuid, $2::uuid, 'procurement', 'open')`,
+          [otherPeriod, ENTITY],
+        );
+      } catch {
+        blocked = true;
+        await client.query("ROLLBACK TO SAVEPOINT period_entity_scope");
+      }
+      assert(blocked, "Cross-entity fiscal period association was accepted");
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  });
+
+  test("UM-37 failed reopen approval leaves request submitted and period unchanged", async (client) => {
+    await client.query("BEGIN");
+    try {
+      const periodId = await fiscalPeriodId(client, 11);
+      const requestId = "eeeeeeee-eeee-eeee-eeee-eeeeeeeee951";
+      await client.query(
+        `INSERT INTO public.fiscal_period_module_controls (
+           fiscal_period_id, legal_entity_id, module, control_state
+         ) VALUES ($1::uuid, $2::uuid, 'reporting', 'open')
+         ON CONFLICT (fiscal_period_id, legal_entity_id, module)
+         DO UPDATE SET control_state = 'open'`,
+        [periodId, ENTITY],
+      );
+      await client.query(
+        `INSERT INTO public.period_reopen_requests (
+           id, legal_entity_id, fiscal_period_id, module, requested_by,
+           status, reason, requested_at
+         ) VALUES ($1::uuid, $2::uuid, $3::uuid, 'reporting', $4::uuid,
+           'submitted', 'Atomic failure test', NOW())`,
+        [requestId, ENTITY, periodId, FINANCE],
+      );
+      await authAs(client, GROUP_ADMIN);
+      const result = await client.query(
+        `SELECT public.rpc_period_reopen_approve(
+           $1::uuid, 'Should remain submitted', 'submitted', $2, NULL
+         ) AS r`,
+        [requestId, `idem-reopen-atomic-${Date.now()}`],
+      );
+      assert(!result.rows[0].r.ok, "Reopen approval unexpectedly succeeded from an open period");
+      await client.query("SET LOCAL role postgres");
+      const state = await client.query(
+        `SELECT prr.status, fpmc.control_state
+         FROM public.period_reopen_requests AS prr
+         JOIN public.fiscal_period_module_controls AS fpmc
+           ON fpmc.fiscal_period_id = prr.fiscal_period_id
+          AND fpmc.legal_entity_id = prr.legal_entity_id
+          AND fpmc.module = prr.module
+         WHERE prr.id = $1::uuid`,
+        [requestId],
+      );
+      assert(state.rows[0].status === "submitted", "Failed reopen approval changed request status");
+      assert(state.rows[0].control_state === "open", "Failed reopen approval changed period state");
     } finally {
       await client.query("ROLLBACK");
     }

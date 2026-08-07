@@ -47,7 +47,7 @@ export function PerformanceWorkspace({
   teamAppraisals: AppraisalAssignmentRow[];
   cycles: AppraisalCycleRow[];
   templates: AppraisalTemplateRow[];
-  profiles: { id: string; full_name_en: string | null; email: string }[];
+  profiles: { id: string; full_name_en: string | null; full_name_ar: string | null }[];
   canManageCycles: boolean;
   localePrefix: string;
 }) {
@@ -77,7 +77,7 @@ export function PerformanceWorkspace({
 
   const profileLabel = (id: string) => {
     const p = profiles.find((x) => x.id === id);
-    return p?.full_name_en || p?.email || id.slice(0, 8);
+    return p ? pickLocalized(locale, p.full_name_en, p.full_name_ar) : id.slice(0, 8);
   };
 
   return (
@@ -189,11 +189,7 @@ export function PerformanceWorkspace({
             <li className="text-sm text-text-secondary">{t("emptyTeam")}</li>
           ) : (
             teamAppraisals.map((a) => {
-              const empRaw = (a as { profiles?: { full_name_en: string | null; full_name_ar: string | null; email: string } | { full_name_en: string | null; full_name_ar: string | null; email: string }[] | null }).profiles;
-              const emp = Array.isArray(empRaw) ? empRaw[0] : empRaw;
-              const empLabel = emp
-                ? pickLocalized(locale, emp.full_name_en || emp.email, emp.full_name_ar || emp.email)
-                : profileLabel(a.employee_id);
+              const empLabel = profileLabel(a.employee_id);
               return (
               <li key={a.id}>
                 <Card>
@@ -208,8 +204,7 @@ export function PerformanceWorkspace({
                       <div className="text-text-secondary">{a.assignment_status}</div>
                     </div>
                     <div className="flex gap-2">
-                      {a.assignment_status === "manager_submitted" ||
-                      a.assignment_status === "reviewer_review" ? (
+                      {canManageCycles && a.assignment_status === "manager_submitted" ? (
                         <Button
                           size="sm"
                           disabled={pending}
@@ -334,7 +329,7 @@ export function PerformanceWorkspace({
                   <option value="">{t("selectPerson")}</option>
                   {profiles.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.full_name_en || p.email}
+                      {pickLocalized(locale, p.full_name_en, p.full_name_ar)}
                     </option>
                   ))}
                 </select>
@@ -349,7 +344,7 @@ export function PerformanceWorkspace({
                   <option value="">{t("selectPerson")}</option>
                   {profiles.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.full_name_en || p.email}
+                      {pickLocalized(locale, p.full_name_en, p.full_name_ar)}
                     </option>
                   ))}
                 </select>

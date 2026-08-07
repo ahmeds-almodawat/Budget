@@ -22,7 +22,12 @@ import {
   awardCreateAndSubmit,
   contractActivate,
   contractApprove,
+  contractClose,
   contractCreate,
+  contractExpire,
+  contractReject,
+  contractSubmit,
+  contractTerminate,
   evaluationSubmit,
   goodsReceiptAccept,
   goodsReceiptCreate,
@@ -71,6 +76,16 @@ async function reloadPo(db: SupabaseClient, id: string) {
     .eq("id", id)
     .single();
   if (error || !data) throw new DataAccessError("Purchase order not found.", "NOT_FOUND");
+  return data;
+}
+
+async function reloadContract(db: SupabaseClient, id: string) {
+  const { data, error } = await db
+    .from("procurement_contracts")
+    .select("*, vendors(name_en, name_ar)")
+    .eq("id", id)
+    .single();
+  if (error || !data) throw new DataAccessError("Contract not found.", "NOT_FOUND");
   return data;
 }
 
@@ -388,39 +403,56 @@ export async function createContractAction(params: {
 }) {
   return withActivePermission("commitment", "create", async ({ legalEntityId, db }) => {
     const result = await contractCreate(db, { legalEntityId, ...params });
-    const { data, error } = await db
-      .from("procurement_contracts")
-      .select("*, vendors(name_en, name_ar)")
-      .eq("id", result.entity_id as string)
-      .single();
-    if (error || !data) throw new DataAccessError("Contract not found.", "NOT_FOUND");
-    return data;
+    return reloadContract(db, result.entity_id as string);
+  });
+}
+
+export async function submitContractAction(contractId: string) {
+  return withActivePermission("commitment", "update", async ({ db }) => {
+    await contractSubmit(db, contractId);
+    return reloadContract(db, contractId);
   });
 }
 
 export async function approveContractAction(contractId: string) {
   return withActivePermission("commitment", "approve", async ({ db }) => {
     await contractApprove(db, contractId);
-    const { data, error } = await db
-      .from("procurement_contracts")
-      .select("*, vendors(name_en, name_ar)")
-      .eq("id", contractId)
-      .single();
-    if (error || !data) throw new DataAccessError("Contract not found.", "NOT_FOUND");
-    return data;
+    return reloadContract(db, contractId);
   });
 }
 
 export async function activateContractAction(contractId: string) {
   return withActivePermission("commitment", "update", async ({ db }) => {
     await contractActivate(db, contractId);
-    const { data, error } = await db
-      .from("procurement_contracts")
-      .select("*, vendors(name_en, name_ar)")
-      .eq("id", contractId)
-      .single();
-    if (error || !data) throw new DataAccessError("Contract not found.", "NOT_FOUND");
-    return data;
+    return reloadContract(db, contractId);
+  });
+}
+
+export async function rejectContractAction(contractId: string) {
+  return withActivePermission("commitment", "approve", async ({ db }) => {
+    await contractReject(db, contractId);
+    return reloadContract(db, contractId);
+  });
+}
+
+export async function closeContractAction(contractId: string) {
+  return withActivePermission("commitment", "update", async ({ db }) => {
+    await contractClose(db, contractId);
+    return reloadContract(db, contractId);
+  });
+}
+
+export async function terminateContractAction(contractId: string) {
+  return withActivePermission("commitment", "approve", async ({ db }) => {
+    await contractTerminate(db, contractId);
+    return reloadContract(db, contractId);
+  });
+}
+
+export async function expireContractAction(contractId: string) {
+  return withActivePermission("commitment", "update", async ({ db }) => {
+    await contractExpire(db, contractId);
+    return reloadContract(db, contractId);
   });
 }
 

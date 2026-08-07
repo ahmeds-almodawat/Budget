@@ -956,6 +956,21 @@ export async function contractApprove(
   );
 }
 
+export async function contractSubmit(
+  db: SupabaseClient,
+  contractId: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_contract_submit", {
+      p_contract_id: contractId,
+      p_expected_status: options.expectedStatus ?? "draft",
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
 export async function contractActivate(
   db: SupabaseClient,
   contractId: string,
@@ -969,6 +984,39 @@ export async function contractActivate(
       p_correlation_id: options.correlationId ?? null,
     }),
   );
+}
+
+async function contractTerminalTransition(
+  db: SupabaseClient,
+  rpc: "rpc_contract_reject" | "rpc_contract_close" | "rpc_contract_terminate" | "rpc_contract_expire",
+  contractId: string,
+  expectedStatus: string,
+  options: CommandOptions = {},
+) {
+  return assertCommandOk(
+    await invokeRpc(db, rpc, {
+      p_contract_id: contractId,
+      p_expected_status: options.expectedStatus ?? expectedStatus,
+      p_idempotency_key: options.idempotencyKey ?? null,
+      p_correlation_id: options.correlationId ?? null,
+    }),
+  );
+}
+
+export async function contractReject(db: SupabaseClient, contractId: string, options: CommandOptions = {}) {
+  return contractTerminalTransition(db, "rpc_contract_reject", contractId, "submitted", options);
+}
+
+export async function contractClose(db: SupabaseClient, contractId: string, options: CommandOptions = {}) {
+  return contractTerminalTransition(db, "rpc_contract_close", contractId, "active", options);
+}
+
+export async function contractTerminate(db: SupabaseClient, contractId: string, options: CommandOptions = {}) {
+  return contractTerminalTransition(db, "rpc_contract_terminate", contractId, "active", options);
+}
+
+export async function contractExpire(db: SupabaseClient, contractId: string, options: CommandOptions = {}) {
+  return contractTerminalTransition(db, "rpc_contract_expire", contractId, "active", options);
 }
 
 export async function goodsReceiptCreate(
@@ -1323,6 +1371,31 @@ export async function periodCloseEvaluateReadiness(
   );
 }
 
+export async function periodChecklistSetResult(
+  db: SupabaseClient,
+  params: {
+    itemResultId: string;
+    itemStatus: "passed" | "failed" | "waived";
+    evidenceReference?: string;
+    comments?: string;
+    waiverReason?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_period_checklist_set_result", {
+      p_item_result_id: params.itemResultId,
+      p_item_status: params.itemStatus,
+      p_evidence_reference: params.evidenceReference ?? null,
+      p_comments: params.comments ?? null,
+      p_waiver_reason: params.waiverReason ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
 export async function periodReopenRequest(
   db: SupabaseClient,
   params: {
@@ -1434,6 +1507,37 @@ export async function appraisalCycleActivate(
   );
 }
 
+export async function appraisalCycleCreate(
+  db: SupabaseClient,
+  params: {
+    legalEntityId: string;
+    nameEn: string;
+    nameAr: string;
+    periodStart: string;
+    periodEnd: string;
+    selfAssessmentDeadline?: string;
+    managerDeadline?: string;
+    reviewDeadline?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_cycle_create", {
+      p_legal_entity_id: params.legalEntityId,
+      p_name_en: params.nameEn,
+      p_name_ar: params.nameAr,
+      p_period_start: params.periodStart,
+      p_period_end: params.periodEnd,
+      p_self_assessment_deadline: params.selfAssessmentDeadline ?? null,
+      p_manager_deadline: params.managerDeadline ?? null,
+      p_review_deadline: params.reviewDeadline ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
 export async function appraisalAssignmentCreate(
   db: SupabaseClient,
   params: {
@@ -1499,6 +1603,27 @@ export async function appraisalManagerSubmit(
       p_assignment_id: params.assignmentId,
       p_ratings: params.ratings ?? [],
       p_expected_status: params.expectedStatus ?? "self_submitted",
+      p_idempotency_key: params.idempotencyKey ?? null,
+      p_correlation_id: params.correlationId ?? null,
+    }),
+  );
+}
+
+export async function appraisalReviewerSubmit(
+  db: SupabaseClient,
+  params: {
+    assignmentId: string;
+    ratings: Array<{ criterion_id: string; calibrated_rating?: number | string }>;
+    expectedStatus?: string;
+    idempotencyKey?: string;
+    correlationId?: string;
+  },
+) {
+  return assertCommandOk(
+    await invokeRpc(db, "rpc_appraisal_reviewer_submit", {
+      p_assignment_id: params.assignmentId,
+      p_ratings: params.ratings,
+      p_expected_status: params.expectedStatus ?? "reviewer_review",
       p_idempotency_key: params.idempotencyKey ?? null,
       p_correlation_id: params.correlationId ?? null,
     }),
@@ -1582,4 +1707,3 @@ export async function masterRecordReject(
     }),
   );
 }
-

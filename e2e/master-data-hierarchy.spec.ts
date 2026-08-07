@@ -24,7 +24,12 @@ test.describe("master data hierarchy", () => {
 
     const filter = page.getByLabel(/Filter|تصفية/i);
     await expect(filter).toBeVisible();
-    await filter.selectOption({ label: /Organization unit(?! type)|وحدة تنظيمية/i }).catch(async () => {
+    const organizationUnitValue = await filter
+      .locator("option")
+      .filter({ hasText: /Organization unit(?! type)|وحدة تنظيمية/i })
+      .first()
+      .getAttribute("value");
+    await filter.selectOption(organizationUnitValue ?? { index: 2 }).catch(async () => {
       const options = filter.locator("option");
       const count = await options.count();
       if (count > 2) await filter.selectOption({ index: 2 });

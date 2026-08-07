@@ -1,11 +1,11 @@
 # ULTRA MEGA Required Modules
 
-**Status:** REQUIRED MODULES IMPLEMENTED LOCALLY — NOT PRODUCTION READY  
+**Status:** FINAL AUDIT CHECKPOINT — REQUIRED MODULES REMAIN PARTIAL
 **Branch:** `feat/mega-finish-platform`  
 **Starting SHA:** `d448c39d3c54b4dcf7da3ffa688234b28993f6b0`  
 **Assessment date:** 2026-08-07
 
-This document inventories the ULTRA MEGA tranche that closes the previously open required modules (procurement lifecycle through payment readiness, delegation inbox resolution, master-data hierarchy/deactivate, period-close checklist/senior reopen, and appraisal lifecycle). It does **not** claim production readiness.
+This document inventories the ULTRA MEGA tranche. The independent final audit in `CODEX_FINAL_ULTRA_MEGA_AUDIT.md` supersedes earlier completion language: the tranche adds substantial schema, command, and UI coverage, but procurement accounting integrity, real delegated decisions, governed configuration paths, and appraisal configuration/goals remain incomplete.
 
 ## Starting point
 
@@ -21,7 +21,8 @@ Work begins from SHA `d448c39d3c54b4dcf7da3ffa688234b28993f6b0` (`fix: harden ro
 | `20260807120300_ultra_requisition_procurement_review_rpc.sql` | Public `rpc_requisition_procurement_review` wrapper (`budget_checked` → `procurement_review`) |
 | `20260807120400_ultra_classification_comments.sql` | `@classification` comments required by authorization catalog tests |
 | `20260807120500_ultra_grant_resolve_approver.sql` | Grants `EXECUTE` on `private.resolve_effective_approver` to `authenticated` so security-invoker inbox views resolve |
-| `20260807120600_ultra_appraisal_profile_peers.sql` | Narrow `profiles` SELECT policy so appraisal peers can read display identity for assignments in scope |
+| `20260807120600_ultra_appraisal_profile_peers.sql` | Earlier whole-row peer-profile policy; superseded by the names-only RPC in the correction migration |
+| `20260807120700_enforce_workflow_authorization_and_integrity.sql` | Revokes direct lifecycle DML, fails delegated decisions closed, narrows appraisal identity, completes contract transitions, gates period close, and hardens appraisal field ownership |
 
 Additive only. Money remains `NUMERIC(18,4)`. No bank/payment-execution fields.
 
@@ -72,7 +73,7 @@ Enforced in database RPCs (`private.user_has_any_role` + actor checks), not UI-o
 
 - `private.resolve_effective_approver(original, legal_entity, workflow_type)` walks active, in-window delegations with cycle detection.  
 - `public.v_approval_inbox` (security_invoker) exposes `original_assignee_id`, `effective_assignee_id`, and `delegation_id`.  
-- `public.v_delegated_approval_inbox` filters to items where the current user is the effective delegate.  
+- `public.v_delegated_approval_inbox` is intentionally empty after the final audit because requester identity is not a valid approval assignment.
 - Approvals UI supports act-as-delegate decisions against the resolved inbox.  
 - Inbox base set includes budgets, changes, imports, milestone progress, schedule extensions, variances, delegations, purchase requisitions, and approval rules. PO/payment approval also remains available through dedicated procurement RPCs with SOD.
 
@@ -216,4 +217,4 @@ Still open outside ULTRA MEGA required-module scope:
 | E2E final full suite | **67 passed**, 0 failed, retries=0 |
 | Public RLS policies | 206 |
 
-**Final label:** REQUIRED MODULES COMPLETE FOR LOCAL ULTRA MEGA SCOPE — NOT PRODUCTION READY
+**Final label:** FINAL AUDIT CHECKPOINT — REQUIRED MODULE BLOCKERS REMAIN

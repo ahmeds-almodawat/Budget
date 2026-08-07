@@ -65,6 +65,12 @@ export interface AppraisalRatingRow {
   manager_comment: string | null;
 }
 
+export interface AppraisalPeerIdentityRow {
+  id: string;
+  full_name_en: string | null;
+  full_name_ar: string | null;
+}
+
 export async function listAppraisalCycles(db: SupabaseClient, legalEntityId: string) {
   const { data, error } = await db
     .from("appraisal_cycles")
@@ -112,15 +118,22 @@ export async function listMyAppraisals(db: SupabaseClient, legalEntityId: string
 export async function listTeamAppraisals(db: SupabaseClient, legalEntityId: string, managerId: string) {
   const { data, error } = await db
     .from("appraisal_assignments")
-    .select("*, appraisal_cycles(name_en, name_ar), profiles!appraisal_assignments_employee_id_fkey(full_name_en, full_name_ar, email)")
+    .select("*, appraisal_cycles(name_en, name_ar)")
     .eq("legal_entity_id", legalEntityId)
     .eq("manager_id", managerId)
     .order("updated_at", { ascending: false });
   if (error) throw new DataAccessError(error.message, "DATABASE");
   return (data ?? []) as (AppraisalAssignmentRow & {
     appraisal_cycles?: { name_en: string; name_ar: string } | { name_en: string; name_ar: string }[] | null;
-    profiles?: { full_name_en: string | null; full_name_ar: string | null; email: string } | { full_name_en: string | null; full_name_ar: string | null; email: string }[] | null;
   })[];
+}
+
+export async function listAppraisalPeerIdentities(db: SupabaseClient, legalEntityId: string) {
+  const { data, error } = await db.rpc("rpc_appraisal_peer_identities", {
+    p_legal_entity_id: legalEntityId,
+  });
+  if (error) throw new DataAccessError(error.message, "DATABASE");
+  return (data ?? []) as AppraisalPeerIdentityRow[];
 }
 
 export async function listAllAssignments(db: SupabaseClient, legalEntityId: string) {
@@ -151,38 +164,4 @@ export async function getAssignmentRatings(db: SupabaseClient, assignmentId: str
     .eq("assignment_id", assignmentId);
   if (error) throw new DataAccessError(error.message, "DATABASE");
   return (data ?? []) as AppraisalRatingRow[];
-}
-
-export async function createAppraisalCycle(
-  db: SupabaseClient,
-  input: {
-    legalEntityId: string;
-    nameEn: string;
-    nameAr: string;
-    periodStart: string;
-    periodEnd: string;
-    createdBy: string;
-    selfAssessmentDeadline?: string;
-    managerDeadline?: string;
-    reviewDeadline?: string;
-  },
-) {
-  const { data, error } = await db
-    .from("appraisal_cycles")
-    .insert({
-      legal_entity_id: input.legalEntityId,
-      name_en: input.nameEn,
-      name_ar: input.nameAr,
-      period_start: input.periodStart,
-      period_end: input.periodEnd,
-      self_assessment_deadline: input.selfAssessmentDeadline ?? null,
-      manager_deadline: input.managerDeadline ?? null,
-      review_deadline: input.reviewDeadline ?? null,
-      created_by: input.createdBy,
-      cycle_status: "draft",
-    })
-    .select("*")
-    .single();
-  if (error) throw new DataAccessError(error.message, "DATABASE");
-  return data as AppraisalCycleRow;
 }

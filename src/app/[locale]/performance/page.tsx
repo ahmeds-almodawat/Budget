@@ -6,6 +6,8 @@ import { requireRoutePermission } from "@/lib/auth/route-authorization";
 import { hasPermission } from "@/domain/auth/permissions";
 import {
   listAppraisalCycles,
+  listAppraisalPeerIdentities,
+  listAllAssignments,
   listAppraisalTemplates,
   listMyAppraisals,
   listTeamAppraisals,
@@ -53,20 +55,14 @@ export default async function EmployeePerformancePage({
 
   const [myAppraisals, teamAppraisals, cycles, templates] = await Promise.all([
     listMyAppraisals(db, entityId, userId),
-    listTeamAppraisals(db, entityId, userId),
+    canManageCycles
+      ? listAllAssignments(db, entityId)
+      : listTeamAppraisals(db, entityId, userId),
     listAppraisalCycles(db, entityId),
     listAppraisalTemplates(db, entityId),
   ]);
 
-  const { data: memberships } = await db
-    .from("memberships")
-    .select("user_id")
-    .eq("legal_entity_id", entityId)
-    .eq("status", "active");
-  const userIds = (memberships ?? []).map((m) => m.user_id);
-  const { data: profiles } = userIds.length
-    ? await db.from("profiles").select("id, email, full_name_en").in("id", userIds)
-    : { data: [] };
+  const profiles = await listAppraisalPeerIdentities(db, entityId);
 
   return (
     <div className="space-y-6">
@@ -77,10 +73,10 @@ export default async function EmployeePerformancePage({
         teamAppraisals={teamAppraisals}
         cycles={cycles}
         templates={templates}
-        profiles={(profiles ?? []).map((p) => ({
+        profiles={profiles.map((p) => ({
           id: p.id,
           full_name_en: p.full_name_en,
-          email: p.email,
+          full_name_ar: p.full_name_ar,
         }))}
         canManageCycles={canManageCycles}
         localePrefix={`/${locale}`}
