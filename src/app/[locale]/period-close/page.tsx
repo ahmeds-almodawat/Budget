@@ -15,11 +15,13 @@ export default async function PeriodClosePage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const session = await requireRoutePermission("budget", "read");
+  const session = await requireRoutePermission("period_close", "read");
   const t = await getTranslations("periodClose");
   const entityId = session.legalEntityId;
   const roles = session.ctx.roleAssignments;
-  const canClose = hasPermission(roles, "budget", "approve", entityId);
+  const canClose = hasPermission(roles, "period_close", "approve", entityId);
+  const canRequestReopen = hasPermission(roles, "period_close", "create", entityId);
+  const canApproveReopen = hasPermission(roles, "period_close", "approve", entityId);
 
   let controls: Awaited<ReturnType<typeof fetchPeriodControlsAction>> = [];
   let fiscalPeriods: { id: string; period_number: number; start_date: string; end_date: string }[] = [];
@@ -41,6 +43,8 @@ export default async function PeriodClosePage({
           initialControls={controls}
           fiscalPeriods={fiscalPeriods}
           canClose={canClose}
+          canRequestReopen={canRequestReopen}
+          canApproveReopen={canApproveReopen}
         />
       )}
     </div>
