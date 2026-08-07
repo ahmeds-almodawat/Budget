@@ -1037,6 +1037,7 @@
       "pipeline": "Procurement pipeline",
       "evm": "Earned value",
       "timeline": "Schedule timeline",
+      "projectSchedule": "Project schedule",
       "roadmap": "Executive roadmap",
       "riskMatrix": "Risk matrix",
       "closeReadiness": "Period-close readiness",
@@ -1077,7 +1078,11 @@
       "underReviewFac": "Under review forecast",
       "draftFac": "Draft forecast total",
       "versionCount": "Forecast versions",
-      "completedAppraisals": "Completed appraisals"
+      "completedAppraisals": "Completed appraisals",
+      "overallProgress": "Overall progress",
+      "scheduleProgress": "Schedule progress",
+      "forecastCompletion": "Forecast completion",
+      "delayedMilestones": "Delayed milestones"
     },
     "series": {
       "budget": "Budget",
@@ -1135,6 +1140,13 @@
       "delayed": "Delayed",
       "inProgress": "In progress"
     },
+    "kinds": {
+      "project": "Project",
+      "phase": "Phase",
+      "workPackage": "Work package",
+      "task": "Task",
+      "milestone": "Milestone"
+    },
     "appraisalStatuses": {
       "employee_self_review": "Employee self-review",
       "self_submitted": "Self-review submitted",
@@ -1146,8 +1158,15 @@
     },
     "common": {
       "item": "Item",
+      "scheduleColumn": "Activity",
       "baseline": "Baseline",
       "forecast": "Forecast",
+      "progress": "Progress",
+      "actual": "Actual",
+      "status": "Status",
+      "today": "Today",
+      "noDates": "No dates",
+      "viewFullTimeline": "View full timeline",
       "riskMatrix": "Risk matrix",
       "lifecycle": "Lifecycle",
       "chartData": "Chart data",
@@ -1158,6 +1177,7 @@
     "empty": {
       "period": "No data available for the selected period",
       "timeline": "No project timeline data is available.",
+      "schedule": "No project schedule data is available for this project.",
       "pipeline": "No procurement pipeline data is available.",
       "match": "No procurement match exceptions.",
       "errorHint": "Unable to load analytics for the active legal entity."

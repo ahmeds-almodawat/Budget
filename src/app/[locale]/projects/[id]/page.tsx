@@ -1,13 +1,19 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
-import { fetchProjectDashboardAction } from "@/app/actions/project-actions";
+import {
+  fetchProjectDashboardAction,
+  fetchProjectTimelineAction,
+} from "@/app/actions/project-actions";
 import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
 import { pickLocalized } from "@/lib/i18n/display";
 import { loadRouteData, requireRoutePermission } from "@/lib/auth/route-authorization";
-import { formatCompactMoney, formatRatio, toNumber } from "@/domain/analytics/format";
+import { formatCompactMoney, formatCompactPercent, formatRatio, toNumber } from "@/domain/analytics/format";
 import type { ChartPoint, ChartSeriesDef, KpiMetric } from "@/domain/analytics/types";
+import { dateInTimeZone } from "@/domain/analytics/timeline";
 import { ProjectEvmAnalyticsPanel } from "@/components/dashboard/project-evm-analytics-panel";
+import { ProjectSchedulePreview } from "@/components/dashboard/project-timeline-analytics";
+import { mapTimelineToGanttItems } from "@/lib/projects/map-timeline-gantt";
 
 function decimalToNumber(value: { toNumber?: () => number; toString: () => string } | number | string | null | undefined): number | null {
   if (value == null) return null;
@@ -33,7 +39,10 @@ export default async function ProjectDashboardPage({
   const moneyLocale = locale.startsWith("ar") ? "ar-SA" : "en-SA";
 
   const scopeId = id === "cs-khamis-hospital" ? CONTROL_SCOPE_KM_HOSPITAL : id;
-  const dashboard = await loadRouteData(() => fetchProjectDashboardAction(scopeId));
+  const [dashboard, timeline] = await Promise.all([
+    loadRouteData(() => fetchProjectDashboardAction(scopeId)),
+    loadRouteData(() => fetchProjectTimelineAction(scopeId)),
+  ]);
 
   if (!dashboard) {
     return (
@@ -45,6 +54,16 @@ export default async function ProjectDashboardPage({
   }
 
   const { project, metrics, milestones } = dashboard;
+  const today = dateInTimeZone();
+  const ganttItems = timeline
+    ? mapTimelineToGanttItems({
+        locale,
+        project: timeline.project,
+        phases: timeline.phases,
+        milestones: timeline.milestones,
+        today,
+      })
+    : [];
   const fmt = (v: number) =>
     formatCompactMoney(v, { locale: moneyLocale, arabicCurrency });
 
@@ -195,6 +214,75 @@ export default async function ProjectDashboardPage({
           <div>{tLabels("currentForecastEnd")}: {project.forecast_end}</div>
         </CardContent>
       </Card>
+
+      {(() => {
+        const progressValues = milestones
+          .map((m) => (m.approved_progress == null ? null : toNumber(m.approved_progress)))
+          .filter((v): v is number => v != null);
+        const overallProgress =
+          progressValues.length > 0
+            ? Math.round(
+                (progressValues.reduce((sum, v) => sum + v, 0) / progressValues.length) * 10,
+              ) / 10
+            : null;
+        const scheduleProgress =
+          pv != null && pv > 0 && ev != null ? Math.round((ev / pv) * 1000) / 10 : null;
+        const delayedMilestones = ganttItems.filter(
+          (i) => i.kind === "milestone" && i.delayed,
+        ).length;
+        const scheduleKpis: KpiMetric[] = [
+          {
+            id: "overall-progress",
+            label: tAnalytics("kpi.overallProgress"),
+            value: overallProgress,
+            formattedValue:
+              overallProgress == null
+                ? "—"
+                : formatCompactPercent(overallProgress, locale),
+          },
+          {
+            id: "schedule-progress",
+            label: tAnalytics("kpi.scheduleProgress"),
+            value: scheduleProgress,
+            formattedValue:
+              scheduleProgress == null
+                ? "—"
+                : formatCompactPercent(scheduleProgress, locale),
+          },
+          {
+            id: "spi",
+            label: tAnalytics("kpi.spi"),
+            value: spi,
+            formattedValue: formatRatio(spi, locale),
+          },
+          {
+            id: "forecast-completion",
+            label: tAnalytics("kpi.forecastCompletion"),
+            value: null,
+            formattedValue: project.forecast_end ?? "—",
+          },
+          {
+            id: "delayed-milestones",
+            label: tAnalytics("kpi.delayedMilestones"),
+            value: delayedMilestones,
+            formattedValue: String(delayedMilestones),
+          },
+        ];
+
+        return (
+          <ProjectSchedulePreview
+            items={ganttItems}
+            today={today}
+            locale={locale}
+            href={`/${locale}/projects/${id}/timeline`}
+            title={tAnalytics("sections.projectSchedule")}
+            viewFullLabel={tAnalytics("common.viewFullTimeline")}
+            emptyTitle={tAnalytics("empty.schedule")}
+            scheduleKpis={scheduleKpis}
+          />
+        );
+      })()}
+
       <Card>
         <CardHeader><CardTitle>{t("timeline")}</CardTitle></CardHeader>
         <CardContent>

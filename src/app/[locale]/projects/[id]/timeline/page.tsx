@@ -1,12 +1,25 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { fetchProjectTimelineAction } from "@/app/actions/project-actions";
+import { fetchProjectDashboardAction, fetchProjectTimelineAction } from "@/app/actions/project-actions";
 import { CONTROL_SCOPE_KM_HOSPITAL } from "@/types/database";
 import { pickLocalized } from "@/lib/i18n/display";
 import { loadRouteData, requireRoutePermission } from "@/lib/auth/route-authorization";
-import { buildProjectGanttItems, dateInTimeZone } from "@/domain/analytics/timeline";
+import { dateInTimeZone } from "@/domain/analytics/timeline";
+import { formatCompactPercent, formatRatio, toNumber } from "@/domain/analytics/format";
+import type { KpiMetric } from "@/domain/analytics/types";
 import { ProjectTimelineAnalytics } from "@/components/dashboard/project-timeline-analytics";
+import { mapTimelineToGanttItems } from "@/lib/projects/map-timeline-gantt";
+
+function decimalToNumber(
+  value: { toNumber?: () => number; toString: () => string } | number | string | null | undefined,
+): number | null {
+  if (value == null) return null;
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return toNumber(value);
+  if (typeof value.toNumber === "function") return value.toNumber();
+  return toNumber(value.toString());
+}
 
 export default async function ProjectTimelinePage({
   params,
@@ -21,7 +34,10 @@ export default async function ProjectTimelinePage({
   const tAnalytics = await getTranslations("analytics");
 
   const scopeId = id === "cs-khamis-hospital" ? CONTROL_SCOPE_KM_HOSPITAL : id;
-  const timeline = await loadRouteData(() => fetchProjectTimelineAction(scopeId));
+  const [timeline, dashboard] = await Promise.all([
+    loadRouteData(() => fetchProjectTimelineAction(scopeId)),
+    loadRouteData(() => fetchProjectDashboardAction(scopeId)),
+  ]);
 
   if (!timeline) {
     return (
@@ -40,45 +56,79 @@ export default async function ProjectTimelinePage({
   );
 
   const today = dateInTimeZone();
-  const ganttItems = buildProjectGanttItems({
-    projectId: project.id,
-    projectLabel: scopeName,
-    project: {
-      baseline_start: project.baseline_start,
-      baseline_end: project.baseline_end,
-      forecast_start: project.forecast_start,
-      forecast_end: project.forecast_end,
-      actual_end: project.actual_end,
-    },
-    phases: phases.map((p) => ({
-      id: p.id,
-      name: pickLocalized(locale, p.name_en, p.name_ar),
-      baseline_start: p.baseline_start,
-      baseline_end: p.baseline_end,
-      forecast_start: p.forecast_start,
-      forecast_end: p.forecast_end,
-      actual_end: p.actual_end,
-    })),
-    milestones: milestones.map((m) => ({
-      id: m.id,
-      name: pickLocalized(locale, m.name_en, m.name_ar),
-      phase_id: m.phase_id,
-      baseline_date: m.baseline_date,
-      forecast_date: m.forecast_date,
-      actual_date: m.actual_date,
-      approved_progress: m.approved_progress,
-    })),
+  const ganttItems = mapTimelineToGanttItems({
+    locale,
+    project,
+    phases,
+    milestones,
     today,
   });
 
+  const metrics = dashboard?.metrics;
+  const spi = decimalToNumber(metrics?.schedulePerformanceIndex);
+  const pv = decimalToNumber(metrics?.plannedValue);
+  const ev = decimalToNumber(metrics?.earnedValue);
+  const scheduleProgress =
+    pv != null && pv > 0 && ev != null ? Math.round((ev / pv) * 1000) / 10 : null;
+
+  const progressValues = milestones
+    .map((m) => (m.approved_progress == null ? null : toNumber(m.approved_progress)))
+    .filter((v): v is number => v != null);
+  const overallProgress =
+    progressValues.length > 0
+      ? Math.round(
+          (progressValues.reduce((sum, v) => sum + v, 0) / progressValues.length) * 10,
+        ) / 10
+      : null;
+
+  const delayedMilestones = ganttItems.filter((i) => i.kind === "milestone" && i.delayed).length;
+
+  const scheduleKpis: KpiMetric[] = [
+    {
+      id: "overall-progress",
+      label: tAnalytics("kpi.overallProgress"),
+      value: overallProgress,
+      formattedValue:
+        overallProgress == null ? "—" : formatCompactPercent(overallProgress, locale),
+    },
+    {
+      id: "schedule-progress",
+      label: tAnalytics("kpi.scheduleProgress"),
+      value: scheduleProgress,
+      formattedValue:
+        scheduleProgress == null ? "—" : formatCompactPercent(scheduleProgress, locale),
+    },
+    {
+      id: "spi",
+      label: tAnalytics("kpi.spi"),
+      value: spi,
+      formattedValue: formatRatio(spi, locale),
+    },
+    {
+      id: "forecast-completion",
+      label: tAnalytics("kpi.forecastCompletion"),
+      value: null,
+      formattedValue: project.forecast_end ?? "—",
+    },
+    {
+      id: "delayed-milestones",
+      label: tAnalytics("kpi.delayedMilestones"),
+      value: delayedMilestones,
+      formattedValue: String(delayedMilestones),
+    },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="project-timeline-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
           <p className="text-text-secondary">{scopeName}</p>
         </div>
         <div className="flex gap-4 text-sm">
+          <Link href={`/${locale}/projects/${id}`} className="text-primary hover:underline">
+            {t("projectSummary")}
+          </Link>
           <Link href={`/${locale}/tasks`} className="text-primary hover:underline">
             {t("tasks")}
           </Link>
@@ -94,10 +144,12 @@ export default async function ProjectTimelinePage({
       <ProjectTimelineAnalytics
         items={ganttItems}
         today={today}
+        locale={locale}
+        scheduleKpis={scheduleKpis}
         titles={{
           timeline: tAnalytics("sections.timeline"),
           roadmap: tAnalytics("sections.roadmap"),
-          empty: tAnalytics("empty.timeline"),
+          empty: tAnalytics("empty.schedule"),
         }}
       />
 

@@ -15,8 +15,10 @@ import {
 } from "@/domain/analytics/series";
 import {
   approvalAgeBuckets,
+  buildGanttCalendarBands,
   buildGanttRange,
   buildProcurementPipeline,
+  buildProjectGanttItems,
   dateInTimeZone,
   daysBetween,
   ganttBarOffset,
@@ -168,6 +170,70 @@ describe("timeline helpers", () => {
     const bar = ganttBarOffset(range.start!, range.end!, "2027-01-01", "2027-02-01");
     expect(bar?.leftPct).toBe(0);
     expect(bar!.widthPct).toBeGreaterThan(0);
+
+    const shortBands = buildGanttCalendarBands("2027-01-01", "2027-02-28", "en");
+    expect(shortBands.mode).toBe("week");
+    expect(shortBands.primary.length).toBeGreaterThan(0);
+    expect(shortBands.secondary.length).toBeGreaterThan(0);
+
+    const longBands = buildGanttCalendarBands("2026-01-01", "2028-06-30", "en");
+    expect(longBands.mode).toBe("month");
+    expect(longBands.primary.some((b) => b.label === "2027")).toBe(true);
+
+    const gantt = buildProjectGanttItems({
+      projectId: "p1",
+      projectLabel: "Hospital",
+      project: {
+        baseline_start: "2027-01-01",
+        baseline_end: "2028-12-31",
+        forecast_start: "2027-01-01",
+        forecast_end: "2029-01-15",
+      },
+      phases: [
+        {
+          id: "ph1",
+          name: "Structural Works",
+          baseline_start: "2027-04-01",
+          baseline_end: "2027-12-31",
+          forecast_start: null,
+          forecast_end: null,
+          work_packages: [
+            {
+              id: "wp1",
+              name: "Foundation Works",
+              tasks: [
+                {
+                  id: "t1",
+                  name: "Site Excavation",
+                  baseline_start: "2027-04-01",
+                  baseline_end: "2027-05-15",
+                  forecast_start: null,
+                  forecast_end: null,
+                  progress_percent: 100,
+                  status: "completed",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      milestones: [
+        {
+          id: "ms1",
+          name: "Foundation Completed and Approved",
+          phase_id: "ph1",
+          work_package_id: "wp1",
+          baseline_date: "2027-08-30",
+          forecast_date: "2027-09-15",
+          actual_date: null,
+          approved_progress: 65,
+        },
+      ],
+      today: "2027-06-01",
+    });
+    expect(gantt.some((i) => i.kind === "work_package" && i.label === "Foundation Works")).toBe(true);
+    expect(gantt.some((i) => i.kind === "task" && i.label === "Site Excavation")).toBe(true);
+    expect(gantt.find((i) => i.kind === "milestone")?.parentId).toBe("wp1");
   });
 
   it("builds procurement pipeline and period-close progress presentation", () => {

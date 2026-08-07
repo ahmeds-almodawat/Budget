@@ -44,7 +44,9 @@ export async function getProjectTimeline(db: SupabaseClient, projectId: string) 
 
   const { data: phases } = await db
     .from("project_phases")
-    .select("*")
+    .select(
+      "*, work_packages(id, code, name_en, name_ar, tasks(id, code, name_en, name_ar, baseline_start, baseline_end, forecast_start, forecast_end, actual_start, actual_end, progress_percent, status))",
+    )
     .eq("project_id", projectId)
     .order("sequence_no");
 

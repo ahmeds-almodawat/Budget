@@ -66,6 +66,10 @@ export interface GanttItem {
   baselineEnd: string | null;
   forecastStart: string | null;
   forecastEnd: string | null;
+  /** Authoritative actual / acceptance date when present (milestones). */
+  actualDate?: string | null;
+  /** Authoritative status label from source row when present (tasks). */
+  status?: string | null;
   progressPercent: number | null;
   delayed: boolean;
   completed: boolean;

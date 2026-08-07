@@ -1037,6 +1037,7 @@
       "pipeline": "مسار المشتريات",
       "evm": "القيمة المكتسبة",
       "timeline": "الجدول الزمني",
+      "projectSchedule": "جدول المشروع",
       "roadmap": "خارطة الطريق التنفيذية",
       "riskMatrix": "مصفوفة المخاطر",
       "closeReadiness": "جاهزية إغلاق الفترة",
@@ -1077,7 +1078,11 @@
       "underReviewFac": "التوقع قيد المراجعة",
       "draftFac": "إجمالي مسودة التوقع",
       "versionCount": "إصدارات التوقع",
-      "completedAppraisals": "التقييمات المكتملة"
+      "completedAppraisals": "التقييمات المكتملة",
+      "overallProgress": "التقدم الإجمالي",
+      "scheduleProgress": "تقدم الجدول",
+      "forecastCompletion": "الإنجاز المتوقع",
+      "delayedMilestones": "المعالم المتأخرة"
     },
     "series": {
       "budget": "الميزانية",
@@ -1135,6 +1140,13 @@
       "delayed": "متأخر",
       "inProgress": "قيد التنفيذ"
     },
+    "kinds": {
+      "project": "مشروع",
+      "phase": "مرحلة",
+      "workPackage": "حزمة عمل",
+      "task": "مهمة",
+      "milestone": "معلم"
+    },
     "appraisalStatuses": {
       "employee_self_review": "المراجعة الذاتية للموظف",
       "self_submitted": "تم تقديم المراجعة الذاتية",
@@ -1146,8 +1158,15 @@
     },
     "common": {
       "item": "البند",
+      "scheduleColumn": "النشاط",
       "baseline": "خط الأساس",
       "forecast": "التوقع",
+      "progress": "التقدم",
+      "actual": "الفعلي",
+      "status": "الحالة",
+      "today": "اليوم",
+      "noDates": "لا توجد تواريخ",
+      "viewFullTimeline": "عرض الجدول الزمني الكامل",
       "riskMatrix": "مصفوفة المخاطر",
       "lifecycle": "دورة الحالة",
       "chartData": "بيانات الرسم",
@@ -1158,6 +1177,7 @@
     "empty": {
       "period": "لا تتوفر بيانات للفترة المحددة",
       "timeline": "لا تتوفر بيانات للجدول الزمني للمشروع.",
+      "schedule": "لا تتوفر بيانات لجدول المشروع لهذا المشروع.",
       "pipeline": "لا تتوفر بيانات لمسار المشتريات.",
       "match": "لا توجد استثناءات مطابقة للمشتريات.",
       "errorHint": "تعذر تحميل التحليلات للكيان القانوني النشط."

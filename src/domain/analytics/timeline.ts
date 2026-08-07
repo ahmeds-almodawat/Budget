@@ -2,7 +2,16 @@ import type { GanttItem, PipelineStage, TimelineEvent } from "@/domain/analytics
 import { toNumber } from "@/domain/analytics/format";
 import { financialConfig } from "@/config/product";
 
-/** Map project phases + milestones into presentation Gantt items using real dates only. */
+export type GanttCalendarBand = {
+  key: string;
+  label: string;
+  start: string;
+  end: string;
+  leftPct: number;
+  widthPct: number;
+};
+
+/** Map project phases + WBS + milestones into presentation Gantt items using real dates only. */
 export function buildProjectGanttItems(input: {
   projectId: string;
   projectLabel: string;
@@ -21,15 +30,33 @@ export function buildProjectGanttItems(input: {
     forecast_start: string | null;
     forecast_end: string | null;
     actual_end?: string | null;
+    work_packages?: Array<{
+      id: string;
+      name: string;
+      tasks?: Array<{
+        id: string;
+        name: string;
+        baseline_start: string | null;
+        baseline_end: string | null;
+        forecast_start: string | null;
+        forecast_end: string | null;
+        actual_start?: string | null;
+        actual_end?: string | null;
+        progress_percent?: number | string | null;
+        status?: string | null;
+      }>;
+    }>;
   }>;
   milestones: Array<{
     id: string;
     name: string;
     phase_id: string | null;
+    work_package_id?: string | null;
     baseline_date: string | null;
     forecast_date: string | null;
     actual_date: string | null;
     approved_progress: number | string | null;
+    approval_status?: string | null;
   }>;
   today?: string;
 }): GanttItem[] {
@@ -68,6 +95,47 @@ export function buildProjectGanttItems(input: {
       delayed: Boolean(phase.forecast_end && phase.forecast_end < today && !phase.actual_end),
       completed: Boolean(phase.actual_end),
     });
+
+    for (const wp of phase.work_packages ?? []) {
+      // Work packages have no schedule columns in schema — hierarchy only (no invented bars).
+      items.push({
+        id: wp.id,
+        parentId: phase.id,
+        label: wp.name,
+        kind: "work_package",
+        baselineStart: null,
+        baselineEnd: null,
+        forecastStart: null,
+        forecastEnd: null,
+        progressPercent: null,
+        delayed: false,
+        completed: false,
+      });
+
+      for (const task of wp.tasks ?? []) {
+        const progress =
+          task.progress_percent == null ? null : toNumber(task.progress_percent);
+        const completed =
+          Boolean(task.actual_end) ||
+          task.status === "completed" ||
+          (progress != null && progress >= 100);
+        const forecastEnd = task.forecast_end ?? task.baseline_end;
+        items.push({
+          id: task.id,
+          parentId: wp.id,
+          label: task.name,
+          kind: "task",
+          baselineStart: task.baseline_start,
+          baselineEnd: task.baseline_end,
+          forecastStart: task.forecast_start ?? task.baseline_start,
+          forecastEnd,
+          status: task.status ?? null,
+          progressPercent: progress,
+          delayed: Boolean(forecastEnd && forecastEnd < today && !completed),
+          completed,
+        });
+      }
+    }
   }
 
   for (const milestone of input.milestones) {
@@ -76,13 +144,15 @@ export function buildProjectGanttItems(input: {
     const completed = Boolean(milestone.actual_date) || (progress != null && progress >= 100);
     items.push({
       id: milestone.id,
-      parentId: milestone.phase_id ?? input.projectId,
+      parentId: milestone.work_package_id ?? milestone.phase_id ?? input.projectId,
       label: milestone.name,
       kind: "milestone",
       baselineStart: milestone.baseline_date,
       baselineEnd: milestone.baseline_date,
       forecastStart: milestone.forecast_date,
       forecastEnd: milestone.forecast_date,
+      actualDate: milestone.actual_date,
+      status: milestone.approval_status ?? null,
       progressPercent: progress,
       delayed: Boolean(milestone.forecast_date && milestone.forecast_date < today && !completed),
       completed,
@@ -105,7 +175,13 @@ export function buildGanttRange(items: GanttItem[]): { start: string | null; end
   let start: string | null = null;
   let end: string | null = null;
   for (const item of items) {
-    for (const d of [item.baselineStart, item.forecastStart, item.baselineEnd, item.forecastEnd]) {
+    for (const d of [
+      item.baselineStart,
+      item.forecastStart,
+      item.baselineEnd,
+      item.forecastEnd,
+      item.actualDate ?? null,
+    ]) {
       if (!d) continue;
       if (!start || d < start) start = d;
       if (!end || d > end) end = d;
@@ -119,6 +195,12 @@ export function daysBetween(start: string, end: string): number {
   const b = Date.parse(end);
   if (Number.isNaN(a) || Number.isNaN(b)) return 0;
   return Math.round((b - a) / 86_400_000);
+}
+
+export function addDaysIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 export function ganttBarOffset(
@@ -135,6 +217,155 @@ export function ganttBarOffset(
     leftPct: (left / total) * 100,
     widthPct: Math.min(100 - (left / total) * 100, (width / total) * 100),
   };
+}
+
+function isoMonthStart(iso: string): string {
+  return `${iso.slice(0, 7)}-01`;
+}
+
+function isoMonthEnd(iso: string): string {
+  const [y, m] = iso.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return `${iso.slice(0, 7)}-${String(last).padStart(2, "0")}`;
+}
+
+function weekStartMonday(iso: string): string {
+  const d = new Date(`${iso}T00:00:00.000Z`);
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function formatMonthLabel(iso: string, locale: string): string {
+  const d = new Date(`${iso}T00:00:00.000Z`);
+  return new Intl.DateTimeFormat(locale.startsWith("ar") ? "ar" : "en", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(d);
+}
+
+function formatWeekLabel(iso: string, locale: string): string {
+  const d = new Date(`${iso}T00:00:00.000Z`);
+  return new Intl.DateTimeFormat(locale.startsWith("ar") ? "ar" : "en", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(d);
+}
+
+function formatYearLabel(iso: string): string {
+  return iso.slice(0, 4);
+}
+
+function clipBand(
+  rangeStart: string,
+  rangeEnd: string,
+  bandStart: string,
+  bandEnd: string,
+): { leftPct: number; widthPct: number } | null {
+  const start = bandStart < rangeStart ? rangeStart : bandStart;
+  const end = bandEnd > rangeEnd ? rangeEnd : bandEnd;
+  if (end < start) return null;
+  return ganttBarOffset(rangeStart, rangeEnd, start, end);
+}
+
+/** Readable calendar bands — year/month for long ranges, month/week for shorter ones. */
+export function buildGanttCalendarBands(
+  rangeStart: string,
+  rangeEnd: string,
+  locale = "en",
+): { mode: "month" | "week"; primary: GanttCalendarBand[]; secondary: GanttCalendarBand[] } {
+  const span = daysBetween(rangeStart, rangeEnd);
+  const useWeeks = span <= 120;
+  const primary: GanttCalendarBand[] = [];
+  const secondary: GanttCalendarBand[] = [];
+
+  if (useWeeks) {
+    let cursor = isoMonthStart(rangeStart);
+    while (cursor <= rangeEnd) {
+      const end = isoMonthEnd(cursor);
+      const geom = clipBand(rangeStart, rangeEnd, cursor, end);
+      if (geom) {
+        primary.push({
+          key: `m-${cursor}`,
+          label: formatMonthLabel(cursor, locale),
+          start: cursor,
+          end,
+          ...geom,
+        });
+      }
+      const [y, m] = cursor.split("-").map(Number);
+      cursor = `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}-01`;
+    }
+
+    let week = weekStartMonday(rangeStart);
+    while (week <= rangeEnd) {
+      const end = addDaysIso(week, 6);
+      const geom = clipBand(rangeStart, rangeEnd, week, end);
+      if (geom) {
+        secondary.push({
+          key: `w-${week}`,
+          label: formatWeekLabel(week, locale),
+          start: week,
+          end,
+          ...geom,
+        });
+      }
+      week = addDaysIso(week, 7);
+    }
+    return { mode: "week", primary, secondary };
+  }
+
+  // Long projects: year bands + month subdivisions
+  let year = Number(rangeStart.slice(0, 4));
+  const endYear = Number(rangeEnd.slice(0, 4));
+  while (year <= endYear) {
+    const start = `${year}-01-01`;
+    const end = `${year}-12-31`;
+    const geom = clipBand(rangeStart, rangeEnd, start, end);
+    if (geom) {
+      primary.push({
+        key: `y-${year}`,
+        label: formatYearLabel(start),
+        start,
+        end,
+        ...geom,
+      });
+    }
+    year += 1;
+  }
+
+  let cursor = isoMonthStart(rangeStart);
+  while (cursor <= rangeEnd) {
+    const end = isoMonthEnd(cursor);
+    const geom = clipBand(rangeStart, rangeEnd, cursor, end);
+    if (geom) {
+      secondary.push({
+        key: `m-${cursor}`,
+        label: formatMonthLabel(cursor, locale),
+        start: cursor,
+        end,
+        ...geom,
+      });
+    }
+    const [y, m] = cursor.split("-").map(Number);
+    cursor = `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}-01`;
+  }
+
+  return { mode: "month", primary, secondary };
+}
+
+export function ganttItemDepth(items: GanttItem[], item: GanttItem): number {
+  let depth = 0;
+  let parent = item.parentId;
+  while (parent) {
+    depth += 1;
+    const parentItem = items.find((i) => i.id === parent);
+    parent = parentItem?.parentId ?? null;
+  }
+  return depth;
 }
 
 export function buildProcurementPipeline(

@@ -70,7 +70,10 @@ test.describe("visual analytics", () => {
     await signIn(page, "group.admin@modawat.local");
     await page.goto("/en/projects/cs-khamis-hospital/timeline");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.getByTestId("gantt-timeline")).toBeVisible();
+    const gantt = page.getByTestId("gantt-timeline");
+    await expect(gantt).toBeVisible();
+    await expect(gantt.getByText("Site Excavation")).toBeVisible();
+    await expect(gantt.getByTestId("gantt-milestone-marker").first()).toBeVisible();
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByTestId("compact-chronology")).toBeVisible();
@@ -80,6 +83,7 @@ test.describe("visual analytics", () => {
     await page.goto("/ar/projects/cs-khamis-hospital/timeline");
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expect(page.getByText("قيد التنفيذ").first()).toBeVisible();
+    await expect(page.getByTestId("gantt-legend")).toContainText("اليوم");
 
     await page.goto("/en/purchase-orders");
     await expect(page.getByTestId("pipeline-funnel").or(page.getByText(/No procurement pipeline|لا تتوفر|Purchase Orders/i)).first()).toBeVisible();
