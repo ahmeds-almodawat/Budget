@@ -39,6 +39,14 @@ export function registerRevenueDbTests(test, assert, asRole) {
 
   async function insertApprovedBudgetVersion(client, versionId) {
     await client.query(`
+      UPDATE public.budget_versions
+      SET is_current_approved = false
+      WHERE legal_entity_id = $1::uuid
+        AND control_scope_id = $2::uuid
+        AND fiscal_year_id = $3::uuid
+        AND is_current_approved = true
+    `, [ENTITY, REST_SCOPE, FISCAL_YEAR]);
+    await client.query(`
       INSERT INTO public.budget_versions (
         id, legal_entity_id, control_scope_id, fiscal_year_id, version_label,
         version_type, approval_status, is_current_approved, original_approved_amount
