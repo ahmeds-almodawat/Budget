@@ -23,8 +23,10 @@ export default async function ForecastsPage({
   let forecasts: Awaited<ReturnType<typeof fetchForecastsAction>> = [];
   let errorMessage: string | null = null;
   let defaultFiscalPeriodId = "";
+  let fiscalPeriods: { id: string; period_number: number }[] = [];
   try {
     const periods = await getFiscalPeriods(session.db, FISCAL_YEAR_2027);
+    fiscalPeriods = periods.map((p) => ({ id: p.id, period_number: p.period_number }));
     defaultFiscalPeriodId = periods[0]?.id ?? "";
     forecasts = await fetchForecastsAction();
   } catch (error) {
@@ -51,6 +53,7 @@ export default async function ForecastsPage({
         <ForecastsWorkspace
           initialForecasts={forecasts}
           defaultFiscalPeriodId={defaultFiscalPeriodId}
+          fiscalPeriods={fiscalPeriods}
           {...permissions}
         />
       )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,16 @@ import {
 } from "@/app/actions/forecast-actions";
 import { CONTROL_SCOPE_HOSPITAL_BUDGET_2027 } from "@/types/database";
 import { formatMoney } from "@/lib/money";
+import {
+  AnalyticsSection,
+  ChartCard,
+  FinancialTrendChart,
+  KpiCard,
+  KpiGrid,
+} from "@/components/analytics";
+import { formatCompactMoney, toNumber } from "@/domain/analytics/format";
+import { aggregateByPeriod } from "@/domain/analytics/series";
+import type { ChartPoint, ChartSeriesDef, KpiMetric } from "@/domain/analytics/types";
 
 export interface ForecastRecord {
   id: string;
@@ -34,6 +44,7 @@ export interface ForecastRecord {
 interface ForecastsWorkspaceProps {
   initialForecasts: ForecastRecord[];
   defaultFiscalPeriodId: string;
+  fiscalPeriods?: { id: string; period_number: number }[];
   canCreate: boolean;
   canSubmit: boolean;
   canReview: boolean;
@@ -43,12 +54,15 @@ interface ForecastsWorkspaceProps {
 export function ForecastsWorkspace({
   initialForecasts,
   defaultFiscalPeriodId,
+  fiscalPeriods = [],
   canCreate,
   canSubmit,
   canReview,
   canApprove,
 }: ForecastsWorkspaceProps) {
+  const locale = useLocale();
   const t = useTranslations("forecasts");
+  const tAnalytics = useTranslations("analytics");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const [forecasts, setForecasts] = useState(initialForecasts);
@@ -59,6 +73,16 @@ export function ForecastsWorkspace({
   const [pending, startTransition] = useTransition();
   const [approverComment, setApproverComment] = useState("");
   const [showSupersedeConfirm, setShowSupersedeConfirm] = useState(false);
+
+  const moneyLocale = locale.startsWith("ar") ? "ar-SA" : "en-SA";
+  const arabicCurrency = locale.startsWith("ar");
+  const fmt = (v: number) => formatCompactMoney(v, { locale: moneyLocale, arabicCurrency });
+
+  const periodNumberById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of fiscalPeriods) map.set(p.id, p.period_number);
+    return map;
+  }, [fiscalPeriods]);
 
   const currentLocked = useMemo(
     () =>
@@ -72,6 +96,65 @@ export function ForecastsWorkspace({
     [forecasts],
   );
   const canSupersede = Boolean(canApprove && currentLocked && candidateReview);
+
+  const forecastTrend = useMemo(() => {
+    const source = currentLocked ?? forecasts.find((f) => f.forecast_lines && f.forecast_lines.length > 0);
+    const lines = source?.forecast_lines ?? [];
+    if (!lines.length || periodNumberById.size === 0) return [] as ChartPoint[];
+    const rows = lines
+      .map((line) => {
+        const period_number = periodNumberById.get(line.fiscal_period_id);
+        if (period_number == null) return null;
+        return { period_number, forecast_amount: line.forecast_amount };
+      })
+      .filter((row): row is { period_number: number; forecast_amount: string } => row != null);
+    if (rows.length < 2) return [] as ChartPoint[];
+    return aggregateByPeriod(rows, {
+      forecast: (r) => toNumber(r.forecast_amount),
+    });
+  }, [currentLocked, forecasts, periodNumberById]);
+
+  const canShowForecastTrend = forecastTrend.length >= 2;
+
+  const facKpis: KpiMetric[] = (() => {
+    const draftTotal = forecasts
+      .filter((f) => f.approval_status === "draft")
+      .reduce((s, f) => s + toNumber(f.forecast_cost), 0);
+    const underReviewTotal = forecasts
+      .filter((f) => f.approval_status === "under_review" || f.approval_status === "submitted")
+      .reduce((s, f) => s + toNumber(f.forecast_cost), 0);
+    const approvedFac = currentLocked ? toNumber(currentLocked.forecast_cost) : null;
+    return [
+      {
+        id: "fac",
+        label: tAnalytics("kpi.currentApprovedFac"),
+        value: approvedFac,
+        formattedValue: approvedFac != null ? fmt(approvedFac) : "—",
+      },
+      {
+        id: "under-review",
+        label: tAnalytics("kpi.underReviewFac"),
+        value: underReviewTotal,
+        formattedValue: fmt(underReviewTotal),
+      },
+      {
+        id: "draft",
+        label: tAnalytics("kpi.draftFac"),
+        value: draftTotal,
+        formattedValue: fmt(draftTotal),
+      },
+      {
+        id: "versions",
+        label: tAnalytics("kpi.versionCount"),
+        value: forecasts.length,
+        formattedValue: String(forecasts.length),
+      },
+    ];
+  })();
+
+  const forecastSeries: ChartSeriesDef[] = [
+    { key: "forecast", label: tAnalytics("series.forecast"), token: "chart-3" },
+  ];
 
   const refreshMany = (updated: ForecastRecord[]) => {
     setForecasts((prev) => {
@@ -176,6 +259,26 @@ export function ForecastsWorkspace({
 
   return (
     <div className="space-y-6">
+      <AnalyticsSection title={tAnalytics("sections.kpis")}>
+        {forecasts.length === 0 ? (
+          <ChartCard title={tAnalytics("sections.kpis")} empty emptyTitle={tAnalytics("empty.period")}>
+            <div />
+          </ChartCard>
+        ) : (
+          <KpiGrid>
+            {facKpis.map((metric) => (
+              <KpiCard key={metric.id} metric={metric} locale={locale} />
+            ))}
+          </KpiGrid>
+        )}
+      </AnalyticsSection>
+
+      {canShowForecastTrend ? (
+        <ChartCard title={tAnalytics("sections.forecastTrend")} emptyTitle={tAnalytics("empty.period")}>
+          <FinancialTrendChart data={forecastTrend} series={forecastSeries} locale={moneyLocale} />
+        </ChartCard>
+      ) : null}
+
       {canCreate ? (
         <Card>
           <CardHeader>
