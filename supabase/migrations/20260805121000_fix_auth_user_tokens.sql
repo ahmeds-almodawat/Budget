@@ -1,0 +1,2 @@
+-- Legacy migration version retained for databases that already recorded it.
+-- Local auth-token normalization now belongs to the explicit local fixture.

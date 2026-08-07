@@ -1,6 +1,8 @@
--- Extensions and shared enums
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-CREATE EXTENSION IF NOT EXISTS "btree_gist";
+-- Extensions and shared enums. Keep extension-owned functions out of the Data
+-- API's public schema.
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS "btree_gist" WITH SCHEMA extensions;
 
 CREATE TYPE approval_status AS ENUM (
   'draft', 'submitted', 'under_review', 'approved', 'rejected', 'locked', 'posted', 'superseded', 'cancelled'

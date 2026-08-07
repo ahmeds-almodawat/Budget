@@ -1,0 +1,38 @@
+/**
+ * Deterministic local seed user IDs — for automated tests only.
+ * See supabase/fixtures/local_personas.sql (explicit local invocation only).
+ */
+export const TEST_USER_IDS = {
+  budgetOwner: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
+  approver: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2",
+  finance: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3",
+  auditor: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4",
+  viewer: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5",
+  projectManager: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6",
+  employee: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa7",
+  groupAdmin: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
+  inactiveFinance: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2",
+  futureFinance: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3",
+  expiredFinance: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4",
+  noMembership: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5",
+  otherFinance: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6",
+  projectManagerScoped: "baaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa7",
+} as const;
+
+export const TEST_USER_CREDENTIALS = {
+  password: "Password123!",
+  budgetOwner: { email: "budget.owner@modawat.local", id: TEST_USER_IDS.budgetOwner },
+  approver: { email: "approver@modawat.local", id: TEST_USER_IDS.approver },
+  finance: { email: "finance@modawat.local", id: TEST_USER_IDS.finance },
+  auditor: { email: "auditor@modawat.local", id: TEST_USER_IDS.auditor },
+  viewer: { email: "viewer@modawat.local", id: TEST_USER_IDS.viewer },
+  projectManager: { email: "pm@modawat.local", id: TEST_USER_IDS.projectManager },
+  employee: { email: "employee@modawat.local", id: TEST_USER_IDS.employee },
+  groupAdmin: { email: "group.admin@modawat.local", id: TEST_USER_IDS.groupAdmin },
+  otherFinance: { email: "other.finance@modawat.local", id: TEST_USER_IDS.otherFinance },
+  inactiveFinance: { email: "inactive.finance@modawat.local", id: TEST_USER_IDS.inactiveFinance },
+  noMembership: { email: "no.membership@modawat.local", id: TEST_USER_IDS.noMembership },
+} as const;
+
+export const TEST_LEGAL_ENTITY_MODAWAT = "11111111-1111-1111-1111-111111111102";
+export const TEST_CONTROL_SCOPE_HOSPITAL = "55555555-5555-5555-5555-555555555501";

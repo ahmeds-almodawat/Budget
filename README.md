@@ -15,19 +15,30 @@ Production-oriented bilingual (Arabic/English) enterprise platform for project m
 
 ```bash
 cp .env.example .env.local
-npm install
+npm ci
+npx supabase start
+npm run db:wait-local
+npx supabase db reset --no-seed
+node scripts/assert-production-migrations-safe.mjs
+node scripts/sync-local-env.cjs
+# PowerShell: $env:ALLOW_LOCAL_FIXTURES='true'
+# POSIX:      export ALLOW_LOCAL_FIXTURES=true
+npm run db:fixtures:local
 npm run dev
 ```
 
-Open [http://localhost:3000/en](http://localhost:3000/en) or [http://localhost:3000/ar](http://localhost:3000/ar).
+Open [http://localhost:3000/en/auth/sign-in](http://localhost:3000/en/auth/sign-in) (local users: `*@modawat.local` / `Password123!`).
 
 ### Local Supabase (optional)
+
+Local personas are never part of the production migration replay. They require
+the explicit, loopback-guarded fixture command shown above.
 
 When Docker and Supabase CLI are available:
 
 ```bash
-supabase start
-supabase db reset
+npx supabase start
+npx supabase db reset --no-seed
 ```
 
 Copy anon/service keys from `supabase status` into `.env.local`. **Never use production credentials.**
@@ -39,7 +50,7 @@ Copy anon/service keys from `supabase status` into `.env.local`. **Never use pro
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript |
 | `npm run test` | Unit tests (Vitest) |
-| `npm run test:e2e` | Playwright E2E |
+| `npm run test:e2e` | Playwright E2E (real Supabase Auth) |
 | `npm run build` | Production build |
 | `npm run verify` | lint + typecheck + test + build |
 

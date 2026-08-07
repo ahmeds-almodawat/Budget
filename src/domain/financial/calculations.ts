@@ -177,6 +177,110 @@ export function isVarianceExplanationRequired(
   return percent.gte(money(input.thresholdPercent));
 }
 
+export interface RevenueVarianceInput {
+  budgetNetRevenue: MoneyInput;
+  actualNetRevenue: MoneyInput;
+}
+
+export function calculateRevenueVariance(input: RevenueVarianceInput): Decimal {
+  return money(input.actualNetRevenue).minus(money(input.budgetNetRevenue));
+}
+
+export interface ExpenseVarianceInput {
+  budgetCost: MoneyInput;
+  actualCost: MoneyInput;
+}
+
+export function calculateExpenseVariance(input: ExpenseVarianceInput): Decimal {
+  return money(input.budgetCost).minus(money(input.actualCost));
+}
+
+export interface VariancePercentageInput {
+  varianceAmount: MoneyInput;
+  budgetAmount: MoneyInput;
+}
+
+export function calculateVariancePercentage(input: VariancePercentageInput): Decimal | null {
+  const budget = money(input.budgetAmount);
+  if (budget.isZero()) return null;
+  return money(input.varianceAmount).div(budget);
+}
+
+export type VarianceStatus = "favorable" | "unfavorable" | "on_target" | "unbudgeted";
+
+export function classifyRevenueVarianceStatus(
+  budget: MoneyInput,
+  actual: MoneyInput,
+): VarianceStatus {
+  const b = money(budget);
+  const a = money(actual);
+  if (b.isZero() && !a.isZero()) return "unbudgeted";
+  if (b.isZero() && a.isZero()) return "on_target";
+  if (a.gt(b)) return "favorable";
+  if (a.lt(b)) return "unfavorable";
+  return "on_target";
+}
+
+export function classifyExpenseVarianceStatus(
+  budget: MoneyInput,
+  actual: MoneyInput,
+): VarianceStatus {
+  const b = money(budget);
+  const a = money(actual);
+  if (b.isZero() && !a.isZero()) return "unbudgeted";
+  if (b.isZero() && a.isZero()) return "on_target";
+  if (a.lt(b)) return "favorable";
+  if (a.gt(b)) return "unfavorable";
+  return "on_target";
+}
+
+export interface GrossToNetInput {
+  grossRevenue: MoneyInput;
+  rejections?: MoneyInput;
+  discounts?: MoneyInput;
+  refunds?: MoneyInput;
+  creditNotes?: MoneyInput;
+  otherDeductions?: MoneyInput;
+  otherAdjustments?: MoneyInput;
+}
+
+export function calculateNetRevenue(input: GrossToNetInput): Decimal {
+  return money(input.grossRevenue)
+    .minus(money(input.rejections ?? 0))
+    .minus(money(input.discounts ?? 0))
+    .minus(money(input.refunds ?? 0))
+    .minus(money(input.creditNotes ?? 0))
+    .minus(money(input.otherDeductions ?? 0))
+    .plus(money(input.otherAdjustments ?? 0));
+}
+
+export interface ProfitabilityInput {
+  netRevenue: MoneyInput;
+  costOfRevenue: MoneyInput;
+  payroll: MoneyInput;
+  operatingExpenses: MoneyInput;
+}
+
+export function calculateProfitability(input: ProfitabilityInput): {
+  grossProfit: Decimal;
+  grossMarginPercentage: Decimal | null;
+  operatingContribution: Decimal;
+  operatingContributionMargin: Decimal | null;
+} {
+  const net = money(input.netRevenue);
+  const cor = money(input.costOfRevenue);
+  const payroll = money(input.payroll);
+  const opex = money(input.operatingExpenses);
+  const grossProfit = net.minus(cor);
+  const operatingContribution = grossProfit.minus(payroll).minus(opex);
+  return {
+    grossProfit,
+    grossMarginPercentage: net.isZero() ? null : grossProfit.div(net),
+    operatingContribution,
+    operatingContributionMargin: net.isZero() ? null : operatingContribution.div(net),
+  };
+}
+
 export type ProgressMethod =
   | "0/100"
   | "50/50"

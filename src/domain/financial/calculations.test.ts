@@ -11,6 +11,13 @@ import {
   calculateRiskExposure,
   isVarianceExplanationRequired,
   calculateProgressPercent,
+  calculateRevenueVariance,
+  calculateExpenseVariance,
+  calculateVariancePercentage,
+  classifyRevenueVarianceStatus,
+  classifyExpenseVarianceStatus,
+  calculateNetRevenue,
+  calculateProfitability,
 } from "@/domain/financial/calculations";
 
 describe("financial calculations", () => {
@@ -124,5 +131,53 @@ describe("financial calculations", () => {
       ],
     });
     expect(progress).toBe(40);
+  });
+
+  it("revenue variance is favorable when actual exceeds budget", () => {
+    expect(calculateRevenueVariance({ budgetNetRevenue: 100, actualNetRevenue: 110 }).toFixed(2)).toBe("10.00");
+    expect(classifyRevenueVarianceStatus(100, 110)).toBe("favorable");
+  });
+
+  it("expense variance is favorable when actual is below budget", () => {
+    expect(calculateExpenseVariance({ budgetCost: 100, actualCost: 90 }).toFixed(2)).toBe("10.00");
+    expect(classifyExpenseVarianceStatus(100, 90)).toBe("favorable");
+    expect(classifyExpenseVarianceStatus(100, 110)).toBe("unfavorable");
+  });
+
+  it("zero budget yields null variance percentage", () => {
+    expect(calculateVariancePercentage({ varianceAmount: 10, budgetAmount: 0 })).toBeNull();
+    expect(classifyRevenueVarianceStatus(0, 5)).toBe("unbudgeted");
+  });
+
+  it("calculates gross-to-net revenue", () => {
+    expect(
+      calculateNetRevenue({
+        grossRevenue: 120,
+        rejections: 10,
+        discounts: 5,
+      }).toFixed(2),
+    ).toBe("105.00");
+  });
+
+  it("calculates profitability bridge", () => {
+    const p = calculateProfitability({
+      netRevenue: 1000,
+      costOfRevenue: 400,
+      payroll: 200,
+      operatingExpenses: 100,
+    });
+    expect(p.grossProfit.toFixed(2)).toBe("600.00");
+    expect(p.operatingContribution.toFixed(2)).toBe("300.00");
+    expect(p.grossMarginPercentage?.toFixed(4)).toBe("0.6000");
+  });
+
+  it("excludes CAPEX from operating contribution", () => {
+    const p = calculateProfitability({
+      netRevenue: 1000,
+      costOfRevenue: 200,
+      payroll: 100,
+      operatingExpenses: 50,
+    });
+    expect(p.operatingContribution.toFixed(2)).toBe("650.00");
   });
 });

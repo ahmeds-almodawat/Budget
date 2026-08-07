@@ -4,7 +4,7 @@ export function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!url || !key || url.includes("127.0.0.1") === false && key === "your-anon-key-here") {
+  if (!url || !key || key === "your-anon-key-here") {
     return null;
   }
 

@@ -1,60 +1,78 @@
 # Codex Handoff
 
-## Repository
+> **Superseded historical handoff.** Its completion counts and readiness claims
+> describe an earlier SHA. Use `CODEX_AUDIT_REPORT.md` and
+> `REMEDIATION_EVIDENCE.md` for current disposition.
 
-- **Path:** `enterprise-control-platform`
-- **Branch:** `feature/enterprise-control-platform`
-- **Stack:** Next.js 16, TypeScript, Supabase (migrations only until local stack running), next-intl, Vitest, Playwright
+**Review preparation:** 2026-08-05  
+**Base:** `main` @ `7d754c8` (`composer-foundation-v1`)  
+**Head:** `feature/enterprise-control-platform` @ `ca51c4e` (`composer-core-modules-v1`)
 
-## What works today
+## Status legend
 
-1. Bilingual app shell (AR RTL / EN LTR) with full primary navigation
-2. Seed-backed dashboards: executive, hospital, restaurant, project EV, employee performance
-3. Domain services: financial formulas, permissions, money utilities — **21 unit tests passing**
-4. PostgreSQL migrations (6 files) with RLS foundation
-5. Production build passing
+| Label | Meaning |
+|-------|---------|
+| **Database-backed** | Reads/writes local Supabase |
+| **Tested** | Automated test executed and passed |
+| **Partial** | Core path works; gaps documented |
+| **Scaffold** | Route exists; no business workflow |
 
-## Priority takeover tasks
+## Fully implemented + tested
 
-### P0 — Database live
+| Feature | Status |
+|---------|--------|
+| Local Supabase (isolated ports 56000–56009) | Database-backed, 16 migrations, 75 RLS policies |
+| Supabase Auth + authorization | 17 E2E + integration + 15 DB tests |
+| Hospital budget workflow | Database-backed, E2E multi-user |
+| Actual CSV/Excel import | Database-backed, E2E |
+| Project schedule & progress | Timeline, tasks, milestones, verification |
+| Governance registers | Separate risks, issues, actions, decisions |
+| Approvals inbox | Multi-type view (budget, import, progress, schedule, variance) |
+| Actuals & commitments UI | Transactions, unmapped, batches, reversals |
+| Restaurant branch KPIs | 2-branch comparison from mapped actuals |
+| Audit search + exceptions | Database-backed |
+| Report export | CSV/Excel with drill-down preview |
+| GitHub Actions CI | `.github/workflows/ci.yml` on Linux |
 
-1. `supabase start` + `supabase db reset`
-2. Add seed migration (`20260805120600_seed_data.sql`) with Al Modawat sample data
-3. Replace `development-seed.ts` dashboard queries with Supabase server queries + RLS tests
+## Partially implemented
 
-### P1 — Core workflows
+- Commitments sub-tabs (contracts, invoices, payments, credit notes) — scaffolded
+- Delegated approvals tab — no delegation records
+- Employee performance scorecard — team counts only
 
-1. Budget version CRUD + approval workflow UI
-2. Actual import (CSV) with batch reconciliation UI
-3. Auth login page wired to Supabase Auth
-4. Complete RLS policies for all tables in migrations
+## Scaffold only
 
-### P2 — Acceptance scenarios
+`cost-control`, `forecasts`, `performance`, `administration`, `master-data`
 
-Implement end-to-end flows for hospital budget, restaurant branch comparison, building project EV, security negative tests, financial integrity, bilingual navigation (partially covered by Playwright).
+## Verification (local 2026-08-05)
 
-## Key files
+| Suite | Result |
+|-------|--------|
+| Vitest | 26/26 pass |
+| DB | 15/15 pass |
+| E2E | 17/17 pass (one complete run) |
+| Build | Pass (first attempt); prior Windows worker crash documented as environmental |
 
-| Area | Path |
-|------|------|
-| Financial domain | `src/domain/financial/calculations.ts` |
-| Permissions | `src/domain/auth/permissions.ts` |
-| Branding config | `src/config/product.ts` |
-| Migrations | `supabase/migrations/` |
-| i18n | `messages/en.json`, `messages/ar.json` |
-| Seed ( interim ) | `src/data/seed/development-seed.ts` |
+**Await GitHub Actions CI** for authoritative Linux evidence before merge.
 
-## Commands
+## Key commands
 
 ```bash
-npm run verify    # lint + typecheck + test + build
-npm run test:e2e  # requires dev server
+supabase start
+supabase db reset
+node scripts/sync-local-env.cjs
+npm run verify
+npm run test:e2e
 ```
 
-## Do not
+## Codex audit priorities
 
-- Deploy to Vercel or connect production Supabase
-- Force-push or apply destructive migrations without review
-- Commit secrets
+1. RLS cross-entity isolation (75 policies — verify new tables)
+2. Server-action authorization vs UI visibility
+3. Financial immutability and reversal-only actuals
+4. Segregation of duties (budget, progress, approvals)
+5. Import reconciliation and duplicate controls
+6. Schedule/milestone baseline immutability triggers
+7. Local auth seed migrations must never run in production
 
-See [COMPOSER_COMPLETION_REPORT.md](./COMPOSER_COMPLETION_REPORT.md) for exact test/build results.
+See [COMPOSER_COMPLETION_REPORT.md](./COMPOSER_COMPLETION_REPORT.md) and [AUTHENTICATION_AND_AUTHORIZATION.md](./AUTHENTICATION_AND_AUTHORIZATION.md).

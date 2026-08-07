@@ -1,132 +1,95 @@
 # Composer Completion Report
 
-**Date:** 2026-08-05  
-**Branch:** `feature/enterprise-control-platform`  
-**Product:** Enterprise Project, Budget and Performance Control
+> **Historical, non-authoritative evidence.** The independent audit reproduced
+> failures at audited SHA `97049df`; do not use the completion claims below for
+> merge or production decisions. Current authorization evidence is in
+> `REMEDIATION_EVIDENCE.md`, and all other audit findings remain controlling.
 
----
+**Last updated:** 2026-08-05 (Codex review preparation)  
+**Feature branch:** `feature/enterprise-control-platform` @ `ca51c4e`  
+**Base branch:** `main` @ `7d754c8` (`composer-foundation-v1`)
 
-## 1. Repository state before work
+## Checkpoint tags
 
-- Git initialized on `master`, **no commits**, no application files (only `.git/`).
+| Tag | Commit | Milestone |
+|-----|--------|-----------|
+| `composer-foundation-v1` | `7d754c8` | Next.js scaffold, domain layer, initial migrations |
+| `composer-database-workflows-v1` | `8dc81d1` | Isolated Supabase, DB-backed hospital/import/project workflows |
+| `composer-auth-workflows-v1` | `99491e5` | Supabase Auth, RLS session enforcement, segregation of duties |
+| `composer-core-modules-v1` | `ca51c4e` | Project progress, governance registers, approvals, financial UI, restaurant KPIs, audit, reports |
 
-## 2. Architecture created
+`composer-review-ready-v1` is created only after GitHub Actions CI passes on the review-preparation commit.
 
-- Next.js 16 App Router with `[locale]` routing (en/ar)
-- Feature-based modules: `domain/`, `config/`, `components/`, `data/seed/`
-- Supabase-oriented PostgreSQL schema with RLS foundation
-- Decimal-safe financial domain layer
-- Central branding in `src/config/product.ts`
+## Local verification (2026-08-05, review prep run)
 
-## 3. Features implemented
+Executed on Windows after `supabase db reset` (16 migrations applied).
 
-| Area | Status |
-|------|--------|
-| Bilingual UI + RTL/LTR | ✅ |
-| App shell + 19 nav routes | ✅ |
-| Executive / hospital / restaurant / project / employee dashboards | ✅ (seed-backed) |
-| Module scaffolds (budgets, actuals, imports, etc.) | ✅ placeholders |
-| Financial calculations (EV, EAC, VAT, variance) | ✅ tested |
-| Permission model (15 roles) | ✅ tested |
-| Auth/RLS SQL schema | ✅ migrations |
-| Import/audit schema | ✅ migrations |
+| Suite | Passed | Failed | Skipped | Notes |
+|-------|--------|--------|---------|-------|
+| Vitest (unit + integration) | **26** | 0 | 0 | 6 files, ~8s |
+| Database (`npm run test:db`) | **15** | 0 | 0 | |
+| Playwright E2E | **17** | 0 | 0 | First complete run; 1 worker; ~1.4 min |
+| `npm run lint` | pass | — | — | |
+| `npm run typecheck` | pass | — | — | |
+| `npm run build` (first attempt) | **pass** | — | — | ~18s; 61 routes |
 
-## 4. Database migrations created
+### Build stability
 
-6 files under `supabase/migrations/` covering organization, auth, WBS, budgets, actuals, RLS.
+| Attempt | Result | Classification |
+|---------|--------|----------------|
+| Earlier session (pre-review) | Failed — Next.js worker exit `3221226505` during page-data collection | **Resource/environment limitation** on Windows (intermittent; not reproduced in this run) |
+| Review-prep first attempt | **Success** | — |
+| Review-prep retry | Not required | — |
 
-## 5. RLS policies created
+Do not treat a single successful retry on a constrained host as proof of build stability. **Authoritative build evidence is GitHub Actions on `ubuntu-latest`.**
 
-Foundation policies in `20260805120500_rls_policies.sql` for profiles, legal entities, org units, budgets, actuals (no update/delete), audit.
+### Database repeatability
 
-## 6. Seed data created
+| Reset | Result |
+|-------|--------|
+| First (`supabase db reset`) | Success — 16 migrations |
+| Second (immediate) | Failed — HTTP 502 during container restart (**environmental**) |
+| Second (after `docker rm` + `supabase start`) | Success — 16 migrations |
 
-TypeScript development seed: `src/data/seed/development-seed.ts` (Al Modawat hospital, restaurants, Khamis Mushait project). SQL seed migration **not yet applied** (requires local Supabase).
+**RLS policies (exact):** `75` (`SELECT count(*) FROM pg_policies WHERE schemaname = 'public'`)
 
-## 7. Pages and routes created
+### Environmental warnings (non-blocking)
 
-46 static locale routes + dynamic `/[locale]/projects/[id]`. See build output in section 11.
+- `npm warn Unknown env config "devdir"`
+- Next.js ignored `package-lock.json` outside repository root
+- Next.js middleware deprecation notice
+- Vitest `configLoader: 'native'` warning
+- Playwright webServer logged one `Error: aborted` during E2E; all 17 tests still passed
 
-## 8. Tests created
+## Implemented modules (feature branch since foundation)
 
-| Suite | File | Count |
-|-------|------|-------|
-| Financial | `src/domain/financial/calculations.test.ts` | 12 |
-| Permissions | `src/domain/auth/permissions.test.ts` | 6 |
-| Money | `src/lib/money.test.ts` | 3 |
-| E2E | `e2e/bilingual-navigation.spec.ts` | 3 (not run in verify) |
-| SQL | `supabase/tests/rls_foundation.test.sql` | placeholder |
+- Hospital and restaurant operational budgets (DB-backed)
+- Project schedule, tasks, milestones, progress submission/verification
+- Risk, issue, action, decision registers (separate)
+- Approvals inbox (multi-type)
+- Actuals, commitments, import batches, duplicate queue, reversals
+- Restaurant branch KPI comparison (mapped actuals)
+- Audit search and exceptions workspace
+- Reports with CSV/Excel export
+- Supabase Auth with scoped server actions and RLS
 
-## 9. Commands executed
+## Partial / scaffold (honest)
 
-```bash
-git checkout -b feature/enterprise-control-platform
-npx create-next-app@latest . ...
-npm install (dependencies + devDependencies)
-npm run lint
-npm run typecheck
-npm run test
-npm run build
-```
+- **Delegated approvals** — tab present; no delegation records
+- **Procurement documents** — contracts/invoices/payments/credit notes tabs scaffolded
+- **cost-control, forecasts, performance, administration, master-data** — placeholder routes
 
-## 10. Exact test results
+## Local authentication seed warning
 
-```
-Test Files  3 passed (3)
-Tests       21 passed (21)
-Duration    ~4.7s
-```
+Known-password users are no longer created by any migration. They exist only in
+the explicit loopback-guarded local fixture. See `docs/LOCAL_SETUP.md`.
 
-## 11. Build result
+## Codex audit priorities
 
-**SUCCESS** — Next.js 16.3.0 production build completed; 46 static pages generated.
-
-## 12. Features incomplete
-
-- Full CRUD for budgets, commitments, imports, master data
-- Supabase Auth login UI
-- CSV/Excel import pipeline
-- SQL seed data + live dashboard queries
-- Complete RLS on all tables
-- Approval workflow UI
-- Report export (CSV/Excel)
-- Phase 6 advanced controls (allocations, eliminations, contract variations)
-
-## 13. Known defects
-
-- Dashboards use TypeScript seed, not database (until Supabase connected)
-- Module pages are descriptive scaffolds only
-- `supabase db test` not executed (CLI/Docker availability unconfirmed)
-
-## 14. Security risks
-
-- RLS incomplete on several migrated tables (default deny via ENABLE RLS but no SELECT policies yet)
-- Auth middleware not chained with next-intl middleware
-- Views may need `security_invoker` when exposed via API
-
-## 15. Financial-control risks
-
-- Leaf-posting trigger defined but not attached in migration (function only)
-- Allocation reconciliation enforced in domain tests, not yet DB constraint trigger
-- Approved budget immutability enforced by approval_status check on UPDATE, not full append-only pattern
-
-## 16. Required manual setup
-
-1. Copy `.env.example` → `.env.local`
-2. Optional: install Docker + Supabase CLI, run `supabase start` and `supabase db reset`
-3. Optional: `npx playwright install` before `npm run test:e2e`
-
-## 17. Recommended next step
-
-Apply migrations locally, add SQL seed, wire executive dashboard to `v_budget_vs_actual` view.
-
-## 18. Recommended Codex takeover priorities
-
-1. P0: Local Supabase + seed migration + dashboard data layer  
-2. P1: Budget approval + actual import workflows  
-3. P2: Complete RLS + negative authorization integration tests  
-4. P3: Acceptance scenario E2E tests  
-
----
-
-*Generated at end of autonomous implementation session.*
+1. RLS cross-entity isolation on new tables (75 policies)
+2. Authentication and server-action authorization
+3. Financial immutability and reversal-only corrections
+4. Approval segregation of duties
+5. Import reconciliation and duplicate controls
+6. Earned-value and schedule baseline immutability
+7. CI reproducibility vs local Windows intermittency

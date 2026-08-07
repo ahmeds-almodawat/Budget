@@ -24,80 +24,187 @@ import {
   ScrollText,
   Home,
   Languages,
+  FileText,
+  FileSearch,
+  ClipboardList,
+  PackageCheck,
+  FileSignature,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { productConfig } from "@/config/product";
+import { BrandMark } from "@/components/layout/brand-mark";
+import type { UserSummary } from "@/components/layout/app-shell";
+import type { RoleAssignment } from "@/domain/auth/permissions";
+import { otherLocale, pickLocalized } from "@/lib/i18n/display";
+import { canAccessNavRoute } from "@/config/route-access";
 
-const navItems = [
-  { key: "home", href: "", icon: Home },
-  { key: "executiveDashboard", href: "dashboard/executive", icon: LayoutDashboard },
-  { key: "operationalBudgets", href: "budgets", icon: Wallet },
-  { key: "projects", href: "projects", icon: FolderKanban },
-  { key: "milestones", href: "milestones", icon: Flag },
-  { key: "tasks", href: "tasks", icon: CheckSquare },
-  { key: "costControl", href: "cost-control", icon: PieChart },
-  { key: "commitments", href: "commitments", icon: HandCoins },
-  { key: "actualCosts", href: "actuals", icon: Receipt },
-  { key: "forecasts", href: "forecasts", icon: TrendingUp },
-  { key: "changes", href: "changes", icon: GitPullRequest },
-  { key: "risksIssues", href: "risks", icon: AlertTriangle },
-  { key: "reports", href: "reports", icon: FileBarChart },
-  { key: "employeePerformance", href: "performance", icon: Users },
-  { key: "approvals", href: "approvals", icon: ClipboardCheck },
-  { key: "imports", href: "imports", icon: Upload },
-  { key: "masterData", href: "master-data", icon: Database },
-  { key: "administration", href: "administration", icon: Settings },
-  { key: "auditLog", href: "audit", icon: ScrollText },
-] as const;
+type NavItem = { key: string; href: string; icon: LucideIcon };
 
-export function AppSidebar() {
+const navSections: { labelKey?: string; items: NavItem[] }[] = [
+  {
+    items: [
+      { key: "home", href: "", icon: Home },
+      { key: "executiveDashboard", href: "dashboard/executive", icon: LayoutDashboard },
+    ],
+  },
+  {
+    labelKey: "sectionFinancial",
+    items: [
+      { key: "operationalBudgets", href: "budgets", icon: Wallet },
+      { key: "costControl", href: "cost-control", icon: PieChart },
+      { key: "commitments", href: "commitments", icon: HandCoins },
+      { key: "actualCosts", href: "actuals", icon: Receipt },
+      { key: "forecasts", href: "forecasts", icon: TrendingUp },
+      { key: "imports", href: "imports", icon: Upload },
+    ],
+  },
+  {
+    labelKey: "sectionProjects",
+    items: [
+      { key: "projects", href: "projects", icon: FolderKanban },
+      { key: "milestones", href: "milestones", icon: Flag },
+      { key: "tasks", href: "tasks", icon: CheckSquare },
+      { key: "changes", href: "changes", icon: GitPullRequest },
+    ],
+  },
+  {
+    labelKey: "sectionGovernance",
+    items: [
+      { key: "risksIssues", href: "risks", icon: AlertTriangle },
+      { key: "approvals", href: "approvals", icon: ClipboardCheck },
+      { key: "delegations", href: "delegations", icon: Users },
+      { key: "requisitions", href: "requisitions", icon: HandCoins },
+      { key: "rfqs", href: "rfqs", icon: FileSearch },
+      { key: "quotations", href: "quotations", icon: FileText },
+      { key: "evaluations", href: "evaluations", icon: ClipboardList },
+      { key: "purchaseOrders", href: "purchase-orders", icon: Receipt },
+      { key: "contracts", href: "contracts", icon: FileSignature },
+      { key: "receipts", href: "receipts", icon: PackageCheck },
+      { key: "serviceEntries", href: "service-entries", icon: ClipboardCheck },
+      { key: "supplierInvoices", href: "supplier-invoices", icon: Receipt },
+      { key: "paymentRequests", href: "payment-requests", icon: HandCoins },
+      { key: "periodClose", href: "period-close", icon: ScrollText },
+      { key: "approvalRules", href: "approval-rules", icon: ClipboardCheck },
+      { key: "auditLog", href: "audit", icon: ScrollText },
+    ],
+  },
+  {
+    labelKey: "sectionInsights",
+    items: [
+      { key: "employeePerformance", href: "performance", icon: Users },
+      { key: "reports", href: "reports", icon: FileBarChart },
+    ],
+  },
+  {
+    labelKey: "sectionAdmin",
+    items: [
+      { key: "masterData", href: "master-data", icon: Database },
+      { key: "administration", href: "administration", icon: Settings },
+    ],
+  },
+];
+
+export function AppSidebar({
+  user,
+  onNavigate,
+  testId = "app-sidebar",
+}: {
+  user: UserSummary | null;
+  onNavigate?: () => void;
+  testId?: string;
+}) {
   const t = useTranslations("nav");
+  const tSidebar = useTranslations("sidebar");
   const locale = useLocale();
   const pathname = usePathname();
-  const productName =
-    locale === "ar" ? productConfig.workingName.ar : productConfig.workingName.en;
-  const otherLocale = locale === "ar" ? "en" : "ar";
+  const altLocale = otherLocale(locale);
+
+  const roleAssignments: RoleAssignment[] = user?.roleAssignments ?? [];
+
+  function shouldShow(key: string) {
+    if (!user) return false;
+    const legalEntityId = user.activeLegalEntityId ?? user.primaryLegalEntityId;
+    if (!legalEntityId) return false;
+    return canAccessNavRoute(
+      roleAssignments,
+      key,
+      legalEntityId,
+    );
+  }
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-e border-slate-200 bg-slate-950 text-slate-100">
-      <div className="border-b border-slate-800 p-4">
-        <div className="text-xs uppercase tracking-wide text-teal-400">
-          {productConfig.shortName[locale as "en" | "ar"]}
-        </div>
-        <h1 className="mt-1 text-sm font-semibold leading-snug">{productName}</h1>
+    <aside
+      data-testid={testId}
+      className="flex h-screen w-[17.5rem] shrink-0 flex-col border-e border-sidebar-border bg-sidebar text-sidebar-foreground"
+    >
+      <div className="border-b border-sidebar-border p-4">
+        <BrandMark locale={locale as "en" | "ar"} />
+        <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-sidebar-muted">
+          {pickLocalized(locale, productConfig.workingName.en, productConfig.workingName.ar)}
+        </p>
       </div>
-      <nav className="flex-1 overflow-y-auto p-2" aria-label="Main navigation">
-        <ul className="space-y-1">
-          {navItems.map(({ key, href, icon: Icon }) => {
-            const url = `/${locale}${href ? `/${href}` : ""}`;
-            const active = pathname === url || (href && pathname.startsWith(`${url}/`));
-            return (
-              <li key={key}>
-                <Link
-                  href={url}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                    active
-                      ? "bg-teal-800 text-white"
-                      : "text-slate-300 hover:bg-slate-800 hover:text-white",
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                  <span>{t(key)}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+
+      <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label={tSidebar("mainNavigation")}>
+        {navSections.map((section, sectionIndex) => {
+          const visibleItems = section.items.filter((item) => shouldShow(item.key));
+          if (visibleItems.length === 0) return null;
+
+          return (
+            <div key={sectionIndex} className={cn(sectionIndex > 0 && "mt-5")}>
+              {section.labelKey ? (
+                <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-muted">
+                  {t(section.labelKey as Parameters<typeof t>[0])}
+                </p>
+              ) : null}
+              <ul className="space-y-0.5">
+                {visibleItems.map(({ key, href, icon: Icon }) => {
+                  const url = `/${locale}${href ? `/${href}` : ""}`;
+                  const active = pathname === url || (href && pathname.startsWith(`${url}/`));
+                  return (
+                    <li key={key}>
+                      <Link
+                        href={url}
+                        onClick={onNavigate}
+                        data-active={active ? "true" : "false"}
+                        className={cn(
+                          "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150",
+                          active
+                            ? "bg-sidebar-active text-sidebar-active-foreground shadow-[var(--glow)]"
+                            : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground",
+                        )}
+                      >
+                        <Icon
+                          className={cn(
+                            "h-4 w-4 shrink-0 transition-colors",
+                            active ? "text-sidebar-accent" : "opacity-80 group-hover:opacity-100",
+                          )}
+                          aria-hidden
+                        />
+                        <span className="truncate">{t(key as Parameters<typeof t>[0])}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
       </nav>
-      <div className="border-t border-slate-800 p-3">
+
+      <div className="border-t border-sidebar-border p-3">
         <Link
-          href={pathname.replace(`/${locale}`, `/${otherLocale}`)}
-          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
+          href={pathname.replace(`/${locale}`, `/${altLocale}`)}
+          onClick={onNavigate}
+          className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground"
         >
-          <Languages className="h-4 w-4" aria-hidden />
-          <span>{otherLocale === "ar" ? "العربية" : "English"}</span>
+          <Languages className="h-4 w-4 shrink-0" aria-hidden />
+          <span>{altLocale === "ar" ? tSidebar("switchToArabic") : tSidebar("switchToEnglish")}</span>
         </Link>
+        <p className="mt-2 flex items-center gap-2 px-3 text-[11px] text-sidebar-muted">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+          {tSidebar("systemOperational")}
+        </p>
       </div>
     </aside>
   );

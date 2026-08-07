@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - feature/enterprise-control-platform
+      - fix/audit-p0-authorization
+      - fix/audit-p2-financial-transactions
+      - fix/audit-p3-reporting-ingress
+      - fix/audit-p4-localization-forecast-rpc
+      - fix/audit-p5-procurement-governance
+  push:
+    branches:
+      - feature/enterprise-control-platform
+      - fix/audit-p0-authorization
+      - fix/audit-p2-financial-transactions
+      - fix/audit-p3-reporting-ingress
+      - fix/audit-p4-localization-forecast-rpc
+      - fix/audit-p5-procurement-governance
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22.18.0"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.111.0
+
+      - name: Start Supabase
+        run: node scripts/start-local-stack.mjs
+
+      - name: Wait for local services
+        run: npm run db:wait-local
+
+      - name: Replay production migrations without fixtures
+        run: supabase db reset --no-seed
+
+      - name: Wait for reset services
+        run: npm run db:wait-local
+
+      - name: Verify production migration safety
+        run: node scripts/assert-production-migrations-safe.mjs
+
+      - name: Load explicit local personas
+        run: npm run db:fixtures:local
+        env:
+          ALLOW_LOCAL_FIXTURES: "true"
+
+      - name: Sync local environment
+        run: node scripts/sync-local-env.cjs
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Translation completeness
+        run: npm run test:i18n
+
+      - name: Unit and integration tests
+        run: npm run test
+
+      - name: Import security tests
+        run: npm run test:import-security
+
+      - name: Database tests
+        run: npm run test:db
+
+      - name: Concurrency tests
+        run: npm run test:concurrency
+
+      - name: E2E tests
+        run: npm run test:e2e
+        env:
+          CI: true
+          E2E_PORT: "3010"
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Upload authorization evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: authorization-matrix
+          path: artifacts/authorization/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload financial transaction evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: financial-transaction-evidence
+          path: artifacts/financial-transactions/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup || true

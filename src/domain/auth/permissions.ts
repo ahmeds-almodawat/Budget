@@ -41,7 +41,9 @@ export type PermissionResource =
   | "master_data"
   | "approval"
   | "audit"
-  | "report";
+  | "report"
+  | "period_close"
+  | "appraisal";
 
 const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, PermissionAction[]>>> = {
   system_administrator: {
@@ -58,6 +60,8 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     approval: ["read", "approve"],
     audit: ["read", "export"],
     report: ["read", "export"],
+    period_close: ["create", "read", "update", "approve"],
+    appraisal: ["create", "read", "update", "approve"],
   },
   group_executive: {
     budget: ["read", "approve", "export"],
@@ -68,6 +72,8 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     variance: ["read", "approve"],
     report: ["read", "export"],
     audit: ["read"],
+    period_close: ["read"],
+    appraisal: ["read"],
   },
   legal_entity_administrator: {
     organization: ["create", "read", "update", "approve"],
@@ -76,6 +82,8 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     master_data: ["create", "read", "update", "approve"],
     report: ["read", "export"],
     audit: ["read"],
+    period_close: ["create", "read", "update", "approve"],
+    appraisal: ["create", "read", "update", "approve"],
   },
   pmo_director: {
     project: ["create", "read", "update", "approve"],
@@ -83,6 +91,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     task: ["create", "read", "update", "approve"],
     forecast: ["create", "read", "update", "approve"],
     report: ["read", "export"],
+    appraisal: ["read"],
   },
   project_manager: {
     project: ["create", "read", "update"],
@@ -93,6 +102,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     forecast: ["create", "read", "update"],
     variance: ["create", "read", "update"],
     report: ["read", "export"],
+    appraisal: ["read", "update"],
   },
   cost_controller: {
     budget: ["create", "read", "update"],
@@ -100,19 +110,26 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     actual: ["read", "import", "allocate"],
     forecast: ["create", "read", "update"],
     variance: ["create", "read", "update", "approve"],
+    master_data: ["read", "create", "update"],
+    approval: ["read", "create", "approve"],
     report: ["read", "export"],
+    period_close: ["create", "read", "update", "approve"],
   },
   finance_user: {
     budget: ["read", "export"],
     actual: ["read", "import", "allocate"],
-    commitment: ["read"],
-    forecast: ["read"],
+    commitment: ["read", "create", "update"],
+    forecast: ["read", "update"],
     variance: ["read", "update"],
+    master_data: ["read", "create", "update"],
+    approval: ["read", "create"],
     report: ["read", "export"],
+    period_close: ["create", "read", "update", "approve"],
   },
   procurement_user: {
     commitment: ["create", "read", "update"],
     actual: ["read"],
+    approval: ["read"],
     report: ["read"],
   },
   department_manager: {
@@ -121,9 +138,11 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     task: ["read", "update"],
     variance: ["create", "read", "update"],
     report: ["read"],
+    appraisal: ["read", "update", "approve"],
   },
   budget_owner: {
     budget: ["create", "read", "update"],
+    commitment: ["create", "read", "update"],
     forecast: ["create", "read", "update"],
     variance: ["create", "read", "update"],
   },
@@ -137,25 +156,32 @@ const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionResource, Perm
     milestone: ["read", "approve"],
     commitment: ["read", "approve"],
     actual: ["read", "approve"],
+    forecast: ["read", "approve"],
     variance: ["read", "approve"],
-    approval: ["read", "approve"],
+    approval: ["read", "approve", "create"],
   },
   auditor: {
     budget: ["read"],
     project: ["read"],
+    commitment: ["read"],
     actual: ["read"],
     audit: ["read", "export"],
     report: ["read", "export"],
+    period_close: ["read"],
+    appraisal: ["read"],
+    master_data: ["read"],
   },
   employee: {
     task: ["read", "update"],
     milestone: ["read", "update"],
+    appraisal: ["read", "update"],
   },
   viewer: {
     budget: ["read"],
     project: ["read"],
     milestone: ["read"],
     task: ["read"],
+    commitment: ["read"],
     report: ["read"],
   },
 };
@@ -164,18 +190,52 @@ export interface RoleAssignment {
   roleCode: RoleCode;
   scopeType: "group" | "legal_entity" | "organization_unit" | "control_scope" | "project" | "control_account";
   scopeId: string;
+  effectiveStart?: string;
+  effectiveEnd?: string | null;
+  /** Legal entities derived from an active membership, never from the role alone. */
+  legalEntityIds?: string[];
+}
+
+export interface AuthorizationScope {
+  legalEntityId: string;
+  organizationId?: string;
+  scopeType?: Exclude<RoleAssignment["scopeType"], "group" | "legal_entity">;
+  scopeId?: string;
+}
+
+function assignmentMatchesScope(
+  assignment: RoleAssignment,
+  target: AuthorizationScope,
+): boolean {
+  if (assignment.scopeType === "group") {
+    return (
+      assignment.scopeId === target.organizationId ||
+      assignment.legalEntityIds?.includes(target.legalEntityId) === true
+    );
+  }
+  if (assignment.scopeType === "legal_entity") {
+    return assignment.scopeId === target.legalEntityId;
+  }
+  if (target.scopeType && target.scopeId) {
+    return assignment.scopeType === target.scopeType && assignment.scopeId === target.scopeId;
+  }
+  if (target.legalEntityId && assignment.legalEntityIds?.includes(target.legalEntityId)) {
+    return true;
+  }
+  return false;
 }
 
 export function hasPermission(
   assignments: RoleAssignment[],
   resource: PermissionResource,
   action: PermissionAction,
-  scopeId?: string,
+  scope?: string | AuthorizationScope,
 ): boolean {
+  const target = typeof scope === "string" ? { legalEntityId: scope } : scope;
   for (const assignment of assignments) {
     const perms = ROLE_PERMISSIONS[assignment.roleCode]?.[resource];
     if (!perms?.includes(action)) continue;
-    if (scopeId && assignment.scopeId !== scopeId && assignment.scopeType !== "group") {
+    if (target && !assignmentMatchesScope(assignment, target)) {
       continue;
     }
     return true;
