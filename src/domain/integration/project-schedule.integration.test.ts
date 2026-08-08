@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import pg from "pg";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   submitProgress,
   verifyProgress,
@@ -10,11 +11,78 @@ import { createAuthenticatedTestClient } from "@/test/helpers/supabase-auth";
 const KM_MILESTONE_ID = "ffffffff-ffff-ffff-ffff-ffffffffff01";
 const hasDb = Boolean(process.env.DATABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL);
 
+type MilestoneProgressSnapshot = {
+  approved_progress: string;
+  reported_progress: string;
+  approval_status: string;
+};
+
+let originalProgress: MilestoneProgressSnapshot | null = null;
+let createdUpdateId: string | null = null;
+
 describe.skipIf(!hasDb)("project schedule integration", () => {
-  beforeAll(() => {
+  beforeAll(async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL ??= "http://127.0.0.1:56001";
     if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY required for integration tests");
+    }
+
+    const client = new pg.Client({
+      connectionString:
+        process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:56002/postgres",
+    });
+    await client.connect();
+    try {
+      const result = await client.query<MilestoneProgressSnapshot>(
+        `SELECT approved_progress, reported_progress, approval_status
+           FROM public.milestones
+          WHERE id = $1`,
+        [KM_MILESTONE_ID],
+      );
+      originalProgress = result.rows[0] ?? null;
+      if (!originalProgress) {
+        throw new Error(`Missing milestone fixture ${KM_MILESTONE_ID}`);
+      }
+    } finally {
+      await client.end();
+    }
+  });
+
+  afterAll(async () => {
+    if (!originalProgress) return;
+
+    const client = new pg.Client({
+      connectionString:
+        process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:56002/postgres",
+    });
+    await client.connect();
+    try {
+      await client.query("BEGIN");
+      if (createdUpdateId) {
+        await client.query(
+          "DELETE FROM public.milestone_progress_updates WHERE id = $1",
+          [createdUpdateId],
+        );
+      }
+      await client.query(
+        `UPDATE public.milestones
+            SET approved_progress = $1,
+                reported_progress = $2,
+                approval_status = $3
+          WHERE id = $4`,
+        [
+          originalProgress.approved_progress,
+          originalProgress.reported_progress,
+          originalProgress.approval_status,
+          KM_MILESTONE_ID,
+        ],
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      await client.end();
     }
   });
 
@@ -31,6 +99,7 @@ describe.skipIf(!hasDb)("project schedule integration", () => {
     });
 
     expect(submission.id).toBeTruthy();
+    createdUpdateId = submission.id;
 
     await expect(
       verifyProgress(employeeDb, {

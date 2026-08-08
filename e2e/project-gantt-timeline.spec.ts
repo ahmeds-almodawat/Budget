@@ -1,6 +1,51 @@
 import { test, expect } from "@playwright/test";
+import pg from "pg";
 
 const PASSWORD = "Password123!";
+const KM_MILESTONE_ID = "ffffffff-ffff-ffff-ffff-ffffffffff01";
+const AUTHORITATIVE_PROGRESS = 65;
+
+async function restoreAuthoritativeGanttFixture() {
+  const client = new pg.Client({
+    connectionString:
+      process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:56002/postgres",
+  });
+  await client.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      "DELETE FROM public.milestone_progress_updates WHERE milestone_id = $1",
+      [KM_MILESTONE_ID],
+    );
+    const result = await client.query<{
+      approved_progress: string;
+      reported_progress: string;
+      approval_status: string;
+    }>(
+      `UPDATE public.milestones
+          SET approved_progress = $1,
+              reported_progress = $1,
+              approval_status = 'approved'
+        WHERE id = $2
+      RETURNING approved_progress, reported_progress, approval_status`,
+      [AUTHORITATIVE_PROGRESS, KM_MILESTONE_ID],
+    );
+    if (
+      result.rowCount !== 1 ||
+      Number(result.rows[0].approved_progress) !== AUTHORITATIVE_PROGRESS ||
+      Number(result.rows[0].reported_progress) !== AUTHORITATIVE_PROGRESS ||
+      result.rows[0].approval_status !== "approved"
+    ) {
+      throw new Error(`Unable to restore authoritative Gantt fixture ${KM_MILESTONE_ID}`);
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    await client.end();
+  }
+}
 
 async function signIn(page: import("@playwright/test").Page, email: string) {
   await page.goto("/en/auth/sign-in");
@@ -16,6 +61,7 @@ async function setTheme(page: import("@playwright/test").Page, theme: "Light" | 
 
 test.describe("project gantt timeline", () => {
   test.describe.configure({ retries: 0 });
+  test.beforeAll(restoreAuthoritativeGanttFixture);
 
   test("project overview surfaces an authoritative schedule preview", async ({ page }) => {
     await signIn(page, "group.admin@modawat.local");
